@@ -3,6 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import Protocol
 
 from emi_copilot.domain.errors import InvalidPaymentAttemptError
 from emi_copilot.domain.money import Money
@@ -11,7 +12,9 @@ from emi_copilot.domain.payments import (
     OfferSnapshot,
     PaymentAttempt,
     PaymentAttemptStatus,
+    PricedEmiOffer,
 )
+from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork
 
 # The payment_attempt.idempotency_key column holds at most 255 characters.
 MAXIMUM_IDEMPOTENCY_KEY_LENGTH = 255
@@ -22,7 +25,8 @@ class CreatePaymentLinkCommand:
     """Asks for a payment link on one offer for one item; prices are re-checked server-side.
 
     The offer id names the plan only. Every figure of the plan is taken from a fresh gateway
-    quote, never from the caller (security-and-compliance.md section 1).
+    quote, never from the caller (security-and-compliance.md section 1). sale_id ties the attempt
+    to the counter sale it pays for; Layer 1 callers hand off a bare item and leave it None.
     """
 
     idempotency_key: str
@@ -31,9 +35,10 @@ class CreatePaymentLinkCommand:
     product_id: str
     brand_id: str
     category_id: str
+    sale_id: str | None = None
 
     def __post_init__(self) -> None:
-        """Rejects an empty or overlong key, and an item query that could not be sent."""
+        """Rejects a blank or overlong key, a blank sale id and an unsendable item query."""
         if (
             not isinstance(self.idempotency_key, str)
             or not self.idempotency_key.strip()
@@ -42,6 +47,10 @@ class CreatePaymentLinkCommand:
             raise InvalidPaymentAttemptError(
                 f"The idempotency key must be 1 to {MAXIMUM_IDEMPOTENCY_KEY_LENGTH} characters."
             )
+        if self.sale_id is not None and (
+            not isinstance(self.sale_id, str) or not self.sale_id.strip()
+        ):
+            raise InvalidPaymentAttemptError("A sale id, when given, must not be blank.")
         self.to_offer_discovery_query()
 
     def to_offer_discovery_query(self) -> OfferDiscoveryQuery:
@@ -56,15 +65,18 @@ class CreatePaymentLinkCommand:
     def calculate_request_fingerprint(self) -> str:
         """Gives the SHA-256 hex of the canonical body: sorted compact JSON, price in paise.
 
-        The idempotency key itself is not part of the body (ADR 0005).
+        The idempotency key itself is not part of the body (ADR 0005). The sale id is added only
+        when set, so every sale-less (Layer 1) fingerprint stays exactly as it was.
         """
-        canonical_body = {
+        canonical_body: dict[str, str | int] = {
             "brand_id": self.brand_id,
             "category_id": self.category_id,
             "offer_id": self.offer_id,
             "price_in_paise": self.price.to_paise(),
             "product_id": self.product_id,
         }
+        if self.sale_id is not None:
+            canonical_body["sale_id"] = self.sale_id
         canonical_text = json.dumps(
             canonical_body, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         )
@@ -100,3 +112,19 @@ class PaymentLinkHandoff:
             status=payment_attempt.status,
             is_replay=is_replay,
         )
+
+
+class PaymentLinkIntent(Protocol):
+    """What a caller adds to one hand-off, at the two moments only the hand-off service knows.
+
+    The sale hand-off uses it to require the agreed plan and to move the sale in the same
+    transaction that stores the new attempt. Either method may raise to refuse the hand-off.
+    """
+
+    def check_quoted_offer(self, priced_offer: PricedEmiOffer | None) -> None:
+        """Refuses the hand-off unless the fresh quote (None when not quoted) is acceptable."""
+        ...
+
+    def record_intent(self, unit_of_work: UnitOfWork, new_attempt: PaymentAttempt) -> None:
+        """Runs inside the transaction that stores the new attempt, before it is stored."""
+        ...

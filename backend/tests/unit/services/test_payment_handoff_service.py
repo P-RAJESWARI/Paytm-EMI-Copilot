@@ -1,6 +1,7 @@
 """Tests for PaymentHandoffService: one gateway call per key, every outcome stored and replayed."""
 
 from dataclasses import replace
+from datetime import timedelta
 
 import pytest
 
@@ -33,6 +34,8 @@ from tests.payment_builders import build_payment_attempt, build_standard_offer_s
 from tests.unit.services.conftest import ServiceTestKit
 
 IDEMPOTENCY_KEY = "idempotency-key-sample-0001"
+# Twice the default connect (3 s) plus read (10 s) gateway timeouts.
+LINK_CREATION_STALE_AFTER = timedelta(seconds=26)
 # The kit's ids, in the order the service asks for them.
 EXPECTED_ORDER_ID = "01JCTESTID0000000000000001"
 EXPECTED_CUSTOMER_REFERENCE = "01JCTESTID0000000000000002"
@@ -68,7 +71,12 @@ def _build_command(**overrides: object) -> CreatePaymentLinkCommand:
 def _build_service(kit: ServiceTestKit) -> PaymentHandoffService:
     """Wires the service on the kit's fakes."""
     return PaymentHandoffService(
-        kit.payment_gateway, kit.unit_of_work_factory, kit.clock, kit.id_generator, kit.event_bus
+        kit.payment_gateway,
+        kit.unit_of_work_factory,
+        kit.clock,
+        kit.id_generator,
+        kit.event_bus,
+        link_creation_stale_after=LINK_CREATION_STALE_AFTER,
     )
 
 

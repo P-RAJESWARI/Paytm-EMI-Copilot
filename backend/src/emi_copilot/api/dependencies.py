@@ -215,16 +215,36 @@ def provide_offer_discovery_service(
     return OfferDiscoveryService(payment_gateway, unit_of_work_factory, clock, event_bus)
 
 
-def provide_payment_handoff_service(
+def calculate_link_creation_stale_after(settings: ApplicationSettings) -> timedelta:
+    """Gives twice the longest one create-link call can wait: connect plus read timeout.
+
+    A replay finding an attempt in progress for longer stores it as OUTCOME_UNKNOWN (Layer 1
+    handoff question 2): by then the call has surely ended, so its process must have died.
+    """
+    longest_call_in_seconds = (
+        settings.payment_gateway_connect_timeout_in_seconds
+        + settings.payment_gateway_read_timeout_in_seconds
+    )
+    return 2 * timedelta(seconds=longest_call_in_seconds)
+
+
+def provide_payment_handoff_service(  # noqa: PLR0913 - one parameter per injected component
+    *,
+    components: ComponentsDependency,
     payment_gateway: GatewayDependency,
     unit_of_work_factory: UnitOfWorkFactoryDependency,
     clock: ClockDependency,
     id_generator: IdGeneratorDependency,
     event_bus: EventBusDependency,
 ) -> PaymentHandoffService:
-    """Assembles the payment hand-off service from the injected components."""
+    """Assembles the payment hand-off service with its stale limit from the gateway timeouts."""
     return PaymentHandoffService(
-        payment_gateway, unit_of_work_factory, clock, id_generator, event_bus
+        payment_gateway,
+        unit_of_work_factory,
+        clock,
+        id_generator,
+        event_bus,
+        link_creation_stale_after=calculate_link_creation_stale_after(components.settings),
     )
 
 

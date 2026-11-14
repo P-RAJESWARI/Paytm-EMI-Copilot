@@ -8,6 +8,9 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from emi_copilot.adapters.payment_gateway.mock_offer_catalogue import quote_mock_offers
+from emi_copilot.adapters.payment_gateway.mock_payment_simulator_port import (
+    MockPaymentSimulatorPort,
+)
 from emi_copilot.adapters.payment_gateway.mock_webhook_signature import (
     MOCK_AMOUNT_IN_PAISE_FIELD,
     MOCK_ORDER_ID_FIELD,
@@ -68,7 +71,7 @@ class _MockPaymentRecord:
 
 # Pattern: Adapter (Mock). Implements PaymentGatewayPort with simulated offers, links, statuses
 # and signed webhooks, so the whole payment flow runs locally with no network and no keys.
-class MockPaymentGatewayAdapter(PaymentGatewayPort):
+class MockPaymentGatewayAdapter(PaymentGatewayPort, MockPaymentSimulatorPort):
     """A simulated gateway, the local-development default; it announces itself when built.
 
     Demo pricing rule (not any lender's): on price P it quotes the design plans scaled to P
@@ -171,6 +174,18 @@ class MockPaymentGatewayAdapter(PaymentGatewayPort):
             self._payment_records_by_order_id[order_id] = replace(
                 payment_record, simulated_outcome=status
             )
+
+    def complete_mock_payment(self, order_id: str) -> UnverifiedWebhookNotification:
+        """Mock-only: forces a known order PAID and signs the PAID notification for its amount."""
+        self.simulate_payment_outcome(order_id, GatewayPaymentStatus.PAID)
+        with self._payment_records_lock:
+            payment_record = self._payment_records_by_order_id[order_id]
+        return self.build_signed_notification(
+            order_id,
+            GatewayPaymentStatus.PAID,
+            _derive_mock_id("mock-transaction", order_id),
+            payment_record.amount,
+        )
 
     def verify_webhook(self, notification: UnverifiedWebhookNotification) -> VerifiedWebhookEvent:
         """Checks the HMAC signature over every field first, then reads the event from them.

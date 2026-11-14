@@ -11,7 +11,7 @@ from emi_copilot.domain.errors import (
 )
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import PaymentAttemptStatus
-from emi_copilot.services.payment_handoff_service import replay_stored_outcome
+from emi_copilot.services.create_link_outcome import replay_stored_outcome
 from emi_copilot.services.payment_handoff_types import CreatePaymentLinkCommand
 from tests.payment_builders import SAMPLE_REQUEST_FINGERPRINT, build_payment_attempt
 

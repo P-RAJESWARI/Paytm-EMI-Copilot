@@ -9,6 +9,7 @@ from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayConfigura
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
 from emi_copilot.api.dependencies import (
     ApplicationComponents,
+    calculate_link_creation_stale_after,
     provide_access_token_lifetime,
     provide_clock,
     provide_event_bus,
@@ -65,3 +66,14 @@ def test_merchant_providers_give_the_startup_hasher_limiter_and_token_lifetime()
         assert provide_pin_hasher(components) is components.pin_hasher
         assert provide_pairing_rate_limiter(components) is components.pairing_rate_limiter
         assert provide_access_token_lifetime(components) == timedelta(hours=1)
+
+
+def test_link_creation_stale_limit_is_twice_the_connect_plus_read_timeout() -> None:
+    """3 s connect and 10 s read by default: an attempt in progress for 26 s is stale."""
+    assert calculate_link_creation_stale_after(ApplicationSettings()) == timedelta(seconds=26)
+    assert calculate_link_creation_stale_after(
+        ApplicationSettings(
+            payment_gateway_connect_timeout_in_seconds=1.5,
+            payment_gateway_read_timeout_in_seconds=4.0,
+        )
+    ) == timedelta(seconds=11)

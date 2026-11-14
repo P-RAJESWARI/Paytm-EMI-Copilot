@@ -79,7 +79,12 @@ def _wire_services(
 
     return DatabaseServices(
         handoff_service=PaymentHandoffService(
-            payment_gateway, unit_of_work_factory, clock, id_generator, event_bus
+            payment_gateway,
+            unit_of_work_factory,
+            clock,
+            id_generator,
+            event_bus,
+            link_creation_stale_after=timedelta(seconds=26),
         ),
         status_service=PaymentStatusService(
             payment_gateway, unit_of_work_factory, clock, id_generator, event_bus

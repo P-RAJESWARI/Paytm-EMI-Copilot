@@ -10,6 +10,9 @@ from emi_copilot.adapters.payment_gateway.mock_adapter import (
     MOCK_ACTIVE_WARNING,
     MockPaymentGatewayAdapter,
 )
+from emi_copilot.adapters.payment_gateway.mock_payment_simulator_port import (
+    MockPaymentSimulatorPort,
+)
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.domain.errors import (
     InvalidPaymentGatewayValueError,
@@ -295,3 +298,27 @@ def test_mock_adapter_simulate_payment_outcome_for_unknown_order_is_refused(
     """An outcome can only be forced for an order the Mock made a link for."""
     with pytest.raises(InvalidPaymentGatewayValueError, match="no payment link"):
         mock_gateway.simulate_payment_outcome(SAMPLE_ORDER_ID, GatewayPaymentStatus.PAID)
+
+
+def test_mock_adapter_complete_mock_payment_signs_a_paid_notification_it_verifies(
+    mock_gateway: MockPaymentGatewayAdapter,
+) -> None:
+    """The simulator's paid notification passes the Mock's own webhook check, for the amount."""
+    mock_gateway.create_payment_link(build_payment_link_request())
+    notification = mock_gateway.complete_mock_payment(SAMPLE_ORDER_ID)
+    assert isinstance(mock_gateway, MockPaymentSimulatorPort)
+    verified_event = mock_gateway.verify_webhook(notification)
+    assert verified_event.order_id == SAMPLE_ORDER_ID
+    assert verified_event.status is GatewayPaymentStatus.PAID
+    assert verified_event.amount_paid == Money.from_rupees("22000")
+    assert verified_event.gateway_transaction_id is not None
+    assert verified_event.gateway_transaction_id.startswith("mock-transaction-")
+    assert mock_gateway.get_payment_status(SAMPLE_ORDER_ID).status is GatewayPaymentStatus.PAID
+
+
+def test_mock_adapter_complete_mock_payment_for_unknown_order_is_refused(
+    mock_gateway: MockPaymentGatewayAdapter,
+) -> None:
+    """Only an order the Mock made a link for can be paid."""
+    with pytest.raises(InvalidPaymentGatewayValueError):
+        mock_gateway.complete_mock_payment("ORDER-NOT-KNOWN")

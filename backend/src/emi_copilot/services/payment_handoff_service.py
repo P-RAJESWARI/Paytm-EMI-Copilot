@@ -1,22 +1,19 @@
 """PaymentHandoffService: creates a payment link at most once per Idempotency-Key (ADR 0005)."""
 
 from dataclasses import replace
+from datetime import timedelta
 
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.core.clock import Clock
 from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.domain.errors import (
     DomainError,
-    IdempotencyKeyReusedError,
     InvalidPaymentGatewayValueError,
     OfferNotFoundError,
     PaymentAttemptAlreadyExistsError,
     PaymentGatewayRequestRejectedError,
     PaymentGatewayTimeoutError,
     PaymentGatewayUnavailableError,
-    PaymentLinkCreationFailedError,
-    PaymentLinkCreationInProgressError,
-    PaymentLinkOutcomeUnknownError,
 )
 from emi_copilot.domain.events import (
     PaymentLinkCreated,
@@ -35,41 +32,18 @@ from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
 from emi_copilot.services.create_link_outcome import (
     describe_create_link_attempt,
+    record_stale_link_creation_as_unknown,
+    replay_stored_outcome,
     save_create_link_outcome,
 )
 from emi_copilot.services.payment_handoff_types import (
     CreatePaymentLinkCommand,
     PaymentLinkHandoff,
+    PaymentLinkIntent,
 )
 
 # Cause code audited when create-link fails with an exception that carries no domain code.
 UNEXPECTED_FAILURE_CAUSE_CODE = "UNEXPECTED_ERROR"
-
-
-def replay_stored_outcome(
-    stored_attempt: PaymentAttempt, request_fingerprint: str
-) -> PaymentLinkHandoff:
-    """Gives the stored link for a repeated key, or raises the typed error of its outcome.
-
-    A different body is IDEMPOTENCY_KEY_REUSED. An attempt without a stored link URL raises
-    instead of re-sending: in progress, failed (with its code) or outcome unknown, which also
-    covers an attempt a later status report moved on from OUTCOME_UNKNOWN or from in progress.
-    """
-    if stored_attempt.request_fingerprint != request_fingerprint:
-        raise IdempotencyKeyReusedError("The Idempotency-Key was used with a different body.")
-    if stored_attempt.status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS:
-        raise PaymentLinkCreationInProgressError("The first request with this key is running.")
-    # The failure code is set exactly when the attempt is LINK_CREATION_FAILED.
-    if stored_attempt.failure_code is not None:
-        raise PaymentLinkCreationFailedError(
-            stored_attempt.failure_code, "This key's payment link was not created."
-        )
-    payment_url = stored_attempt.payment_link_url
-    if payment_url is None:
-        raise PaymentLinkOutcomeUnknownError(
-            "This key's payment link call has an unknown outcome; start again with a new key."
-        )
-    return PaymentLinkHandoff.from_attempt(stored_attempt, payment_url, is_replay=True)
 
 
 class PaymentHandoffService:
@@ -81,52 +55,86 @@ class PaymentHandoffService:
     The second transaction records the outcome and publishes its event, so the audit row
     commits with it. It locks the row first: a gateway report that arrived during the call is
     newer evidence (it may be PAID), so the call's outcome never overwrites it. If the second
-    transaction itself fails, the attempt stays in progress until a gateway report moves it.
+    transaction itself fails, the attempt stays in progress until a gateway report moves it, or
+    until a replay finds it older than link_creation_stale_after: that replay stores it as
+    OUTCOME_UNKNOWN (ADR 0005; the link is never re-sent), so a crash between the two
+    transactions cannot leave the key answering "in progress" forever.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - one parameter per collaborator, plus the stale limit
         self,
         payment_gateway: PaymentGatewayPort,
         unit_of_work_factory: UnitOfWorkFactory,
         clock: Clock,
         id_generator: IdGenerator,
         event_bus: DomainEventBus,
+        *,
+        link_creation_stale_after: timedelta,
     ) -> None:
-        """Keeps the gateway port, unit-of-work factory, clock, id generator and event bus."""
+        """Keeps the collaborators and how long an attempt may stay in progress on a replay."""
         self._payment_gateway = payment_gateway
         self._unit_of_work_factory = unit_of_work_factory
         self._clock = clock
         self._id_generator = id_generator
         self._event_bus = event_bus
+        self._link_creation_stale_after = link_creation_stale_after
 
-    def create_payment_link(self, command: CreatePaymentLinkCommand) -> PaymentLinkHandoff:
-        """Replays a known key's outcome, or creates the link once and records what happened."""
+    def create_payment_link(
+        self, command: CreatePaymentLinkCommand, intent: PaymentLinkIntent | None = None
+    ) -> PaymentLinkHandoff:
+        """Replays a known key's outcome, or creates the link once and records what happened.
+
+        An intent, when given, checks the fresh quote and joins the transaction that stores the
+        new attempt; a replay never consults it, so it returns the original result.
+        """
         request_fingerprint = command.calculate_request_fingerprint()
         stored_attempt = self._find_attempt_by_key(command.idempotency_key)
         if stored_attempt is not None:
-            return replay_stored_outcome(stored_attempt, request_fingerprint)
-        link_request = self._build_payment_link_request(command)
+            return self._replay(stored_attempt, request_fingerprint)
+        link_request = self._build_payment_link_request(command, intent)
         new_attempt = self._build_attempt(command, request_fingerprint, link_request)
-        concurrent_attempt = self._insert_attempt(new_attempt)
+        concurrent_attempt = self._insert_attempt(new_attempt, intent)
         if concurrent_attempt is not None:
-            return replay_stored_outcome(concurrent_attempt, request_fingerprint)
+            return self._replay(concurrent_attempt, request_fingerprint)
         return self._call_gateway_and_record_outcome(new_attempt, link_request)
+
+    def _replay(
+        self, stored_attempt: PaymentAttempt, request_fingerprint: str
+    ) -> PaymentLinkHandoff:
+        """Replays a stored attempt, first storing a stale in-progress one as outcome unknown."""
+        if (
+            stored_attempt.request_fingerprint == request_fingerprint
+            and stored_attempt.status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
+            and self._clock.now() - stored_attempt.created_at >= self._link_creation_stale_after
+        ):
+            with self._unit_of_work_factory() as unit_of_work:
+                stored_attempt = record_stale_link_creation_as_unknown(
+                    unit_of_work, stored_attempt, self._event_bus, self._clock.now()
+                )
+        return replay_stored_outcome(stored_attempt, request_fingerprint)
 
     def _find_attempt_by_key(self, idempotency_key: str) -> PaymentAttempt | None:
         """Reads the attempt stored under the key, in a short read-only transaction."""
         with self._unit_of_work_factory() as unit_of_work:
             return unit_of_work.payment_attempts.find_by_idempotency_key(idempotency_key)
 
-    def _build_payment_link_request(self, command: CreatePaymentLinkCommand) -> PaymentLinkRequest:
+    def _build_payment_link_request(
+        self, command: CreatePaymentLinkCommand, intent: PaymentLinkIntent | None
+    ) -> PaymentLinkRequest:
         """Re-discovers the offers server-side, picks the chosen one and freezes its plan."""
         offers = self._payment_gateway.discover_offers(command.to_offer_discovery_query())
         chosen_offer = next((offer for offer in offers if offer.offer_id == command.offer_id), None)
-        if chosen_offer is None:
+        priced_offer = (
+            None if chosen_offer is None else price_emi_offer(chosen_offer, command.price)
+        )
+        if intent is not None:
+            intent.check_quoted_offer(priced_offer)
+        if priced_offer is None:
             raise OfferNotFoundError("The chosen offer is not quoted for this item and price.")
         return PaymentLinkRequest(
             order_id=self._id_generator.new_id(),
             amount=command.price,
-            offer=price_emi_offer(chosen_offer, command.price).to_offer_snapshot(),
+            offer=priced_offer.to_offer_snapshot(),
             product_id=command.product_id,
             brand_id=command.brand_id,
             category_id=command.category_id,
@@ -155,12 +163,17 @@ class PaymentHandoffService:
             gateway_transaction_id=None,
             created_at=created_at,
             updated_at=created_at,
+            sale_id=command.sale_id,
         )
 
-    def _insert_attempt(self, new_attempt: PaymentAttempt) -> PaymentAttempt | None:
-        """Commits the in-progress attempt; gives the stored one if a concurrent request won."""
+    def _insert_attempt(
+        self, new_attempt: PaymentAttempt, intent: PaymentLinkIntent | None
+    ) -> PaymentAttempt | None:
+        """Commits the in-progress attempt (and the intent's writes); gives a concurrent winner."""
         try:
             with self._unit_of_work_factory() as unit_of_work:
+                if intent is not None:
+                    intent.record_intent(unit_of_work, new_attempt)
                 unit_of_work.payment_attempts.add(new_attempt)
         except PaymentAttemptAlreadyExistsError:
             concurrent_attempt = self._find_attempt_by_key(new_attempt.idempotency_key)
