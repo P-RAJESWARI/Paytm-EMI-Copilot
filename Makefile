@@ -25,8 +25,8 @@ COVERAGE_GATES := \
 	src/emi_copilot/services:90 \
 	src/emi_copilot/adapters:90
 
-.PHONY: help setup dev db-up db-down lint typecheck test test-with-coverage coverage-gates check migrate \
-	seed openapi
+.PHONY: help setup dev db-up db-down db-reset lint typecheck test test-with-coverage coverage-gates \
+	check migrate seed demo openapi
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -82,8 +82,17 @@ check: lint typecheck db-up test-with-coverage coverage-gates ## Lint, types, te
 migrate: db-up ## Apply all Alembic migrations to the development database
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) alembic upgrade head
 
-seed: migrate ## Create or refresh the demo shop RAVI-0193 and its products; needs DEMO_MERCHANT_PIN
-	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python scripts/seed_demo_data.py
+db-reset: db-up ## Drop every table of the development database and migrate again (demo data is lost)
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN) alembic downgrade base
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN) alembic upgrade head
+
+seed: migrate ## Create the demo shop RAVI-0193, its products and (once) this week's report history; needs DEMO_MERCHANT_PIN
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python -m scripts.seed_demo_data
+
+demo: seed ## Seed, then run the API (one worker, no reload) with the labelled MockCustomerSimulator on
+	cd $(BACKEND_DIRECTORY) && MOCK_CUSTOMER_SIMULATOR_ENABLED=true $(UV_RUN) uvicorn \
+		emi_copilot.main:create_application --factory --workers 1 \
+		--host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
 openapi: ## Export and validate the OpenAPI schema to backend/openapi.json (commit the result)
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python scripts/export_openapi.py

@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
-from scripts.seed_demo_data import seed_demo_merchant
+from scripts.seed_demo_data import seed_demo_merchant, seed_report_history
 from tests.fixed_clock import FixedClock
 from tests.integration.api.api_harness import ApiHarness
 
@@ -57,3 +57,15 @@ def test_seeded_demo_shop_pairs_with_the_pin_and_lists_the_m2_offer_counts(
         ("Example phone, 64 GB", 1_800_000, 2),
         ("Example earbuds", 249_900, 1),
     ]
+
+
+def test_seed_report_history_run_twice_stores_the_120_sales_once(
+    session_factory: sessionmaker[Session], fixed_clock: FixedClock
+) -> None:
+    """The step writes the design week once; a shop with sales is left alone."""
+    unit_of_work_factory = partial(SqlAlchemyUnitOfWork, session_factory, fixed_clock)
+    seed_demo_merchant(unit_of_work_factory, SYNTHETIC_PIN)
+    seed_report_history(unit_of_work_factory, SYNTHETIC_PIN)
+    seed_report_history(unit_of_work_factory, SYNTHETIC_PIN)
+    assert count_rows(session_factory, "sale") == 120
+    assert count_rows(session_factory, "funnel_event") == 120 + 96 + 88 + 51 + 44
