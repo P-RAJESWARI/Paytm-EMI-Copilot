@@ -1,9 +1,17 @@
 """SalePaymentLinkIntent: the sale's own rules inside one PaymentHandoffService hand-off."""
 
 from emi_copilot.core.clock import Clock
-from emi_copilot.domain.errors import ChosenPlanNoLongerOfferedError, SaleNotFoundError
+from emi_copilot.domain.errors import (
+    ChosenPlanNoLongerOfferedError,
+    PaymentLinkAlreadyActiveError,
+    SaleNotFoundError,
+)
 from emi_copilot.domain.events import SaleStatusChanged
-from emi_copilot.domain.payments import PaymentAttempt, PricedEmiOffer
+from emi_copilot.domain.payments import (
+    STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK,
+    PaymentAttempt,
+    PricedEmiOffer,
+)
 from emi_copilot.domain.sales import ChosenPlan, Sale, SaleStatus
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork
@@ -17,6 +25,8 @@ class SalePaymentLinkIntent:
     monthly, extra and total), else CHOSEN_PLAN_NO_LONGER_OFFERED. Inside the transaction that
     stores the attempt, the sale is locked: READY_TO_PAY goes ahead, PAYMENT_NOT_COMPLETED is
     first moved back to READY_TO_PAY (RETRY_PAYMENT), and any other status is a 409 conflict.
+    Under the same lock, a sale whose latest attempt may still be paid takes no second link
+    (PAYMENT_LINK_ALREADY_ACTIVE), so two keys can never leave two payable links.
     """
 
     def __init__(
@@ -42,6 +52,7 @@ class SalePaymentLinkIntent:
         )
         if locked_sale is None:
             raise SaleNotFoundError(SALE_NOT_FOUND_DETAIL)
+        _refuse_while_the_latest_link_may_be_paid(unit_of_work, locked_sale.id)
         if locked_sale.status is SaleStatus.READY_TO_PAY:
             return
         retried_sale = unit_of_work.sales.update(locked_sale.retry_payment(self._clock.now()))
@@ -56,4 +67,17 @@ class SalePaymentLinkIntent:
                 payment_attempt_id=new_attempt.id,
             ),
             unit_of_work,
+        )
+
+
+def _refuse_while_the_latest_link_may_be_paid(unit_of_work: UnitOfWork, sale_id: str) -> None:
+    """Refuses a new link while the sale's latest attempt is not failed or refused."""
+    latest_attempt = unit_of_work.payment_attempts.find_latest_for_sale(sale_id)
+    if (
+        latest_attempt is not None
+        and latest_attempt.status not in STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK
+    ):
+        raise PaymentLinkAlreadyActiveError(
+            f"The sale's latest payment link is {latest_attempt.status.value}; "
+            "check its payment status before making another."
         )

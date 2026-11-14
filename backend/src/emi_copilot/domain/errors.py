@@ -318,3 +318,14 @@ class ChosenPlanNoLongerOfferedError(DomainError):
     """
 
     code: ClassVar[str] = "CHOSEN_PLAN_NO_LONGER_OFFERED"
+
+
+class PaymentLinkAlreadyActiveError(DomainError):
+    """Raised when a sale asks for a new payment link while its latest one may still be paid.
+
+    The latest attempt is in progress, created, pending or has an unknown outcome, so a second
+    link could let the customer pay twice. A known key still replays; a new link is allowed only
+    once the latest attempt failed or was refused.
+    """
+
+    code: ClassVar[str] = "PAYMENT_LINK_ALREADY_ACTIVE"

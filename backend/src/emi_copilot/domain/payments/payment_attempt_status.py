@@ -17,3 +17,13 @@ class PaymentAttemptStatus(StrEnum):
     PAYMENT_PENDING = "PAYMENT_PENDING"
     PAID = "PAID"
     PAYMENT_FAILED = "PAYMENT_FAILED"
+
+
+STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK = frozenset(
+    {PaymentAttemptStatus.LINK_CREATION_FAILED, PaymentAttemptStatus.PAYMENT_FAILED}
+)
+"""Only after an attempt in one of these may its sale take a new link: nothing can be paid.
+
+Every other status may still be paid (in progress, created, pending, outcome unknown) or was
+paid, so a second link could let the customer pay twice.
+"""

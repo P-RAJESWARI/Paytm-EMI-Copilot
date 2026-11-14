@@ -7,6 +7,7 @@ from emi_copilot.domain.errors import (
     DomainError,
     IllegalSaleTransitionError,
     InvalidSaleDataError,
+    PaymentLinkAlreadyActiveError,
     SaleNotFoundError,
     SessionCodesExhaustedError,
 )
@@ -20,6 +21,7 @@ from emi_copilot.domain.errors import (
         (IllegalSaleTransitionError, "SALE_STATE_CONFLICT"),
         (SessionCodesExhaustedError, "SESSION_CODES_EXHAUSTED"),
         (ChosenPlanNoLongerOfferedError, "CHOSEN_PLAN_NO_LONGER_OFFERED"),
+        (PaymentLinkAlreadyActiveError, "PAYMENT_LINK_ALREADY_ACTIVE"),
     ],
 )
 def test_sale_errors_are_domain_errors_with_stable_codes(

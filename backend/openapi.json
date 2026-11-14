@@ -2651,7 +2651,7 @@
           "sales"
         ],
         "summary": "Create a payment link for an agreed sale",
-        "description": "Re-quotes the agreed plan server-side; if any figure differs from what the customer agreed to, answers 409 CHOSEN_PLAN_NO_LONGER_OFFERED. Allowed while READY_TO_PAY, or PAYMENT_NOT_COMPLETED (the sale first goes back to READY_TO_PAY). The gateway is asked exactly once per Idempotency-Key, never retried; the same key returns the original 201 body, a gateway timeout answers 504 and the key then answers 409 (ADR 0005). Show the link on the tablet as a QR code and a copy button: nothing is sent to anyone. Limited per shop (429 with Retry-After). Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "description": "Re-quotes the agreed plan server-side; if any figure differs from what the customer agreed to, answers 409 CHOSEN_PLAN_NO_LONGER_OFFERED. Allowed while READY_TO_PAY, or PAYMENT_NOT_COMPLETED (the sale first goes back to READY_TO_PAY). The gateway is asked exactly once per Idempotency-Key, never retried; the same key returns the original 201 body, a gateway timeout answers 504 and the key then answers 409 (ADR 0005). A new key while the latest link is being made, awaits payment or has an unknown outcome answers 409 PAYMENT_LINK_ALREADY_ACTIVE; after a failed or refused link it makes a new one. Show the link on the tablet as a QR code and a copy button: nothing is sent to anyone. Limited per shop (429 with Retry-After). Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
         "operationId": "create_sale_payment_link_api_v1_sales__saleId__payment_links_post",
         "security": [
           {
@@ -2772,7 +2772,7 @@
             }
           },
           "409": {
-            "description": "The sale is CHOOSING, EXPIRED or already PAID, and the key is new. The fresh quote differs from the agreed plan in any figure, or the plan is gone; the customer has to choose again. A replay of a key whose first call has no usable link; start again with a new key, or wait while the first call is still running.",
+            "description": "The sale is CHOOSING, EXPIRED or already PAID, and the key is new. The fresh quote differs from the agreed plan in any figure, or the plan is gone; the customer has to choose again. The key is new but the sale's latest link is being made, is awaiting payment or has an unknown outcome, so a second link could be paid twice. Check the payment status; a new key makes a new link only once the latest one failed or was refused. A replay of a key whose first call has no usable link; start again with a new key, or wait while the first call is still running.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -2795,6 +2795,17 @@
                       "status": 409,
                       "detail": "The gateway no longer quotes the agreed plan with the figures that were shown.",
                       "code": "CHOSEN_PLAN_NO_LONGER_OFFERED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_ALREADY_ACTIVE": {
+                    "summary": "A payment link is still active",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-already-active",
+                      "title": "A payment link is still active",
+                      "status": 409,
+                      "detail": "The sale's latest payment link is LINK_CREATED; check its payment status before making another.",
+                      "code": "PAYMENT_LINK_ALREADY_ACTIVE",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
                   },

@@ -62,3 +62,13 @@ CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM = ProblemExample(
     "The fresh quote differs from the agreed plan in any figure, or the plan is gone; the "
     "customer has to choose again.",
 )
+PAYMENT_LINK_ALREADY_ACTIVE_PROBLEM = ProblemExample(
+    409,
+    "PAYMENT_LINK_ALREADY_ACTIVE",
+    "A payment link is still active",
+    "The sale's latest payment link is LINK_CREATED; check its payment status before making "
+    "another.",
+    "The key is new but the sale's latest link is being made, is awaiting payment or has an "
+    "unknown outcome, so a second link could be paid twice. Check the payment status; a new key "
+    "makes a new link only once the latest one failed or was refused.",
+)

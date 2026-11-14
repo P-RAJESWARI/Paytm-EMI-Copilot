@@ -14,6 +14,7 @@ from emi_copilot.api.controllers.sale_documentation import SALE_NOT_FOUND_PROBLE
 from emi_copilot.api.controllers.sale_handoff_documentation import (
     CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM,
     PAID_SALE_PAYMENT_STATUS_EXAMPLE,
+    PAYMENT_LINK_ALREADY_ACTIVE_PROBLEM,
     SALE_HANDOFF_EXAMPLE,
     SALE_HAS_NO_AGREED_PLAN_PROBLEM,
     SALE_PAYMENT_LINK_EXAMPLE,
@@ -98,8 +99,11 @@ def get_sale_handoff(
         "agreed to, answers 409 CHOSEN_PLAN_NO_LONGER_OFFERED. Allowed while READY_TO_PAY, or "
         "PAYMENT_NOT_COMPLETED (the sale first goes back to READY_TO_PAY). The gateway is asked "
         "exactly once per Idempotency-Key, never retried; the same key returns the original 201 "
-        "body, a gateway timeout answers 504 and the key then answers 409 (ADR 0005). Show the "
-        "link on the tablet as a QR code and a copy button: nothing is sent to anyone. Limited "
+        "body, a gateway timeout answers 504 and the key then answers 409 (ADR 0005). A new key "
+        "while the latest link is being made, awaits payment or has an unknown outcome answers "
+        "409 PAYMENT_LINK_ALREADY_ACTIVE; after a failed or refused link it makes a new one. "
+        "Show the link on the tablet as a QR code and a copy button: nothing is sent to anyone. "
+        "Limited "
         "per shop (429 with Retry-After). " + MERCHANT_BEARER_NOTE
     ),
     response_description="The link was created (or this is the replay of its creation).",
@@ -112,6 +116,7 @@ def get_sale_handoff(
             *SALE_HANDOFF_PROBLEMS,
             SALE_TAKES_NO_NEW_LINK_PROBLEM,
             CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM,
+            PAYMENT_LINK_ALREADY_ACTIVE_PROBLEM,
             *PAYMENT_LINK_PROBLEMS[1:],
             MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
             *GATEWAY_FAILURE_PROBLEMS,

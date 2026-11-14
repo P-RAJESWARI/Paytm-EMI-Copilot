@@ -7,6 +7,7 @@ import pytest
 from emi_copilot.domain.errors import (
     ChosenPlanNoLongerOfferedError,
     IllegalSaleTransitionError,
+    PaymentLinkAlreadyActiveError,
     ProductNotFoundError,
     SaleNotFoundError,
 )
@@ -17,6 +18,7 @@ from emi_copilot.domain.payments import (
     EmiType,
     GatewayPaymentStatus,
     PaymentAttemptStatus,
+    PaymentLinkFailureCode,
     PaymentStatusResult,
 )
 from emi_copilot.domain.sales import EdcEmiProgramme, Sale, SaleStatus
@@ -26,7 +28,7 @@ from emi_copilot.services.sale_expiry import SaleExpiryStep
 from emi_copilot.services.sale_handoff_service import SaleHandoffService
 from emi_copilot.services.sale_handoff_views import HandoffPaymentStatus
 from tests.merchant_builders import build_catalogue_product
-from tests.payment_builders import CREATED_AT
+from tests.payment_builders import CREATED_AT, build_payment_attempt
 from tests.sale_builders import SALE_ID, build_sale
 from tests.unit.services.conftest import ServiceTestKit
 from tests.unit.services.sale_service_wiring import CHOOSING_LIFETIME, OTHER_PRINCIPAL, PRINCIPAL
@@ -298,3 +300,74 @@ def test_check_payment_status_without_an_attempt_or_once_paid_never_asks_the_gat
     service.check_payment_status(PRINCIPAL, SALE_ID)
     service.check_payment_status(PRINCIPAL, SALE_ID)
     assert kit.payment_gateway.status_check_calls == [handoff.order_id]
+
+
+ACTIVE_LINK_STATUSES = [
+    PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS,
+    PaymentAttemptStatus.LINK_CREATED,
+    PaymentAttemptStatus.PAYMENT_PENDING,
+    PaymentAttemptStatus.OUTCOME_UNKNOWN,
+    PaymentAttemptStatus.PAID,
+]
+
+
+def _store_earlier_attempt(kit: ServiceTestKit, status: PaymentAttemptStatus) -> None:
+    """Stores an earlier attempt of the sale, under another key, in the given status."""
+    failure_code = (
+        PaymentLinkFailureCode.GATEWAY_UNAVAILABLE
+        if status is PaymentAttemptStatus.LINK_CREATION_FAILED
+        else None
+    )
+    kit.store_attempt(
+        build_payment_attempt(
+            9, sale_id=SALE_ID, status=status, failure_code=failure_code, idempotency_key=OTHER_KEY
+        )
+    )
+
+
+@pytest.mark.parametrize("attempt_status", ACTIVE_LINK_STATUSES)
+def test_create_payment_link_with_a_new_key_while_the_latest_link_may_be_paid_is_refused(
+    kit: ServiceTestKit, attempt_status: PaymentAttemptStatus
+) -> None:
+    """A second link could be paid twice: refused, nothing stored and no link asked for."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    _store_earlier_attempt(kit, attempt_status)
+    with pytest.raises(PaymentLinkAlreadyActiveError, match=attempt_status.value):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert len(kit.database.payment_attempts_by_id) == 1
+    assert kit.payment_gateway.create_link_calls == []
+    assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.READY_TO_PAY
+
+
+@pytest.mark.parametrize(
+    ("attempt_status", "sale_status"),
+    [
+        (PaymentAttemptStatus.LINK_CREATION_FAILED, SaleStatus.READY_TO_PAY),
+        (PaymentAttemptStatus.PAYMENT_FAILED, SaleStatus.PAYMENT_NOT_COMPLETED),
+    ],
+)
+def test_create_payment_link_with_a_new_key_after_a_failed_or_refused_link_makes_a_new_one(
+    kit: ServiceTestKit, attempt_status: PaymentAttemptStatus, sale_status: SaleStatus
+) -> None:
+    """M4 "Try again": nothing can be paid on the old link, so a new key makes a new one."""
+    _store_sale(kit, sale_status)
+    _store_earlier_attempt(kit, attempt_status)
+    handoff = _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert handoff.is_replay is False
+    assert len(kit.payment_gateway.create_link_calls) == 1
+    assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.READY_TO_PAY
+
+
+def test_create_payment_link_with_the_known_key_while_its_link_is_active_replays_it(
+    kit: ServiceTestKit,
+) -> None:
+    """The active-link refusal is for new keys only; the original key still replays."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    service = _build_service(kit)
+    first_handoff = service.create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    with pytest.raises(PaymentLinkAlreadyActiveError):
+        service.create_payment_link(PRINCIPAL, SALE_ID, OTHER_KEY)
+    replayed_handoff = service.create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert replayed_handoff.order_id == first_handoff.order_id
+    assert replayed_handoff.is_replay is True
+    assert len(kit.payment_gateway.create_link_calls) == 1

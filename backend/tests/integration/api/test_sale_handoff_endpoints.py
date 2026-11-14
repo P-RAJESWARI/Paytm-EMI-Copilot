@@ -235,6 +235,22 @@ def test_payment_not_completed_then_a_new_link_retries_the_sale(
     assert handoff["latestPaymentLink"]["orderId"] == second_link["orderId"]
 
 
+def test_a_new_key_while_the_sales_link_awaits_payment_answers_409_already_active(
+    mock_api: ApiHarness, mock_gateway: MockPaymentGatewayAdapter, shops: TwoShops
+) -> None:
+    """Two keys never leave two payable links on one sale; the first key still replays."""
+    sale_id = _start_agreed_sale(mock_api, mock_gateway, shops.first_shop_headers)
+    first_link = _create_link(mock_api, shops.first_shop_headers, sale_id)
+    refused = mock_api.client.post(
+        f"{SALES_PATH}/{sale_id}/payment-links",
+        headers={**shops.first_shop_headers, "Idempotency-Key": "sale-link-key-0002"},
+    )
+    replayed = _create_link(mock_api, shops.first_shop_headers, sale_id)
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "PAYMENT_LINK_ALREADY_ACTIVE"
+    assert replayed["orderId"] == first_link["orderId"]
+
+
 @pytest.fixture
 def tightly_limited_api(
     session_factory: sessionmaker[Session],

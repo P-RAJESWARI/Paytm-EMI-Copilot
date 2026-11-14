@@ -11,7 +11,10 @@ from emi_copilot.domain.payments.gateway_payment_status import (
 from emi_copilot.domain.payments.offer_discovery_query import OfferDiscoveryQuery
 from emi_copilot.domain.payments.offer_snapshot import OfferSnapshot, OfferSnapshotDictionary
 from emi_copilot.domain.payments.payment_attempt import PaymentAttempt
-from emi_copilot.domain.payments.payment_attempt_status import PaymentAttemptStatus
+from emi_copilot.domain.payments.payment_attempt_status import (
+    STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK,
+    PaymentAttemptStatus,
+)
 from emi_copilot.domain.payments.payment_attempt_transitions import (
     find_status_after_gateway_report,
 )
@@ -25,6 +28,7 @@ from emi_copilot.domain.payments.webhook_notification import (
 )
 
 __all__ = [
+    "STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK",
     "AuditDetailValue",
     "AuditEvent",
     "AuditEventType",
