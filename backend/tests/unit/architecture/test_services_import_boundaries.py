@@ -1,4 +1,4 @@
-"""Services depend on the gateway port, repositories, domain, events and four core modules only.
+"""Services depend on the gateway port, repositories, domain, events and six core modules only.
 
 They never import a concrete adapter (the Mock, any Paytm module or the factory), a web
 framework, the database library or the API layer (backend.md section 2, ADR 0008).
@@ -19,9 +19,12 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.adapters.payment_gateway.port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
-    # Pure standard-library primitives for pairing: PIN hashing and opaque bearer tokens.
+    # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens
+    # and session codes.
     "emi_copilot.core.opaque_token",
     "emi_copilot.core.pin_hasher",
+    "emi_copilot.core.qr_token_signer",
+    "emi_copilot.core.session_code_generator",
     "emi_copilot.domain",
     "emi_copilot.events",
     "emi_copilot.repositories.unit_of_work_protocol",

@@ -8,7 +8,7 @@ with app.dependency_overrides and every service that needs it picks the override
 
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
 from typing import Annotated
@@ -18,11 +18,16 @@ from sqlalchemy import Engine
 
 from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayFactory
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
+from emi_copilot.api.customer_qr_signing_key import resolve_customer_qr_signing_key
 from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.core.clock import Clock, SystemClock
 from emi_copilot.core.fixed_window_rate_limiter import FixedWindowRateLimiter
 from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.core.pin_hasher import ScryptPinHasher
+from emi_copilot.core.session_code_generator import (
+    RandomSessionCodeGenerator,
+    SessionCodeGenerator,
+)
 from emi_copilot.events.audit_subscriber import AuditSubscriber
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.events.funnel_event_recorder import FunnelEventRecorder
@@ -42,8 +47,9 @@ from emi_copilot.services.product_catalogue_service import ProductCatalogueServi
 class ApplicationComponents:
     """Everything built once per process: settings, time, ids, gateway, events and database.
 
-    The PIN hasher (with its decoy hash) and the pairing rate limiter live here too, because
-    their state must outlive one request.
+    The PIN hasher (with its decoy hash), the pairing rate limiter, the customer QR signing key
+    and the session code generator live here too, because they must outlive one request. The
+    key is kept out of repr.
     """
 
     settings: ApplicationSettings
@@ -55,6 +61,8 @@ class ApplicationComponents:
     unit_of_work_factory: UnitOfWorkFactory
     pin_hasher: ScryptPinHasher
     pairing_rate_limiter: FixedWindowRateLimiter
+    customer_qr_signing_key: bytes = field(repr=False)
+    session_code_generator: SessionCodeGenerator
 
 
 def build_event_bus(id_generator: IdGenerator) -> DomainEventBus:
@@ -69,9 +77,13 @@ def build_event_bus(id_generator: IdGenerator) -> DomainEventBus:
 def build_application_components(
     settings: ApplicationSettings, id_generator: IdGenerator
 ) -> ApplicationComponents:
-    """Builds the components; paytm mode without credentials raises here, failing startup."""
+    """Builds the components; paytm mode without credentials raises here, failing startup.
+
+    So does paytm mode without CUSTOMER_QR_SIGNING_SECRET, and a secret that is too short.
+    """
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
+    customer_qr_signing_key = resolve_customer_qr_signing_key(settings)
     event_bus = build_event_bus(id_generator)
     database_engine = create_database_engine(settings)
     session_factory = create_session_factory(database_engine)
@@ -85,6 +97,8 @@ def build_application_components(
         unit_of_work_factory=partial(SqlAlchemyUnitOfWork, session_factory, clock),
         pin_hasher=ScryptPinHasher(),
         pairing_rate_limiter=build_pairing_rate_limiter(settings, clock),
+        customer_qr_signing_key=customer_qr_signing_key,
+        session_code_generator=RandomSessionCodeGenerator(),
     )
 
 

@@ -2,12 +2,16 @@
 
 from enum import StrEnum
 from typing import Literal, Self
+from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
+# The Vite dev server of customer-web (frontend/apps/customer-web); the QR code opens it.
+LOCAL_CUSTOMER_WEB_BASE_URL = "http://localhost:5174"
 # Local-only default that matches docker-compose.yml. Never a real credential.
 LOCAL_DEVELOPMENT_DATABASE_URL = (
     # pragma: allowlist nextline secret
@@ -55,6 +59,16 @@ class ApplicationSettings(BaseSettings):
     merchant_access_token_lifetime_in_seconds: int = Field(default=43_200, ge=60, le=604_800)
     merchant_pairing_rate_limit_max_requests: int = Field(default=10, ge=1)
     merchant_pairing_rate_limit_window_in_seconds: int = Field(default=60, ge=1)
+    # Customer QR codes (plan Q18). HMAC-SHA256 key, at least 32 bytes; when unset in Mock gateway
+    # mode a random per-process key is drawn (QR codes then stop working after a restart), and
+    # Paytm mode refuses to start without it. A QR token lasts 15 minutes and can be re-issued.
+    customer_qr_signing_secret: SecretStr | None = None
+    customer_qr_token_lifetime_in_seconds: int = Field(default=900, ge=60, le=86_400)
+    customer_web_base_url: str = LOCAL_CUSTOMER_WEB_BASE_URL
+    # A sale still CHOOSING this long after it started expires (plan Q18).
+    sale_choosing_expiry_in_seconds: int = Field(default=3_600, ge=60, le=86_400)
+    # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
+    reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"
 
     @field_validator(
@@ -65,6 +79,7 @@ class ApplicationSettings(BaseSettings):
         "paytm_payment_link_base_url",
         "paytm_transaction_status_base_url",
         "paytm_webhook_callback_url",
+        "customer_qr_signing_secret",
         mode="before",
     )
     @classmethod
@@ -72,6 +87,32 @@ class ApplicationSettings(BaseSettings):
         """Reads an empty or blank variable, as copied from .env.example, as not set at all."""
         if isinstance(value, str) and not value.strip():
             return None
+        return value
+
+    @field_validator("customer_web_base_url")
+    @classmethod
+    def check_customer_web_base_url(cls, value: str) -> str:
+        """Accepts an http(s) origin and path only, without query or fragment; drops a final /.
+
+        The QR token is appended as the fragment, so the base must not carry one itself.
+        """
+        parts = urlsplit(value)
+        if parts.scheme not in {"http", "https"} or not parts.netloc:
+            raise ValueError("CUSTOMER_WEB_BASE_URL must be an http or https URL with a host")
+        if parts.query or parts.fragment:
+            raise ValueError("CUSTOMER_WEB_BASE_URL must not have a query or a fragment")
+        return value.rstrip("/")
+
+    @field_validator("reporting_time_zone")
+    @classmethod
+    def check_reporting_time_zone(cls, value: str) -> str:
+        """Accepts an IANA time zone name such as Asia/Kolkata, so day boundaries are exact."""
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as unknown_zone_error:
+            raise ValueError("REPORTING_TIME_ZONE must be an IANA time zone name") from (
+                unknown_zone_error
+            )
         return value
 
     @model_validator(mode="after")
