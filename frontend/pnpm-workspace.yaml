@@ -1,0 +1,17 @@
+# pnpm workspace for the two apps and the shared packages (frontend.md section 1).
+packages:
+  - apps/*
+  - packages/*
+
+# security-and-compliance.md section 5: skip releases younger than two weeks (in minutes),
+# including transitive ones, so a freshly published compromise cannot reach the lockfile.
+minimumReleaseAge: 20160
+
+# Every version in a package.json is exact; new additions are saved exactly too.
+savePrefix: ''
+
+# eslint-plugin-jsx-a11y 6.10.2 (newest release) still lists eslint up to ^9 as its peer, but ESLint 9
+# is end-of-life and deprecated. Its flat config runs on ESLint 10; the lint tests prove the rules fire.
+peerDependencyRules:
+  allowedVersions:
+    eslint-plugin-jsx-a11y>eslint: '10'
