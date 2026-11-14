@@ -1,0 +1,90 @@
+/*
+ * Design tokens from docs/design/DESIGN_SPEC.md section 2, plus the extra colours the approved
+ * mockups use, each given a role name. Components never use raw hex values; they use these
+ * variables through the Tailwind theme in tailwind-theme.css.
+ */
+:root {
+  /* Brand and text (DESIGN_SPEC section 2). */
+  --emi-color-navy: #002e6e;
+  --emi-color-deep-navy: #0b1f3a;
+  --emi-color-cyan: #00baf2;
+  --emi-color-orange: #f5a524;
+  --emi-color-green: #12b886;
+  --emi-color-red: #e5484d;
+  --emi-color-light-blue: #eef6fb;
+  --emi-color-slate: #5b6b82;
+  --emi-color-white: #ffffff;
+
+  /* Text-safe band pairs (WCAG AA). Bands always also carry an icon and a word. */
+  --emi-color-comfortable-text: #0a6e50;
+  --emi-color-comfortable-tint: #e3f7f0;
+  --emi-color-stretching-text: #8a5300;
+  --emi-color-stretching-tint: #fef3dc;
+  --emi-color-risky-text: #b4232a;
+  --emi-color-risky-tint: #fde8e8;
+
+  /* Extra mockup colours, named by role. */
+  --emi-color-border-strong: #c9d8e6; /* secondary buttons, outline chips, chart axis */
+  --emi-color-border: #dce7f0; /* inputs, chips, dividers (spec: inputs 1px #DCE7F0) */
+  --emi-color-cyan-soft: #9fddf6; /* small headings and links on navy */
+  --emi-color-ink-muted: #3d4b5f; /* secondary text on grey tints */
+  --emi-color-grey-tint: #eef2f6; /* neutral status chips, light dividers */
+  --emi-color-cyan-tint: #e6f7fd; /* selected rows, information chips */
+  --emi-color-steel-blue: #5e86b4; /* secondary chart bars */
+  --emi-color-message-background: #e9eef3; /* phone weekly-message screen (M8) */
+
+  /*
+   * Sale status chips. Ready and Choosing reuse the band tints only because a status chip
+   * always shows its own icon and word, which differ from the band icons and words.
+   */
+  --emi-color-status-choosing-text: var(--emi-color-stretching-text);
+  --emi-color-status-choosing-tint: var(--emi-color-stretching-tint);
+  --emi-color-status-ready-text: var(--emi-color-comfortable-text);
+  --emi-color-status-ready-tint: var(--emi-color-comfortable-tint);
+  --emi-color-status-paid-text: var(--emi-color-ink-muted);
+  --emi-color-status-paid-tint: var(--emi-color-grey-tint);
+  --emi-color-status-not-completed-text: var(--emi-color-deep-navy);
+  --emi-color-status-not-completed-tint: var(--emi-color-grey-tint);
+  --emi-color-status-expired-text: var(--emi-color-ink-muted);
+  --emi-color-status-expired-tint: var(--emi-color-grey-tint);
+  --emi-color-status-neutral-text: var(--emi-color-ink-muted);
+  --emi-color-status-neutral-tint: var(--emi-color-grey-tint);
+
+  /* Translucent white overlays used on navy surfaces. */
+  --emi-color-overlay-on-navy: rgb(255 255 255 / 0.12);
+  --emi-color-overlay-on-navy-strong: rgb(255 255 255 / 0.14);
+
+  /* Radii: inputs and chips 12, buttons 14, cards 16, pills fully round. */
+  --emi-radius-input: 12px;
+  --emi-radius-button: 14px;
+  --emi-radius-card: 16px;
+  --emi-radius-pill: 9999px;
+
+  /* Spacing scale 4, 8, 12, 16, 24, 32. */
+  --emi-space-1: 4px;
+  --emi-space-2: 8px;
+  --emi-space-3: 12px;
+  --emi-space-4: 16px;
+  --emi-space-6: 24px;
+  --emi-space-8: 32px;
+
+  /* Touch targets: 48 px minimum, 56 px for primary actions. */
+  --emi-touch-target-minimum: 48px;
+  --emi-touch-target-primary: 56px;
+
+  --emi-shadow-card: 0 1px 2px rgb(11 31 58 / 0.06), 0 6px 16px rgb(11 31 58 / 0.06);
+
+  /* Type: one stack for English and Tamil; money 32/700, title 22/700, body 16/400, label 14/600. */
+  --emi-font-family: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif;
+  --emi-font-size-caption: 13px;
+  --emi-font-size-label: 14px;
+  --emi-font-size-body: 16px;
+  --emi-font-size-lead: 18px;
+  --emi-font-size-title: 22px;
+  --emi-font-size-heading: 26px;
+  --emi-font-size-money: 32px;
+  --emi-font-numeric-money: tabular-nums;
+
+  --emi-focus-ring-width: 3px;
+  --emi-focus-ring-offset: 2px;
+}

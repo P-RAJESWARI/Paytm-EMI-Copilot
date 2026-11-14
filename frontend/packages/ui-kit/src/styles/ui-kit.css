@@ -1,0 +1,25 @@
+/*
+ * The one stylesheet an app imports: Tailwind, fonts, tokens, the token theme and base styles.
+ * Apps add their own `@source` lines for their files; this file adds the ui-kit components.
+ */
+@import 'tailwindcss';
+@import './fonts.css';
+@import './tokens.css';
+@import './tailwind-theme.css';
+
+@source '../components';
+
+@layer base {
+  html {
+    font-family: var(--emi-font-family);
+    font-size: var(--emi-font-size-body);
+    color: var(--emi-color-deep-navy);
+    background-color: var(--emi-color-light-blue);
+  }
+
+  /* A visible focus ring on every focusable element, keyboard only. */
+  :focus-visible {
+    outline: var(--emi-focus-ring-width) solid var(--emi-color-navy);
+    outline-offset: var(--emi-focus-ring-offset);
+  }
+}

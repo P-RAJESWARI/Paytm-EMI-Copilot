@@ -1,0 +1,93 @@
+/*
+ * Maps the design tokens into Tailwind v4's theme. Tailwind's default colours, radii, shadows,
+ * fonts and text sizes are removed first, so only token-backed utilities exist
+ * (for example bg-cyan, text-navy, rounded-card, shadow-card, text-money).
+ * `inline` makes each utility read the CSS variable at runtime.
+ */
+@theme inline {
+  --color-*: initial;
+  --color-navy: var(--emi-color-navy);
+  --color-deep-navy: var(--emi-color-deep-navy);
+  --color-cyan: var(--emi-color-cyan);
+  --color-orange: var(--emi-color-orange);
+  --color-green: var(--emi-color-green);
+  --color-red: var(--emi-color-red);
+  --color-light-blue: var(--emi-color-light-blue);
+  --color-slate: var(--emi-color-slate);
+  --color-white: var(--emi-color-white);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-comfortable-text: var(--emi-color-comfortable-text);
+  --color-comfortable-tint: var(--emi-color-comfortable-tint);
+  --color-stretching-text: var(--emi-color-stretching-text);
+  --color-stretching-tint: var(--emi-color-stretching-tint);
+  --color-risky-text: var(--emi-color-risky-text);
+  --color-risky-tint: var(--emi-color-risky-tint);
+  --color-border-strong: var(--emi-color-border-strong);
+  --color-border: var(--emi-color-border);
+  --color-cyan-soft: var(--emi-color-cyan-soft);
+  --color-ink-muted: var(--emi-color-ink-muted);
+  --color-grey-tint: var(--emi-color-grey-tint);
+  --color-cyan-tint: var(--emi-color-cyan-tint);
+  --color-steel-blue: var(--emi-color-steel-blue);
+  --color-message-background: var(--emi-color-message-background);
+  --color-status-choosing-text: var(--emi-color-status-choosing-text);
+  --color-status-choosing-tint: var(--emi-color-status-choosing-tint);
+  --color-status-ready-text: var(--emi-color-status-ready-text);
+  --color-status-ready-tint: var(--emi-color-status-ready-tint);
+  --color-status-paid-text: var(--emi-color-status-paid-text);
+  --color-status-paid-tint: var(--emi-color-status-paid-tint);
+  --color-status-not-completed-text: var(--emi-color-status-not-completed-text);
+  --color-status-not-completed-tint: var(--emi-color-status-not-completed-tint);
+  --color-status-expired-text: var(--emi-color-status-expired-text);
+  --color-status-expired-tint: var(--emi-color-status-expired-tint);
+  --color-status-neutral-text: var(--emi-color-status-neutral-text);
+  --color-status-neutral-tint: var(--emi-color-status-neutral-tint);
+  --color-overlay-on-navy: var(--emi-color-overlay-on-navy);
+  --color-overlay-on-navy-strong: var(--emi-color-overlay-on-navy-strong);
+
+  --radius-*: initial;
+  --radius-input: var(--emi-radius-input);
+  --radius-button: var(--emi-radius-button);
+  --radius-card: var(--emi-radius-card);
+  --radius-pill: var(--emi-radius-pill);
+
+  --shadow-*: initial;
+  --shadow-card: var(--emi-shadow-card);
+
+  /* Tailwind multiplies this base: p-1 4px, p-2 8px, p-3 12px, p-4 16px, p-6 24px, p-8 32px. */
+  --spacing: var(--emi-space-1);
+  --spacing-touch-target: var(--emi-touch-target-minimum);
+  --spacing-touch-target-primary: var(--emi-touch-target-primary);
+
+  --font-*: initial;
+  --font-sans: var(--emi-font-family);
+
+  --text-*: initial;
+  --text-caption: var(--emi-font-size-caption);
+  --text-caption--line-height: 1.45;
+  --text-label: var(--emi-font-size-label);
+  --text-label--line-height: 1.45;
+  --text-label--font-weight: 600;
+  --text-body: var(--emi-font-size-body);
+  --text-body--line-height: 1.5;
+  --text-lead: var(--emi-font-size-lead);
+  --text-lead--line-height: 1.4;
+  --text-title: var(--emi-font-size-title);
+  --text-title--line-height: 1.3;
+  --text-title--font-weight: 700;
+  --text-heading: var(--emi-font-size-heading);
+  --text-heading--line-height: 1.25;
+  --text-heading--font-weight: 700;
+  --text-money: var(--emi-font-size-money);
+  --text-money--line-height: 1.2;
+  --text-money--font-weight: 700;
+}
+
+/* Money figures: 32/700 with tabular numerals so digits line up. */
+@utility money-figure {
+  font-size: var(--emi-font-size-money);
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: var(--emi-font-numeric-money);
+}

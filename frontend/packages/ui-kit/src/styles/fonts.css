@@ -1,0 +1,7 @@
+/* Self-hosted fonts (no Google CDN at runtime): Inter for English, Noto Sans Tamil for Tamil. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/noto-sans-tamil/400.css';
+@import '@fontsource/noto-sans-tamil/600.css';
+@import '@fontsource/noto-sans-tamil/700.css';
