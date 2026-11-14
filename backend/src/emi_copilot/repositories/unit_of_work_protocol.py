@@ -5,12 +5,15 @@ subscribers type against the protocols and never against SQLAlchemy.
 """
 
 from collections.abc import Callable
+from datetime import datetime
 from types import TracebackType
 from typing import Protocol, Self
 
 from emi_copilot.domain.catalogue import CatalogueProduct
+from emi_copilot.domain.funnel import FunnelEvent
 from emi_copilot.domain.merchants import DevicePairing, Merchant
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
+from emi_copilot.domain.sales import Sale, SaleStatus
 
 
 class PaymentAttemptStore(Protocol):
@@ -60,6 +63,10 @@ class MerchantStore(Protocol):
         """Returns the merchant with this shop code, locked until the transaction ends, or None."""
         ...
 
+    def lock_for_update(self, merchant_id: str) -> None:
+        """Locks the merchant's row until the transaction ends, so its sales start one by one."""
+        ...
+
     def update(self, merchant: Merchant) -> None:
         """Saves the mutable fields of a stored merchant."""
         ...
@@ -101,6 +108,68 @@ class ProductStore(Protocol):
         ...
 
 
+class SaleStore(Protocol):
+    """Adds, updates, finds and lists sales inside one transaction."""
+
+    def add(self, sale: Sale) -> None:
+        """Inserts a new sale."""
+        ...
+
+    def update(self, sale: Sale) -> Sale:
+        """Saves the mutable fields of a stored sale and returns the stored sale."""
+        ...
+
+    def find_by_id_for_merchant(self, merchant_id: str, sale_id: str) -> Sale | None:
+        """Returns the sale only if it belongs to the merchant, else None."""
+        ...
+
+    def find_by_id_for_merchant_for_update(self, merchant_id: str, sale_id: str) -> Sale | None:
+        """Returns the merchant's sale locked until the transaction ends, else None."""
+        ...
+
+    def find_by_id_for_update(self, sale_id: str) -> Sale | None:
+        """Returns any sale by id, locked; for gateway reports and the customer flow only."""
+        ...
+
+    def find_by_idempotency_key_for_merchant(
+        self, merchant_id: str, idempotency_key: str
+    ) -> Sale | None:
+        """Returns the merchant's sale started under this Idempotency-Key, or None."""
+        ...
+
+    def list_started_between_for_merchant(
+        self,
+        merchant_id: str,
+        starts_at: datetime,
+        ends_at: datetime,
+        excluded_status: SaleStatus,
+    ) -> tuple[Sale, ...]:
+        """Lists the merchant's sales started in [starts_at, ends_at), newest first."""
+        ...
+
+    def list_choosing_started_by_for_merchant_for_update(
+        self, merchant_id: str, started_at_or_before: datetime
+    ) -> tuple[Sale, ...]:
+        """Lists the merchant's CHOOSING sales started at or before a moment, rows locked."""
+        ...
+
+    def list_open_session_codes_for_merchant(self, merchant_id: str) -> frozenset[str]:
+        """Gives the session codes on the merchant's open sales."""
+        ...
+
+
+class FunnelEventStore(Protocol):
+    """Appends funnel events; there is deliberately no update or delete."""
+
+    def append(self, funnel_event: FunnelEvent) -> None:
+        """Inserts one funnel event; a second event for the same sale and stage fails."""
+        ...
+
+    def list_for_sale(self, sale_id: str) -> tuple[FunnelEvent, ...]:
+        """Returns the stages one sale reached, oldest first."""
+        ...
+
+
 class UnitOfWork(Protocol):
     """One transaction: commits on a clean exit of the `with` block, rolls back on any error."""
 
@@ -127,6 +196,16 @@ class UnitOfWork(Protocol):
     @property
     def products(self) -> ProductStore:
         """Gives the catalogue product repository of this transaction."""
+        ...
+
+    @property
+    def sales(self) -> SaleStore:
+        """Gives the sale repository of this transaction."""
+        ...
+
+    @property
+    def funnel_events(self) -> FunnelEventStore:
+        """Gives the funnel event repository of this transaction."""
         ...
 
     def __enter__(self) -> Self:

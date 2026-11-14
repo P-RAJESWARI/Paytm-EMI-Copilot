@@ -36,6 +36,9 @@ class FakeMerchantRepository:
             None,
         )
 
+    def lock_for_update(self, merchant_id: str) -> None:
+        """Does nothing: a single-threaded fake has no concurrent sale starts to serialise."""
+
     def update(self, merchant: Merchant) -> None:
         """Replaces a stored merchant; an unknown one fails as the real repository does."""
         if merchant.id not in self._merchants_by_id:

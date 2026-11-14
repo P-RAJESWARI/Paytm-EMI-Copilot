@@ -14,7 +14,15 @@ from tests.integration.migration_runner import build_alembic_config
 pytestmark = pytest.mark.integration
 
 SCRATCH_SCHEMA = "migration_round_trip_scratch"
-APPLICATION_TABLES = {"payment_attempt", "audit_event", "merchant", "device_pairing", "product"}
+APPLICATION_TABLES = {
+    "payment_attempt",
+    "audit_event",
+    "merchant",
+    "device_pairing",
+    "product",
+    "sale",
+    "funnel_event",
+}
 MERCHANT_TABLES = ("merchant", "device_pairing", "product")
 CARD_FIELD_WORDS = ("card", "cvv", "expiry", "bin")
 
@@ -117,6 +125,25 @@ def test_payment_attempt_lookup_columns_are_unique_and_therefore_indexed(
         ("merchant", {"ck_merchant_failed_pin_attempt_count_not_negative"}),
         ("device_pairing", {"ck_device_pairing_access_token_hash_length"}),
         ("product", {"ck_product_list_price_in_paise_positive"}),
+        (
+            "sale",
+            {
+                "ck_sale_price_in_paise_positive",
+                "ck_sale_status_known",
+                "ck_sale_session_code_four_digits",
+                "ck_sale_qr_token_nonce_hash_length",
+                "ck_sale_chosen_plan_iff_agreed",
+                "ck_sale_idempotency_key_with_fingerprint",
+            },
+        ),
+        (
+            "funnel_event",
+            {
+                "ck_funnel_event_stage_known",
+                "ck_funnel_event_monthly_budget_only_on_budget_told",
+                "ck_funnel_event_monthly_budget_in_paise_positive",
+            },
+        ),
     ],
 )
 def test_check_constraints_exist_with_convention_names(

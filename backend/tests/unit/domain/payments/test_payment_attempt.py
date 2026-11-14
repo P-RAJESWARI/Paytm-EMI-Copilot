@@ -12,11 +12,12 @@ from tests.payment_builders import CREATED_AT, build_payment_attempt
 
 
 def test_payment_attempt_with_valid_fields_keeps_them() -> None:
-    """A valid attempt keeps its amount as Money and starts without gateway references."""
+    """A valid attempt keeps its amount as Money and starts without gateway references or sale."""
     payment_attempt = build_payment_attempt()
     assert payment_attempt.amount == Money.from_paise(2_200_000)
     assert payment_attempt.status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
     assert payment_attempt.gateway_link_id is None
+    assert payment_attempt.sale_id is None
 
 
 def test_payment_attempt_replace_with_gateway_references_returns_new_valid_attempt() -> None:
@@ -58,6 +59,7 @@ def test_payment_attempt_is_immutable() -> None:
         ({"idempotency_key": None}, "idempotency key"),
         ({"gateway_mode": ""}, "gateway mode"),
         ({"gateway_link_id": ""}, "gateway link id"),
+        ({"sale_id": " "}, "sale id"),
         ({"payment_link_url": " "}, "payment link url"),
         ({"gateway_transaction_id": 42}, "gateway transaction id"),
         ({"request_fingerprint": "A" * 64}, "fingerprint"),

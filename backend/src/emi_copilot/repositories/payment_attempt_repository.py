@@ -41,6 +41,7 @@ def _to_model(payment_attempt: PaymentAttempt) -> PaymentAttemptModel:
         created_at=payment_attempt.created_at,
         updated_at=payment_attempt.updated_at,
         failure_code=_failure_code_value(payment_attempt.failure_code),
+        sale_id=payment_attempt.sale_id,
     )
 
 
@@ -65,6 +66,7 @@ def _to_domain(payment_attempt_model: PaymentAttemptModel) -> PaymentAttempt:
             if payment_attempt_model.failure_code is None
             else PaymentLinkFailureCode(payment_attempt_model.failure_code)
         ),
+        sale_id=payment_attempt_model.sale_id,
     )
 
 
@@ -105,7 +107,7 @@ class PaymentAttemptRepository:
     def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
         """Saves the mutable fields (status, gateway references, failure code); stamps updated_at.
 
-        Identity, keys, fingerprint, amount, snapshot and gateway mode never change after
+        Identity, keys, fingerprint, amount, snapshot, gateway mode and sale never change after
         insertion, so their values on the given attempt are ignored. Returns the stored attempt.
         """
         payment_attempt_model = self._session.get(PaymentAttemptModel, payment_attempt.id)

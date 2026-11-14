@@ -27,7 +27,8 @@ class PaymentAttempt:
     with dataclasses.replace) that the repository saves. Status transitions are not checked here.
     The gateway mode is the adapter name of the gateway that served the attempt (for example
     "mock"), as reported by the gateway port. The failure code is set exactly when the status is
-    LINK_CREATION_FAILED, so a replay can tell why no link was made.
+    LINK_CREATION_FAILED, so a replay can tell why no link was made. sale_id links the attempt to
+    the counter sale it pays for; Layer 1 callers that hand off a bare item leave it None.
     """
 
     id: str
@@ -44,6 +45,7 @@ class PaymentAttempt:
     created_at: datetime
     updated_at: datetime
     failure_code: PaymentLinkFailureCode | None = None
+    sale_id: str | None = None
 
     def __post_init__(self) -> None:
         """Rejects missing identifiers, a malformed fingerprint, a zero amount or bad timestamps."""
@@ -58,6 +60,7 @@ class PaymentAttempt:
             (self.gateway_link_id, "gateway link id"),
             (self.payment_link_url, "payment link url"),
             (self.gateway_transaction_id, "gateway transaction id"),
+            (self.sale_id, "sale id"),
         ):
             require_optional_non_empty_text(optional_text, description, InvalidPaymentAttemptError)
         self._require_valid_fingerprint()

@@ -72,6 +72,16 @@ class MerchantRepository:
         """
         return self._find_one_where(MerchantModel.shop_code == shop_code, is_locked=True)
 
+    def lock_for_update(self, merchant_id: str) -> None:
+        """Locks the merchant's row until the transaction ends, so its sales start one by one.
+
+        Two sales started at once then never pick the same session code or both miss the same
+        Idempotency-Key.
+        """
+        self._session.execute(
+            select(MerchantModel.id).where(MerchantModel.id == merchant_id).with_for_update()
+        )
+
     def update(self, merchant: Merchant) -> None:
         """Saves the mutable fields (names, PIN hash and salt, attempt state); stamps updated_at.
 

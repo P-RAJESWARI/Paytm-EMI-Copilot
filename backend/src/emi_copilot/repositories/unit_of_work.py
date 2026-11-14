@@ -8,12 +8,15 @@ from sqlalchemy.orm import Session, sessionmaker
 from emi_copilot.core.clock import Clock
 from emi_copilot.repositories.audit_event_repository import AuditEventRepository
 from emi_copilot.repositories.device_pairing_repository import DevicePairingRepository
+from emi_copilot.repositories.funnel_event_repository import FunnelEventRepository
 from emi_copilot.repositories.merchant_repository import MerchantRepository
 from emi_copilot.repositories.payment_attempt_repository import PaymentAttemptRepository
 from emi_copilot.repositories.product_repository import ProductRepository
+from emi_copilot.repositories.sale_repository import SaleRepository
 
 
-# Pattern: Unit of Work. A payment attempt and its audit event commit together or not at all.
+# Pattern: Unit of Work. A business write, its audit event and its funnel event commit together
+# or not at all.
 class SqlAlchemyUnitOfWork:
     """Opens a session and transaction on entry; commits on a clean exit, rolls back on any error.
 
@@ -26,6 +29,8 @@ class SqlAlchemyUnitOfWork:
     merchants: MerchantRepository
     device_pairings: DevicePairingRepository
     products: ProductRepository
+    sales: SaleRepository
+    funnel_events: FunnelEventRepository
     _session: Session
 
     def __init__(self, session_factory: sessionmaker[Session], clock: Clock) -> None:
@@ -43,6 +48,8 @@ class SqlAlchemyUnitOfWork:
         self.merchants = MerchantRepository(session, self._clock)
         self.device_pairings = DevicePairingRepository(session, self._clock)
         self.products = ProductRepository(session, self._clock)
+        self.sales = SaleRepository(session, self._clock)
+        self.funnel_events = FunnelEventRepository(session, self._clock)
         return self
 
     def __exit__(

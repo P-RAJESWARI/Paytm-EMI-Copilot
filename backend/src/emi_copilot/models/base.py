@@ -1,5 +1,6 @@
 """Declarative base whose naming convention gives every constraint and index a stable name."""
 
+from collections.abc import Iterable
 from enum import StrEnum
 
 from sqlalchemy import MetaData
@@ -24,3 +25,8 @@ class Base(DeclarativeBase):
 def sql_value_list(enumeration: type[StrEnum]) -> str:
     """Renders an enum's stored values as a SQL IN list, for CHECK constraints on status columns."""
     return ", ".join(f"'{member.value}'" for member in enumeration)
+
+
+def sql_member_list(members: Iterable[StrEnum]) -> str:
+    """Renders some enum members' stored values as a sorted SQL IN list, so the text is stable."""
+    return ", ".join(f"'{member.value}'" for member in sorted(members))

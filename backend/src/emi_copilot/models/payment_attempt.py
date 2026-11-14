@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, String
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,7 +11,10 @@ from emi_copilot.models.base import Base, sql_value_list
 
 
 class PaymentAttemptModel(Base):
-    """One row per payment attempt; order_id and idempotency_key are each unique (ADR 0005)."""
+    """One row per payment attempt; order_id and idempotency_key are each unique (ADR 0005).
+
+    sale_id is nullable: Layer 1 hand-offs of a bare item belong to no counter sale.
+    """
 
     __tablename__ = "payment_attempt"
     __table_args__ = (
@@ -37,3 +40,4 @@ class PaymentAttemptModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     failure_code: Mapped[str | None] = mapped_column(String(32))
+    sale_id: Mapped[str | None] = mapped_column(ForeignKey("sale.id"), index=True)
