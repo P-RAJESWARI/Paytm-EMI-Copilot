@@ -22,6 +22,7 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     # The report ports (step 2.4): brand settlements and weekly message delivery.
     "emi_copilot.adapters.settlement.port",
     "emi_copilot.adapters.weekly_message_delivery.port",
+    "emi_copilot.adapters.financial_profile.port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
     # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens

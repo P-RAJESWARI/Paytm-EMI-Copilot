@@ -146,6 +146,17 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.InvalidReportDataError: ProblemMapping(422, "Invalid report data"),
             errors.InvalidComfortInputError: ProblemMapping(422, "Invalid comfort input"),
             errors.InvalidMonthlyBudgetError: ProblemMapping(422, "Invalid monthly budget"),
+            errors.CustomerQrTokenInvalidError: ProblemMapping(401, "QR code not valid"),
+            errors.CustomerSessionTokenInvalidError: ProblemMapping(
+                401, "Customer session not valid"
+            ),
+            errors.CustomerSessionNotFoundError: ProblemMapping(404, "Customer session not found"),
+            errors.BudgetNotConfirmedError: ProblemMapping(409, "Monthly budget not confirmed"),
+            errors.ConsentAlreadyGivenError: ProblemMapping(409, "Consent already given"),
+            errors.ConsentNotGivenError: ProblemMapping(409, "Consent not given yet"),
+            errors.OtpNotRequestedError: ProblemMapping(422, "One-time code not requested"),
+            errors.OtpIncorrectError: ProblemMapping(422, "One-time code does not match"),
+            errors.OtpExpiredError: ProblemMapping(422, "One-time code expired"),
         }
     )
 )

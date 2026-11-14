@@ -361,3 +361,57 @@ class InvalidMonthlyBudgetError(DomainError):
     """Raised when a customer's monthly budget is not whole-paise Money above zero rupees."""
 
     code: ClassVar[str] = "INVALID_MONTHLY_BUDGET"
+
+
+class CustomerQrTokenInvalidError(DomainError):
+    """Raised when a QR token is unknown or no longer valid; the shop can show a new QR."""
+
+    code: ClassVar[str] = "CUSTOMER_QR_TOKEN_INVALID"
+
+
+class CustomerSessionTokenInvalidError(DomainError):
+    """Raised when a customer session token is missing, wrong or expired for its session."""
+
+    code: ClassVar[str] = "CUSTOMER_SESSION_TOKEN_INVALID"
+
+
+class CustomerSessionNotFoundError(DomainError):
+    """Raised when no customer session has the requested id."""
+
+    code: ClassVar[str] = "CUSTOMER_SESSION_NOT_FOUND"
+
+
+class BudgetNotConfirmedError(DomainError):
+    """Raised when a step needs the monthly budget before the customer has confirmed one."""
+
+    code: ClassVar[str] = "BUDGET_NOT_CONFIRMED"
+
+
+class ConsentAlreadyGivenError(DomainError):
+    """Raised when consent for the session's plan was already recorded under another key."""
+
+    code: ClassVar[str] = "CONSENT_ALREADY_GIVEN"
+
+
+class ConsentNotGivenError(DomainError):
+    """Raised when a receipt is asked for before the customer has given consent."""
+
+    code: ClassVar[str] = "CONSENT_NOT_GIVEN"
+
+
+class OtpNotRequestedError(DomainError):
+    """Raised when consent is given before a one-time code was requested for the session."""
+
+    code: ClassVar[str] = "OTP_NOT_REQUESTED"
+
+
+class OtpIncorrectError(DomainError):
+    """Raised when the one-time code entered does not match; the customer may try again."""
+
+    code: ClassVar[str] = "OTP_INCORRECT"
+
+
+class OtpExpiredError(DomainError):
+    """Raised when the one-time code is past its lifetime; the customer requests a new one."""
+
+    code: ClassVar[str] = "OTP_EXPIRED"
