@@ -71,8 +71,9 @@ class _MockPaymentRecord:
 class MockPaymentGatewayAdapter(PaymentGatewayPort):
     """A simulated gateway, the local-development default; it announces itself when built.
 
-    Demo pricing rule (not any lender's): on price P it always quotes three offers, the design
-    plans scaled to P (ADR 0002 labels). A is no-cost over 6 months from "Brand"; B is 6 months
+    Demo pricing rule (not any lender's): on price P it quotes the design plans scaled to P
+    (ADR 0002 labels): all three for any item, or a subset for the three demo catalogue products
+    (mock_offer_catalogue.py). A is no-cost over 6 months from "Brand"; B is 6 months
     from "Your card's bank" with an extra of 5% of P; C is 12 months from "Demo cardless lender
     (Mock)" with an extra of P x 2600 / 22000. Extras are rounded half-up to the paisa once; the
     quoted monthly installment is the NoCostStrategy (A) or QuotedTotalStrategy (B, C) regular
@@ -113,8 +114,8 @@ class MockPaymentGatewayAdapter(PaymentGatewayPort):
         return MOCK_ADAPTER_NAME
 
     def discover_offers(self, query: OfferDiscoveryQuery) -> tuple[EmiOffer, ...]:
-        """Quotes the three demo plans on the query's price; the item ids do not change them."""
-        return quote_mock_offers(query.price)
+        """Quotes the demo plans on the query's price; only the product id can narrow them."""
+        return quote_mock_offers(query.price, query.product_id)
 
     def create_payment_link(self, request: PaymentLinkRequest) -> PaymentLink:
         """Makes a deterministic link for the order and remembers it; a second one is refused."""
