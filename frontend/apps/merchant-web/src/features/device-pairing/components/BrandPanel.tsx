@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { BrandMark } from '../../../shared/components/BrandMark';
 
 // The navy M1 panel: product name, tagline and the shop-language toggle (before pairing too).
+// It is the page's banner landmark, so nothing on M1 sits outside a landmark.
 export function BrandPanel() {
   const { t } = useTranslation();
   const { selectedLanguage, selectLanguage } = useLanguagePreference();
@@ -13,7 +14,7 @@ export function BrandPanel() {
     { language: 'ta', label: t('language.tamil') },
   ];
   return (
-    <section className="flex shrink-0 flex-col justify-between gap-6 bg-navy p-6 text-white md:w-105 md:p-12">
+    <header className="flex shrink-0 flex-col justify-between gap-6 bg-navy p-6 text-white md:w-105 md:p-12">
       <p className="flex items-center gap-3 text-title">
         <BrandMark size={36} />
         {t('common.appName')}
@@ -32,6 +33,6 @@ export function BrandPanel() {
           surface="dark"
         />
       </div>
-    </section>
+    </header>
   );
 }

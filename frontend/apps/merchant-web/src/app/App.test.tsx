@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -18,6 +18,17 @@ describe('merchant app shell', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Pair this device' })).toBeTruthy();
     expect(screen.getByText('Help customers pick an EMI they understand.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'EN' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps all of M1 inside landmarks: the brand panel is the banner, the form is the main', () => {
+    renderMerchantApp({ path: '/pair', session: null });
+
+    expect(
+      within(screen.getByRole('banner')).getByText('Help customers pick an EMI they understand.'),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole('main')).getByRole('heading', { level: 1, name: 'Pair this device' }),
+    ).toBeTruthy();
   });
 
   it('shows the two shop tabs and the shop card once paired', async () => {
