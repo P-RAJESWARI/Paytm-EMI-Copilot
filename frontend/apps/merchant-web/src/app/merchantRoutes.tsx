@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router';
 
+import { NewEmiSalePage } from '../pages/NewEmiSalePage';
 import { PairingPage } from '../pages/PairingPage';
 import { MERCHANT_PATHS } from './merchantPaths';
 import { RequireMerchantSession } from './RequireMerchantSession';
@@ -14,7 +15,7 @@ export const MERCHANT_ROUTES: RouteObject[] = [
       {
         element: <MerchantAppShell />,
         children: [
-          { path: MERCHANT_PATHS.newEmiSale, element: null },
+          { path: MERCHANT_PATHS.newEmiSale, element: <NewEmiSalePage /> },
           { path: MERCHANT_PATHS.salesReport, element: null },
         ],
       },

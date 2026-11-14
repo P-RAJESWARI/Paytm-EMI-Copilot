@@ -1,11 +1,14 @@
 import { Outlet } from 'react-router';
 
+import { useLiveSaleStatus } from '../../features/live-sale-status';
 import { useMerchantProfile } from '../../shared/session/useMerchantProfile';
 import { MerchantSidebar } from './MerchantSidebar';
 
-// Container for every paired tablet screen: reads the shop card and lays out sidebar and page.
+// Container for every paired tablet screen: reads the shop card, keeps sale statuses live while
+// any tab is open, and lays out sidebar and page.
 export function MerchantAppShell() {
   const { data: merchantProfile } = useMerchantProfile();
+  useLiveSaleStatus();
   return (
     <div className="flex min-h-screen flex-col bg-light-blue md:flex-row">
       <MerchantSidebar

@@ -1,5 +1,9 @@
 import type { TranslationsMatching } from '@emi-copilot/shared-i18n';
 
+import {
+  COUNTER_SALE_ENGLISH_TRANSLATIONS,
+  COUNTER_SALE_TAMIL_TRANSLATIONS,
+} from './counterSaleTranslations';
 import { PAIRING_ENGLISH_TRANSLATIONS, PAIRING_TAMIL_TRANSLATIONS } from './pairingTranslations';
 import { PROBLEM_ENGLISH_TRANSLATIONS, PROBLEM_TAMIL_TRANSLATIONS } from './problemTranslations';
 import { SHELL_ENGLISH_TRANSLATIONS, SHELL_TAMIL_TRANSLATIONS } from './shellTranslations';
@@ -12,6 +16,7 @@ export const MERCHANT_ENGLISH_TRANSLATIONS = {
   ...SHELL_ENGLISH_TRANSLATIONS,
   ...PAIRING_ENGLISH_TRANSLATIONS,
   ...PROBLEM_ENGLISH_TRANSLATIONS,
+  ...COUNTER_SALE_ENGLISH_TRANSLATIONS,
 } as const;
 
 // Tamil merchant strings, composed the same way; the compiler checks they have exactly the English keys.
@@ -21,4 +26,5 @@ export const MERCHANT_TAMIL_TRANSLATIONS: TranslationsMatching<
   ...SHELL_TAMIL_TRANSLATIONS,
   ...PAIRING_TAMIL_TRANSLATIONS,
   ...PROBLEM_TAMIL_TRANSLATIONS,
+  ...COUNTER_SALE_TAMIL_TRANSLATIONS,
 };
