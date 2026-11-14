@@ -7,6 +7,7 @@ from emi_copilot.domain.errors import PaymentAttemptNotFoundError, SaleNotFoundE
 from emi_copilot.domain.events import (
     PaymentStatusChanged,
     SalePaymentOutcomeIgnored,
+    SalePaymentOutcomeIgnoredReason,
     SaleStatusChanged,
 )
 from emi_copilot.domain.payments import PaymentAttemptStatus
@@ -40,6 +41,12 @@ def _describe_status_change(
     )
 
 
+def _is_latest_attempt_of_sale(unit_of_work: UnitOfWork, sale_id: str, attempt_id: str) -> bool:
+    """Tells whether the attempt is the sale's newest one, read under the sale's row lock."""
+    latest_attempt = unit_of_work.payment_attempts.find_latest_for_sale(sale_id)
+    return latest_attempt is not None and latest_attempt.id == attempt_id
+
+
 # Pattern: Observer. The payment status service knows nothing of sales; this subscriber turns
 # a confirmed payment report into the sale's move, in the same transaction.
 class SalePaymentOutcomeSubscriber:
@@ -47,7 +54,10 @@ class SalePaymentOutcomeSubscriber:
 
     Attempts without a sale (Layer 1 callers) are ignored. A report on a sale that was not
     awaiting payment is audited as SalePaymentOutcomeIgnored and never raises, so the gateway
-    is not made to resend a webhook that can never apply.
+    is not made to resend a webhook that can never apply. A not-completed report applies only
+    when its attempt is the sale's latest: on a replaced attempt it would undo the live new
+    link, so it is audited as ignored (ATTEMPT_REPLACED). PAID always applies, from any
+    attempt: the money was taken, so the sale is paid.
     """
 
     def __init__(self, event_bus: DomainEventBus) -> None:
@@ -73,6 +83,13 @@ class SalePaymentOutcomeSubscriber:
         sale = unit_of_work.sales.find_by_id_for_update(attempt.sale_id)
         if sale is None:
             raise SaleNotFoundError(f"The sale {attempt.sale_id} of an attempt is not stored.")
+        if outcome is not SalePaymentOutcome.PAID and not _is_latest_attempt_of_sale(
+            unit_of_work, sale.id, attempt.id
+        ):
+            self._publish_ignored(
+                unit_of_work, sale, outcome, event, SalePaymentOutcomeIgnoredReason.ATTEMPT_REPLACED
+            )
+            return
         self._apply_outcome(unit_of_work, sale, outcome, event)
 
     def _apply_outcome(
@@ -90,14 +107,32 @@ class SalePaymentOutcomeSubscriber:
                 _describe_status_change(sale, updated_sale, event), unit_of_work
             )
         elif effect is PaymentOutcomeEffect.IGNORED_NOT_AWAITING_PAYMENT:
-            self._event_bus.publish(
-                SalePaymentOutcomeIgnored(
-                    occurred_at=event.occurred_at,
-                    sale_id=sale.id,
-                    merchant_id=sale.merchant_id,
-                    sale_status=sale.status,
-                    payment_outcome=outcome,
-                    payment_attempt_id=event.payment_attempt_id,
-                ),
+            self._publish_ignored(
                 unit_of_work,
+                sale,
+                outcome,
+                event,
+                SalePaymentOutcomeIgnoredReason.SALE_NOT_AWAITING_PAYMENT,
             )
+
+    def _publish_ignored(
+        self,
+        unit_of_work: UnitOfWork,
+        sale: Sale,
+        outcome: SalePaymentOutcome,
+        event: PaymentStatusChanged,
+        ignored_reason: SalePaymentOutcomeIgnoredReason,
+    ) -> None:
+        """Announces, for the audit, a report that moved nothing and why."""
+        self._event_bus.publish(
+            SalePaymentOutcomeIgnored(
+                occurred_at=event.occurred_at,
+                sale_id=sale.id,
+                merchant_id=sale.merchant_id,
+                sale_status=sale.status,
+                payment_outcome=outcome,
+                payment_attempt_id=event.payment_attempt_id,
+                ignored_reason=ignored_reason,
+            ),
+            unit_of_work,
+        )

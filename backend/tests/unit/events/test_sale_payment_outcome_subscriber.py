@@ -1,6 +1,7 @@
 """SalePaymentOutcomeSubscriber: a PAID or FAILED report moves the attempt's sale, tolerantly."""
 
 from dataclasses import replace
+from datetime import timedelta
 
 import pytest
 
@@ -114,6 +115,51 @@ def test_report_on_a_sale_not_awaiting_payment_is_ignored_and_audited(
         AuditEventType.SALE_PAYMENT_OUTCOME_IGNORED,
     ]
     assert database.audit_events[1].details["sale_status"] == sale_status.value
+    assert database.audit_events[1].details["ignored_reason"] == "SALE_NOT_AWAITING_PAYMENT"
+
+
+def store_replacement_attempt(database: InMemoryDatabase) -> None:
+    """Stores a newer attempt for the sale, as a new key does after the first proved linkless."""
+    created_at = CREATED_AT + timedelta(minutes=5)
+    newer_attempt = build_payment_attempt(
+        2, sale_id=SALE_ID, created_at=created_at, updated_at=created_at
+    )
+    database.payment_attempts_by_id[newer_attempt.id] = newer_attempt
+
+
+def test_failed_report_on_a_replaced_attempt_leaves_the_new_link_live_and_is_audited(
+    event_bus: DomainEventBus, database: InMemoryDatabase
+) -> None:
+    """A late FAILED on the old attempt must not move READY_TO_PAY while the new link is live."""
+    store(database, SaleStatus.READY_TO_PAY)
+    store_replacement_attempt(database)
+    report(event_bus, database, Attempt.PAYMENT_FAILED)
+    assert database.sales_by_id[SALE_ID] == build_sale(status=SaleStatus.READY_TO_PAY)
+    assert audit_types(database) == [
+        AuditEventType.PAYMENT_STATUS_CHANGED,
+        AuditEventType.SALE_PAYMENT_OUTCOME_IGNORED,
+    ]
+    assert database.audit_events[1].details == {
+        "merchant_id": build_sale().merchant_id,
+        "sale_status": "READY_TO_PAY",
+        "payment_outcome": "NOT_COMPLETED",
+        "payment_attempt_id": build_payment_attempt().id,
+        "ignored_reason": "ATTEMPT_REPLACED",
+    }
+
+
+def test_paid_report_on_a_replaced_attempt_still_pays_the_sale(
+    event_bus: DomainEventBus, database: InMemoryDatabase
+) -> None:
+    """The customer paid on the old link: the money was taken, so the sale is PAID."""
+    store(database, SaleStatus.READY_TO_PAY)
+    store_replacement_attempt(database)
+    report(event_bus, database, Attempt.PAID)
+    assert database.sales_by_id[SALE_ID].status is SaleStatus.PAID
+    assert audit_types(database) == [
+        AuditEventType.PAYMENT_STATUS_CHANGED,
+        AuditEventType.SALE_STATUS_CHANGED,
+    ]
 
 
 def test_pending_report_settles_nothing(

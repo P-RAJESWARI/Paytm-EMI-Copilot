@@ -10,6 +10,7 @@ from emi_copilot.domain.events import (
     PaymentLinkOutcomeUnknown,
     PaymentStatusChanged,
     SalePaymentOutcomeIgnored,
+    SalePaymentOutcomeIgnoredReason,
     SaleStarted,
     SaleStatusChanged,
     StatusReportSource,
@@ -89,6 +90,7 @@ def build_every_domain_event() -> list[DomainEvent]:
             sale_status=SaleStatus.EXPIRED,
             payment_outcome=SalePaymentOutcome.PAID,
             payment_attempt_id=SAMPLE_ATTEMPT_ID,
+            ignored_reason=SalePaymentOutcomeIgnoredReason.SALE_NOT_AWAITING_PAYMENT,
         ),
     ]
 

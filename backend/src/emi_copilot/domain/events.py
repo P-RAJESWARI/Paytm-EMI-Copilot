@@ -176,11 +176,22 @@ class SaleStatusChanged(DomainEvent):
     payment_attempt_id: str | None
 
 
+class SalePaymentOutcomeIgnoredReason(StrEnum):
+    """Why a payment report on a sale's attempt moved nothing."""
+
+    SALE_NOT_AWAITING_PAYMENT = "SALE_NOT_AWAITING_PAYMENT"
+    """The sale is CHOOSING or EXPIRED, so no payment was expected."""
+
+    ATTEMPT_REPLACED = "ATTEMPT_REPLACED"
+    """A not-completed report on an attempt that is no longer the sale's latest; its link is."""
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SalePaymentOutcomeIgnored(DomainEvent):
-    """A payment report reached a sale that was not awaiting payment (CHOOSING or EXPIRED).
+    """A payment report reached a sale it may not move; ignored_reason says why.
 
-    Nothing changed; the event is the evidence that a payment arrived where none was expected.
+    Nothing changed; the event is the evidence that a payment report arrived where none was
+    expected (a sale not awaiting payment) or on a replaced attempt.
     """
 
     sale_id: str
@@ -188,3 +199,4 @@ class SalePaymentOutcomeIgnored(DomainEvent):
     sale_status: SaleStatus
     payment_outcome: SalePaymentOutcome
     payment_attempt_id: str
+    ignored_reason: SalePaymentOutcomeIgnoredReason
