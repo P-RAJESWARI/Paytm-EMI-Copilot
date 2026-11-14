@@ -4,6 +4,8 @@ export const MERCHANT_PATHS = {
   newEmiSale: '/sale',
   salesReport: '/report',
   weeklyMessage: '/report/weekly-message',
+  showQrPattern: '/sale/:saleId/qr',
+  takePaymentPattern: '/sale/:saleId/handoff',
 } as const;
 
 // Gives the M3 path that shows one sale's QR code.

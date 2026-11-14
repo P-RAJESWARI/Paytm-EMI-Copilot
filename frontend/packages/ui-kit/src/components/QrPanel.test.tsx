@@ -44,6 +44,17 @@ describe('QrPanel', () => {
     expect(screen.getByText('Opens on their phone. No app needed.')).toBeTruthy();
   });
 
+  it('keeps the stacked code at 300 px unless asked to fit a phone', () => {
+    const { rerender } = render(<QrPanel value={CUSTOMER_URL} accessibleLabel="Session QR code" />);
+    expect(screen.getByRole('img').getAttribute('class')).toContain('size-75');
+
+    rerender(
+      <QrPanel value={CUSTOMER_URL} accessibleLabel="Session QR code" stackedSize="fitsPhone" />,
+    );
+
+    expect(screen.getByRole('img').getAttribute('class')).toContain('size-60 md:size-75');
+  });
+
   it('shows the title beside a smaller code in the inline layout', () => {
     render(
       <QrPanel

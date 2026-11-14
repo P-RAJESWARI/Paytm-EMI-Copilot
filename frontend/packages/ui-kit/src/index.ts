@@ -32,7 +32,12 @@ export {
   type LanguageToggleSurface,
 } from './components/LanguageToggle';
 export { PinInput, type PinInputProps } from './components/PinInput';
-export { QrPanel, type QrPanelLayout, type QrPanelProps } from './components/QrPanel';
+export {
+  QrPanel,
+  type QrPanelLayout,
+  type QrPanelProps,
+  type QrPanelStackedSize,
+} from './components/QrPanel';
 export {
   SegmentedControl,
   type SegmentedControlOption,
