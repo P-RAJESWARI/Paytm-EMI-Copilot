@@ -10,3 +10,13 @@ export function formatShopTime(isoDateTime: string, language: SupportedLanguage)
     timeZone: SHOP_TIME_ZONE,
   }).format(new Date(isoDateTime));
 }
+
+// Gives the weekday and date of a UTC timestamp in the shop's time zone, for example "Monday, 16 November".
+export function formatShopWeekdayAndDate(isoDateTime: string, language: SupportedLanguage): string {
+  return new Intl.DateTimeFormat(toIntlLocale(language), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: SHOP_TIME_ZONE,
+  }).format(new Date(isoDateTime));
+}

@@ -5,16 +5,19 @@ import { PairingPage } from '../pages/PairingPage';
 import { SalesReportPage } from '../pages/SalesReportPage';
 import { ShowQrPage } from '../pages/ShowQrPage';
 import { TakePaymentPage } from '../pages/TakePaymentPage';
+import { WeeklyMessagePage } from '../pages/WeeklyMessagePage';
 import { MERCHANT_PATHS } from './merchantPaths';
 import { RequireMerchantSession } from './RequireMerchantSession';
 import { MerchantAppShell } from './shell/MerchantAppShell';
 
-// The merchant app's routes: M1 is open; everything else needs a paired tablet.
+// The merchant app's routes: M1 is open; everything else needs a paired tablet. M8 is a
+// phone-width page outside the tablet shell (plan Q14).
 export const MERCHANT_ROUTES: RouteObject[] = [
   { path: MERCHANT_PATHS.pairing, element: <PairingPage /> },
   {
     element: <RequireMerchantSession />,
     children: [
+      { path: MERCHANT_PATHS.weeklyMessage, element: <WeeklyMessagePage /> },
       {
         element: <MerchantAppShell />,
         children: [

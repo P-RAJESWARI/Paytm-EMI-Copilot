@@ -11,6 +11,9 @@ export const WEEKLY_MESSAGE_ENGLISH_TRANSLATIONS = {
     sending: 'Sending…',
     sentToPhone: 'Sent to your phone',
     openPhoneView: 'See it as on your phone',
+    subtitle: 'Weekly message',
+    notSentYet: 'Not sent to your phone yet',
+    openSalesReport: 'Open sales report',
   },
 } as const;
 
@@ -26,5 +29,8 @@ export const WEEKLY_MESSAGE_TAMIL_TRANSLATIONS: TranslationsMatching<
     sending: 'அனுப்புகிறது…', // draft: needs native review
     sentToPhone: 'உங்கள் போனுக்கு அனுப்பப்பட்டது', // draft: needs native review
     openPhoneView: 'போனில் வருவது போல் பார்', // draft: needs native review
+    subtitle: 'வாராந்திரச் செய்தி', // draft: needs native review
+    notSentYet: 'இன்னும் உங்கள் போனுக்கு அனுப்பப்படவில்லை', // draft: needs native review
+    openSalesReport: 'விற்பனை அறிக்கையைத் திற', // draft: needs native review
   },
 };
