@@ -78,6 +78,7 @@ class BudgetBucketReport:
 
     The threshold is the suppression policy's, so buckets and counts hide at the same size.
     total_count is the funnel's BUDGET_TOLD count, reported exactly as the funnel reports it.
+    A shown bucket set never has exactly one suppressed bucket (report_bucket_counts).
     """
 
     total_count: ReportedCount
@@ -115,6 +116,37 @@ def _plans_in_range(
     )
 
 
+def report_bucket_counts(
+    customer_counts: Sequence[int], policy: SmallCountSuppressionPolicy
+) -> tuple[ReportedCount, ...]:
+    """Reports each bucket's count; one lone suppressed bucket takes a second one with it.
+
+    Buckets are shown only with the total shown, so a single hidden bucket would be the total
+    minus the shown ones. The smallest other non-zero bucket (ties: the lower range) is then
+    suppressed too, which leaves only the sum of the two (complementary suppression).
+    """
+    reported_counts = [policy.report(customer_count) for customer_count in customer_counts]
+    suppressed_indexes = [
+        index
+        for index, reported_count in enumerate(reported_counts)
+        if reported_count.is_suppressed
+    ]
+    if len(suppressed_indexes) != 1:
+        return tuple(reported_counts)
+    companion_index = min(
+        (
+            index
+            for index, customer_count in enumerate(customer_counts)
+            if customer_count > 0 and index != suppressed_indexes[0]
+        ),
+        key=lambda index: (customer_counts[index], index),
+        default=None,
+    )
+    if companion_index is not None:
+        reported_counts[companion_index] = ReportedCount(None, is_suppressed=True)
+    return tuple(reported_counts)
+
+
 def build_budget_bucket_report(
     customer_counts: Sequence[int],
     budget_ceiling: Money | None,
@@ -143,10 +175,12 @@ def build_budget_bucket_report(
         buckets=tuple(
             BudgetBucket(
                 budget_range=budget_range,
-                count=policy.report(customer_count),
+                count=reported_count,
                 is_under_ceiling=_is_under_ceiling(budget_range, budget_ceiling),
                 plans=_plans_in_range(budget_range, insight_offers),
             )
-            for budget_range, customer_count in zip(BUDGET_RANGES, customer_counts, strict=True)
+            for budget_range, reported_count in zip(
+                BUDGET_RANGES, report_bucket_counts(customer_counts, policy), strict=True
+            )
         ),
     )

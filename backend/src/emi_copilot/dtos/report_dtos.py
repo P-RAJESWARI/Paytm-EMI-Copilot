@@ -119,7 +119,16 @@ class BudgetBucketResponse(CamelCaseResponseModel):
 
     lower_bound_in_paise: NonNegativeAmountInPaise
     upper_bound_in_paise: PositiveAmountInPaise | None
-    customer_count: CustomerCount
+    customer_count: Annotated[
+        int | None,
+        Field(
+            ge=0,
+            description=(
+                "Null when suppressed: 1 to 4, or a second bucket hidden beside a lone "
+                "suppressed one so that bucket cannot be worked out from the total."
+            ),
+        ),
+    ]
     is_suppressed: bool
     is_under_ceiling: bool
     plans: list[BucketPlanResponse]

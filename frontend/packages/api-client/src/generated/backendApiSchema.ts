@@ -479,7 +479,7 @@ export interface components {
             upperBoundInPaise: number | null;
             /**
              * Customercount
-             * @description Null when suppressed (1 to 4).
+             * @description Null when suppressed: 1 to 4, or a second bucket hidden beside a lone suppressed one so that bucket cannot be worked out from the total.
              */
             customerCount: number | null;
             /** Issuppressed */

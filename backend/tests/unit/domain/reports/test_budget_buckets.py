@@ -11,6 +11,7 @@ from emi_copilot.domain.reports.budget_buckets import (
     BudgetRange,
     build_budget_bucket_report,
     build_budget_ranges,
+    report_bucket_counts,
 )
 from emi_copilot.domain.reports.small_count_suppression import (
     ReportedCount,
@@ -125,6 +126,59 @@ def test_buckets_are_shown_at_five_tellers_with_each_small_count_suppressed() ->
     ]
     assert not any(bucket.is_under_ceiling for bucket in report.buckets)
     assert all(bucket.plans == () for bucket in report.buckets)
+
+
+SUPPRESSED = ReportedCount(None, is_suppressed=True)
+
+
+def test_a_lone_suppressed_bucket_hides_the_smallest_other_non_zero_bucket_too() -> None:
+    """3, 7, 14, 21, 49: 3 would be 94 minus the shown four, so the 7 is hidden as well."""
+    report = build_budget_bucket_report(
+        (3, 7, 14, 21, 49), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=120
+    )
+    assert report.total_count == ReportedCount(94, is_suppressed=False)
+    assert [bucket.count for bucket in report.buckets] == [
+        SUPPRESSED,
+        SUPPRESSED,
+        ReportedCount(14, is_suppressed=False),
+        ReportedCount(21, is_suppressed=False),
+        ReportedCount(49, is_suppressed=False),
+    ]
+
+
+def test_the_second_hidden_bucket_skips_zeros_and_ties_go_to_the_lower_range() -> None:
+    """2, 0, 6, 6, 9: the zero is not a companion; of the two 6s the lower range is hidden."""
+    report = build_budget_bucket_report(
+        (2, 0, 6, 6, 9), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=30
+    )
+    assert [bucket.count.customer_count for bucket in report.buckets] == [None, 0, None, 6, 9]
+
+
+def test_two_or_no_suppressed_buckets_are_left_as_they_are() -> None:
+    """Two hidden buckets already leave only their sum; none hidden needs no companion."""
+    policy = SmallCountSuppressionPolicy()
+    assert [count.customer_count for count in report_bucket_counts((1, 4, 0, 6, 9), policy)] == [
+        None,
+        None,
+        0,
+        6,
+        9,
+    ]
+    assert [count.customer_count for count in report_bucket_counts((5, 7, 0, 6, 9), policy)] == [
+        5,
+        7,
+        0,
+        6,
+        9,
+    ]
+
+
+def test_a_lone_suppressed_count_without_another_non_zero_bucket_has_no_companion() -> None:
+    """Only reachable directly: buckets are shown with a total of 5 or more, never like this."""
+    assert report_bucket_counts((3, 0, 0, 0, 0), SmallCountSuppressionPolicy()) == (
+        SUPPRESSED,
+        *(ReportedCount(0, is_suppressed=False),) * 4,
+    )
 
 
 def test_no_budget_tellers_hides_the_buckets_and_shows_a_zero_total() -> None:
