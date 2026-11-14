@@ -15,6 +15,13 @@ UV_RUN := uv run --locked
 DATABASE_WAIT_TIMEOUT_IN_SECONDS := 90
 OVERALL_COVERAGE_MINIMUM_PERCENT := 85
 
+FRONTEND_DIRECTORY := frontend
+PNPM := pnpm --dir $(FRONTEND_DIRECTORY)
+OPENAPI_DOCUMENT := $(BACKEND_DIRECTORY)/openapi.json
+GENERATED_API_SCHEMA := $(FRONTEND_DIRECTORY)/packages/api-client/src/generated/backendApiSchema.ts
+# openapi-check writes its fresh exports here (git-ignored) and overwrites them on every run.
+OPENAPI_CHECK_DIRECTORY := $(FRONTEND_DIRECTORY)/node_modules/.openapi-check
+
 # Per-path coverage gates (testing.md section 5, ADR 0007) as <path under backend/>:<minimum %>.
 # A gate is skipped until its path holds Python modules, so early steps stay green.
 COVERAGE_GATES := \
@@ -26,7 +33,7 @@ COVERAGE_GATES := \
 	src/emi_copilot/adapters:90
 
 .PHONY: help setup dev db-up db-down db-reset lint typecheck test test-with-coverage coverage-gates \
-	check migrate seed demo openapi
+	check migrate seed demo openapi openapi-check frontend-setup frontend-check
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -77,7 +84,16 @@ coverage-gates: ## Enforce per-directory coverage minimums on the last coverage 
 		$(UV_RUN) coverage report --include="$$include_pattern" --fail-under="$$gate_minimum_percent"; \
 	done
 
-check: lint typecheck db-up test-with-coverage coverage-gates ## Lint, types, tests and coverage gates; must pass before every commit
+check: lint typecheck db-up test-with-coverage coverage-gates frontend-check ## Backend and frontend lint, types, tests and coverage gates; must pass before every commit
+
+frontend-setup: ## Install the locked frontend dependencies (Node 20 from frontend/.nvmrc, pnpm 12)
+	$(PNPM) install --frozen-lockfile
+
+frontend-check: ## Frontend type-check, ESLint (zero warnings), Prettier check and Vitest with axe and coverage
+	@test -d $(FRONTEND_DIRECTORY)/node_modules || { \
+		echo "ERROR: the frontend dependencies are not installed. Run make frontend-setup first." >&2; \
+		exit 1; }
+	$(PNPM) run check
 
 migrate: db-up ## Apply all Alembic migrations to the development database
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) alembic upgrade head
@@ -94,5 +110,25 @@ demo: seed ## Seed, then run the API (one worker, no reload) with the labelled M
 		emi_copilot.main:create_application --factory --workers 1 \
 		--host $(BACKEND_HOST) --port $(BACKEND_PORT)
 
-openapi: ## Export and validate the OpenAPI schema to backend/openapi.json (commit the result)
+openapi: ## Export and validate backend/openapi.json, then regenerate the api-client types (commit both)
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python scripts/export_openapi.py
+	$(PNPM) run generate:api
+
+openapi-check: ## Fail if backend/openapi.json or the generated api-client differs from a fresh export
+	@test -d $(FRONTEND_DIRECTORY)/node_modules || { \
+		echo "ERROR: the frontend dependencies are not installed. Run make frontend-setup first." >&2; \
+		exit 1; }
+	@mkdir -p $(OPENAPI_CHECK_DIRECTORY)
+	@cd $(BACKEND_DIRECTORY) && $(UV_RUN) python -c 'import sys; \
+		from emi_copilot.api.openapi_export import render_openapi_document; \
+		sys.stdout.write(render_openapi_document())' > $(CURDIR)/$(OPENAPI_CHECK_DIRECTORY)/openapi.json
+	@diff -u $(OPENAPI_DOCUMENT) $(OPENAPI_CHECK_DIRECTORY)/openapi.json > /dev/null || { \
+		echo "ERROR: $(OPENAPI_DOCUMENT) is out of date. Run make openapi and commit the result." >&2; \
+		exit 1; }
+	@$(PNPM) --filter @emi-copilot/api-client exec openapi-typescript \
+		$(CURDIR)/$(OPENAPI_CHECK_DIRECTORY)/openapi.json \
+		--output $(CURDIR)/$(OPENAPI_CHECK_DIRECTORY)/backendApiSchema.ts > /dev/null 2>&1
+	@diff -u $(GENERATED_API_SCHEMA) $(OPENAPI_CHECK_DIRECTORY)/backendApiSchema.ts > /dev/null || { \
+		echo "ERROR: $(GENERATED_API_SCHEMA) is out of date. Run make openapi and commit the result." >&2; \
+		exit 1; }
+	@echo "OpenAPI document and generated api-client are up to date."
