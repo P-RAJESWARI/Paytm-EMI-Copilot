@@ -38,3 +38,37 @@ class EmiScheduleNotRepresentableError(DomainError):
     """
 
     code: ClassVar[str] = "EMI_SCHEDULE_NOT_REPRESENTABLE"
+
+
+class InvalidOfferSnapshotError(DomainError):
+    """Raised when a frozen offer snapshot is incomplete, inconsistent or cannot be decoded."""
+
+    code: ClassVar[str] = "INVALID_OFFER_SNAPSHOT"
+
+
+class InvalidPaymentAttemptError(DomainError):
+    """Raised when a payment attempt would be built with missing or inconsistent fields."""
+
+    code: ClassVar[str] = "INVALID_PAYMENT_ATTEMPT"
+
+
+class InvalidAuditEventError(DomainError):
+    """Raised when an audit event would be built with missing fields or non-scalar details."""
+
+    code: ClassVar[str] = "INVALID_AUDIT_EVENT"
+
+
+class PaymentAttemptAlreadyExistsError(DomainError):
+    """Raised when a payment attempt with the same id, order id or idempotency key is stored.
+
+    Two requests racing with one Idempotency-Key both pass the lookup; the database unique
+    constraint stops the second, and this error lets the service re-read the stored attempt.
+    """
+
+    code: ClassVar[str] = "PAYMENT_ATTEMPT_ALREADY_EXISTS"
+
+
+class PaymentAttemptNotFoundError(DomainError):
+    """Raised when a payment attempt that must already be stored cannot be found."""
+
+    code: ClassVar[str] = "PAYMENT_ATTEMPT_NOT_FOUND"
