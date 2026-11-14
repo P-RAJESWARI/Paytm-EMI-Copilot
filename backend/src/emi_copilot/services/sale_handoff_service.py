@@ -69,10 +69,7 @@ class SaleHandoffService:
     def create_payment_link(
         self, principal: MerchantPrincipal, sale_id: str, idempotency_key: str
     ) -> PaymentLinkHandoff:
-        """Makes (or replays) a link for the agreed plan; refuses a sale not awaiting payment.
-
-        A known key replays its original result whatever the sale's status is now.
-        """
+        """Makes a link for the agreed plan once per key; a known key replays in any status."""
         with self._unit_of_work_factory() as unit_of_work:
             sale = self._sale_expiry.load_current_sale_for_update(
                 unit_of_work, principal.merchant_id, sale_id, self._clock.now()

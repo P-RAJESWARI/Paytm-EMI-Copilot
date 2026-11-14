@@ -49,6 +49,14 @@ API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
 )
 
 
+def mount_mock_customer_simulator(application: FastAPI) -> None:
+    """Mounts the labelled demo simulator under /api/v1 and announces it (rule 10)."""
+    application.include_router(mock_customer_simulator_router, prefix=API_VERSION_1_PREFIX)
+    application_factory_logger.warning(
+        MOCK_CUSTOMER_SIMULATOR_ACTIVE_WARNING, extra={"mock_customer_simulator": "enabled"}
+    )
+
+
 def create_application(
     settings: ApplicationSettings | None = None,
     id_generator: IdGenerator | None = None,
@@ -74,10 +82,6 @@ def create_application(
     for versioned_router in API_VERSION_1_ROUTERS:
         application.include_router(versioned_router, prefix=API_VERSION_1_PREFIX)
     if active_settings.mock_customer_simulator_enabled:
-        application.include_router(mock_customer_simulator_router, prefix=API_VERSION_1_PREFIX)
-        application_factory_logger.warning(
-            MOCK_CUSTOMER_SIMULATOR_ACTIVE_WARNING,
-            extra={"mock_customer_simulator": "enabled"},
-        )
+        mount_mock_customer_simulator(application)
     install_openapi_schema(application)
     return application
