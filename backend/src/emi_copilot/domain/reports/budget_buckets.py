@@ -77,6 +77,7 @@ class BudgetBucketReport:
     """Every bucket, or none at all when fewer than 5 customers told a budget (plan Q3).
 
     The threshold is the suppression policy's, so buckets and counts hide at the same size.
+    total_count is the funnel's BUDGET_TOLD count, reported exactly as the funnel reports it.
     """
 
     total_count: ReportedCount
@@ -119,16 +120,21 @@ def build_budget_bucket_report(
     budget_ceiling: Money | None,
     insight_offers: Sequence[PricedEmiOffer],
     policy: SmallCountSuppressionPolicy,
+    *,
+    cohort_sale_count: int,
 ) -> BudgetBucketReport:
     """Builds the buckets from one raw count per BUDGET_RANGES entry, in the same order.
 
-    The plans are the insight product's quoted figures (never recomputed), cheapest monthly
-    first; with no insight product, no bucket lists a plan.
+    The total follows the cohort (the funnel's STARTED count) as BUDGET_TOLD follows STARTED in
+    the funnel: a 0 after a suppressed cohort of 1 to 4 is suppressed, since it would say none
+    of those few customers told a budget; with an empty cohort the 0 is shown. The plans are the
+    insight product's quoted figures (never recomputed), cheapest monthly first; with no
+    insight product, no bucket lists a plan.
     """
     if len(customer_counts) != len(BUDGET_RANGES):
         raise InvalidReportDataError("Give exactly one customer count per budget range.")
     total_customer_count = sum(customer_counts)
-    total_count = policy.report(total_customer_count)
+    total_count = policy.report_after(total_customer_count, policy.report(cohort_sale_count))
     if total_customer_count < policy.minimum_shown_count:
         return BudgetBucketReport(total_count=total_count, are_buckets_hidden=True, buckets=())
     return BudgetBucketReport(

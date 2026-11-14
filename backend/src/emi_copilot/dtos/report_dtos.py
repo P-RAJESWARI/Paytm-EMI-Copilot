@@ -181,7 +181,15 @@ class MissedSalesReportResponse(CamelCaseResponseModel):
     is_suppressed: bool
     budget_ceiling_in_paise: PositiveAmountInPaise | None
     product_insight: ProductInsightResponse | None
-    budget_total_customer_count: CustomerCount
+    budget_total_customer_count: Annotated[
+        int | None,
+        Field(
+            ge=0,
+            description=(
+                "Null when suppressed: 1 to 4, or a 0 after a cohort of 1 to 4 finished sales."
+            ),
+        ),
+    ]
     are_budget_buckets_hidden: bool
     budget_buckets: list[BudgetBucketResponse]
 

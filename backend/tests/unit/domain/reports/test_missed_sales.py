@@ -174,7 +174,7 @@ def test_missed_sales_report_of_the_design_week_describes_the_insight_product() 
     policy = SmallCountSuppressionPolicy()
     report = MissedSalesReport.from_analysis(
         build_design_missed_sales_analysis(),
-        build_budget_bucket_report((5, 7, 14, 21, 49), None, (), policy),
+        build_budget_bucket_report((5, 7, 14, 21, 49), None, (), policy, cohort_sale_count=120),
         policy,
     )
     assert report.missed_count == ReportedCount(12, is_suppressed=False)
@@ -190,7 +190,7 @@ def test_missed_sales_report_without_missed_sales_has_no_insight_and_shows_zero(
     policy = SmallCountSuppressionPolicy()
     report = MissedSalesReport.from_analysis(
         MissedSalesAnalysis.from_products([]),
-        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), policy),
+        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), policy, cohort_sale_count=0),
         policy,
     )
     assert report.missed_count == ReportedCount(0, is_suppressed=False)
@@ -208,9 +208,26 @@ def test_three_missed_sales_are_suppressed_in_the_report() -> None:
         ]
     )
     report = MissedSalesReport.from_analysis(
-        analysis, build_budget_bucket_report((0, 0, 0, 0, 0), None, (), policy), policy
+        analysis,
+        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), policy, cohort_sale_count=0),
+        policy,
     )
     assert report.missed_count == ReportedCount(None, is_suppressed=True)
+
+
+def test_a_zero_missed_count_after_a_suppressed_budget_total_is_suppressed() -> None:
+    """3 budgets told and none missed: a shown 0 would say none of those three was missed."""
+    policy = SmallCountSuppressionPolicy()
+    for budget_counts, cohort_sale_count in (((0, 0, 0, 0, 0), 3), ((2, 1, 0, 0, 0), 9)):
+        report = MissedSalesReport.from_analysis(
+            MissedSalesAnalysis.from_products([]),
+            build_budget_bucket_report(
+                budget_counts, None, (), policy, cohort_sale_count=cohort_sale_count
+            ),
+            policy,
+        )
+        assert report.budget_buckets.total_count == ReportedCount(None, is_suppressed=True)
+        assert report.missed_count == ReportedCount(None, is_suppressed=True)
 
 
 def test_product_insight_needs_a_no_extra_cost_plan() -> None:
@@ -239,7 +256,9 @@ def test_suppressed_total_drops_the_ceiling_and_the_insight() -> None:
     assert (analysis.insight, analysis.budget_ceiling) == (None, None)
     report = MissedSalesReport.from_analysis(
         analysis,
-        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy()),
+        build_budget_bucket_report(
+            (0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=0
+        ),
         SmallCountSuppressionPolicy(),
     )
     assert (report.budget_ceiling, report.product_insight) == (None, None)

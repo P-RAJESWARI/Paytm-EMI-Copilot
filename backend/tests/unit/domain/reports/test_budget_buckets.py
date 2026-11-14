@@ -77,6 +77,7 @@ def test_design_buckets_show_counts_ceiling_flags_and_the_insight_plans() -> Non
         THREE_THOUSAND_RUPEES,
         build_phone_128_gb_offers(),
         SmallCountSuppressionPolicy(),
+        cohort_sale_count=120,
     )
     assert report.total_count == ReportedCount(96, is_suppressed=False)
     assert report.are_buckets_hidden is False
@@ -102,7 +103,9 @@ def test_design_buckets_show_counts_ceiling_flags_and_the_insight_plans() -> Non
 
 def test_buckets_are_hidden_when_four_customers_told_a_budget() -> None:
     """Fewer than 5 budget tellers: no bucket at all, and the total is suppressed too."""
-    report = build_budget_bucket_report((1, 1, 1, 1, 0), None, (), SmallCountSuppressionPolicy())
+    report = build_budget_bucket_report(
+        (1, 1, 1, 1, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=9
+    )
     assert report.are_buckets_hidden is True
     assert report.buckets == ()
     assert report.total_count == ReportedCount(None, is_suppressed=True)
@@ -110,7 +113,9 @@ def test_buckets_are_hidden_when_four_customers_told_a_budget() -> None:
 
 def test_buckets_are_shown_at_five_tellers_with_each_small_count_suppressed() -> None:
     """Five tellers: the buckets appear, each count of 1 to 4 still hidden; zero is shown."""
-    report = build_budget_bucket_report((1, 4, 0, 0, 0), None, (), SmallCountSuppressionPolicy())
+    report = build_budget_bucket_report(
+        (1, 4, 0, 0, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=9
+    )
     assert report.are_buckets_hidden is False
     assert report.total_count == ReportedCount(5, is_suppressed=False)
     assert [bucket.count for bucket in report.buckets][:3] == [
@@ -124,7 +129,27 @@ def test_buckets_are_shown_at_five_tellers_with_each_small_count_suppressed() ->
 
 def test_no_budget_tellers_hides_the_buckets_and_shows_a_zero_total() -> None:
     """The empty shop's shape."""
-    report = build_budget_bucket_report((0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy())
+    report = build_budget_bucket_report(
+        (0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=0
+    )
+    assert report.are_buckets_hidden is True
+    assert report.total_count == ReportedCount(0, is_suppressed=False)
+
+
+def test_a_zero_budget_total_after_a_small_cohort_is_suppressed() -> None:
+    """3 finished sales and no budget: the funnel hides BUDGET_TOLD, so the total hides its 0."""
+    report = build_budget_bucket_report(
+        (0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=3
+    )
+    assert report.are_buckets_hidden is True
+    assert report.total_count == ReportedCount(None, is_suppressed=True)
+
+
+def test_a_zero_budget_total_after_a_shown_cohort_is_shown_as_the_funnel_shows_it() -> None:
+    """7 finished sales and no budget: the funnel shows BUDGET_TOLD 0, and so does the total."""
+    report = build_budget_bucket_report(
+        (0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=7
+    )
     assert report.are_buckets_hidden is True
     assert report.total_count == ReportedCount(0, is_suppressed=False)
 
@@ -132,7 +157,9 @@ def test_no_budget_tellers_hides_the_buckets_and_shows_a_zero_total() -> None:
 def test_build_budget_bucket_report_refuses_a_count_list_of_the_wrong_length() -> None:
     """One count per range, no more and no fewer."""
     with pytest.raises(InvalidReportDataError, match="one customer count per"):
-        build_budget_bucket_report((5, 7), None, (), SmallCountSuppressionPolicy())
+        build_budget_bucket_report(
+            (5, 7), None, (), SmallCountSuppressionPolicy(), cohort_sale_count=0
+        )
 
 
 def test_budget_range_without_upper_bound_is_open() -> None:

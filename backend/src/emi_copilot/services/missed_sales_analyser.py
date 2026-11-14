@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.merchants import MerchantPrincipal
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.reports.budget_buckets import BUDGET_BUCKET_BOUNDARIES
@@ -22,10 +23,15 @@ _NO_MISSED_SALES = MissedSalesTally(missed_count=0, highest_missed_budget=None)
 
 @dataclass(frozen=True, slots=True)
 class MissedSalesFindings:
-    """The period's missed-sales analysis beside its raw budget count per range."""
+    """The period's missed-sales analysis beside its raw budget count per range and cohort size.
+
+    cohort_sale_count is the funnel's STARTED count, so the budget total is suppressed as the
+    funnel suppresses BUDGET_TOLD.
+    """
 
     analysis: MissedSalesAnalysis
     budget_counts: tuple[int, ...]
+    cohort_sale_count: int
 
 
 class MissedSalesAnalyser:
@@ -62,6 +68,9 @@ class MissedSalesAnalyser:
             budget_counts = unit_of_work.report_queries.count_budgets_per_range(
                 merchant_id, period.starts_at, period.ends_at, BUDGET_BUCKET_BOUNDARIES
             )
+            counts_by_stage = unit_of_work.report_queries.count_sales_reaching_each_stage(
+                merchant_id, period.starts_at, period.ends_at
+            )
         analysis = MissedSalesAnalysis.from_products(
             [
                 ProductMissedSales(
@@ -70,7 +79,11 @@ class MissedSalesAnalyser:
                 for product_offers in products_offers
             ]
         ).without_suppressed_details(self._policy)
-        return MissedSalesFindings(analysis=analysis, budget_counts=budget_counts)
+        return MissedSalesFindings(
+            analysis=analysis,
+            budget_counts=budget_counts,
+            cohort_sale_count=counts_by_stage.get(FunnelStage.STARTED, 0),
+        )
 
     def _quote_shop_products(self, merchant_id: str) -> list[ProductOffers]:
         """Reads the shop's products, then, with the transaction closed, quotes each one."""

@@ -43,7 +43,9 @@ TEMPLATE = WeeklyMessageTemplate(format_paise_as_whole_rupees)
 def _missed_sales_report(analysis: MissedSalesAnalysis) -> MissedSalesReport:
     """Builds the missed-sales card of an analysis with empty buckets."""
     return MissedSalesReport.from_analysis(
-        analysis, build_budget_bucket_report((0, 0, 0, 0, 0), None, (), POLICY), POLICY
+        analysis,
+        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), POLICY, cohort_sale_count=0),
+        POLICY,
     )
 
 

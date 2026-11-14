@@ -104,6 +104,7 @@ class MissedSalesReportService:
             findings.analysis.budget_ceiling,
             () if insight is None else insight.product_offers.priced_offers,
             self._policy,
+            cohort_sale_count=findings.cohort_sale_count,
         )
         return MissedSalesReport.from_analysis(findings.analysis, budget_buckets, self._policy)
 

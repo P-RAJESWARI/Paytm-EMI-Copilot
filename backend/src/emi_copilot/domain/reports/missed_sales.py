@@ -234,9 +234,15 @@ class MissedSalesReport:
         budget_buckets: BudgetBucketReport,
         policy: SmallCountSuppressionPolicy,
     ) -> "MissedSalesReport":
-        """Builds the card; a missed count from 1 to 4 is suppressed like every other count."""
+        """Builds the card; a missed count from 1 to 4 is suppressed like every other count.
+
+        Missed sales are among the budgets told, so a missed 0 after a suppressed budget total
+        is suppressed too: it would say none of those few customers was missed.
+        """
         return cls(
-            missed_count=policy.report(analysis.total_missed_count),
+            missed_count=policy.report_after(
+                analysis.total_missed_count, budget_buckets.total_count
+            ),
             budget_ceiling=analysis.budget_ceiling,
             product_insight=(
                 None if analysis.insight is None else build_product_insight(analysis.insight)

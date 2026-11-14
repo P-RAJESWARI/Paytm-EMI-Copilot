@@ -211,7 +211,39 @@ def test_one_customer_still_choosing_today_shows_in_no_report_until_the_sale_end
         None,
         None,
     )
+    assert missed["budgetTotalCustomerCount"] is None
     assert _read(mock_api, "/suggested-actions?range=TODAY", headers) == {"actions": []}
+
+
+def test_a_few_finished_sales_without_budgets_show_no_zero_the_funnel_hides(
+    mock_api: ApiHarness, shops: TwoShops
+) -> None:
+    """Two expired sales and no budget: the funnel hides BUDGET_TOLD, so the card hides its 0s.
+
+    A budget total or missed count of 0 would tell the merchant those two never told a budget.
+    """
+    headers = shops.first_shop_headers
+    for _ in range(2):
+        start_sale(mock_api, headers, PHONE_128_GB_ID)
+    _expire_choosing_sales(mock_api, headers)
+    funnel = _read(mock_api, "/funnel?range=TODAY", headers)
+    missed = _read(mock_api, "/missed-sales?range=TODAY", headers)
+    assert [stage["customerCount"] for stage in funnel["stages"]] == [None] * 5
+    assert {
+        field: missed[field]
+        for field in (
+            "missedCustomerCount",
+            "isSuppressed",
+            "budgetTotalCustomerCount",
+            "areBudgetBucketsHidden",
+            "budgetBuckets",
+        )
+    } == {
+        "missedCustomerCount": None,
+        "isSuppressed": True,
+        "budgetTotalCustomerCount": None,
+        **EMPTY_BUCKET_SHAPE,
+    }
 
 
 def test_sending_the_weekly_message_is_idempotent(mock_api: ApiHarness, shops: TwoShops) -> None:
