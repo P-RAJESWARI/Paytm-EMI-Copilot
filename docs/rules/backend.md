@@ -27,7 +27,7 @@ backend/
       errors.py                 typed domain errors
       events.py                 domain event classes
     adapters/                   everything that talks to the outside world
-      payment_gateway/          port.py, paytm_adapter.py, mock_adapter.py, factory.py, checksum.py
+      payment_gateway/          port.py, paytm_adapter.py, mock_adapter.py, factory.py, checksum_signer.py
       ai/                       Layer 4: speech, text, number audit, LangGraph flows
     events/                     event bus and subscribers (Observer)
     core/                       logging, resilient HTTP client, clock, id generation
@@ -45,7 +45,7 @@ backend/
 | `adapters` | `domain`, `core` | Import services or repositories |
 | `domain` | standard library only | Import anything else in the app, the database, HTTP or the clock directly |
 
-Services depend on **ports (abstract interfaces)**, never on concrete adapters. Concrete adapters are chosen in `dependencies.py` through a factory.
+Services depend on **ports (abstract interfaces)**, never on concrete adapters. Concrete adapters are chosen in `dependencies.py` through a factory; `api/dependencies.py` is the composition root and the only module outside `adapters/` that may import the factory (ADR 0008).
 
 ## 3. Naming
 

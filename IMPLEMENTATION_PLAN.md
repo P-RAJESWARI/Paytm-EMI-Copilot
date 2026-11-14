@@ -218,7 +218,7 @@ Each layer follows the same shape: objective, what you will learn, steps (each w
 | **1.2 EMI calculation** | `EmiCalculationStrategy` with `ReducingBalanceStrategy` and `NoCostStrategy`; last installment absorbs remainder | Strategy lets rules vary without touching callers | Hand-checked table incl. the three design plans; hypothesis properties from `testing.md` |
 | **1.3 Persistence** | Models and migration for `payment_attempt` and `audit_event`; repositories; unit of work | Idempotent payments and an audit trail need storage | Append-only `audit_event`; indexes; reversible migration |
 | **1.4 Gateway port** | `PaymentGatewayPort` in domain terms (`discover_offers`, `create_payment_link`, `get_payment_status`, `verify_webhook`) and domain types | Services depend on an interface, never on Paytm field names | No vendor terms leak into the port |
-| **1.5 Mock adapter** | `MockPaymentGatewayAdapter` returning the design's sample plans and deterministic statuses; `SettlementPort` with a labelled mock | Develop and test with no network or keys | Mock announced in startup log |
+| **1.5 Mock adapter** | `MockPaymentGatewayAdapter` returning the design's sample plans and deterministic statuses (`SettlementPort` moved to Layer 2, ADR 0006) | Develop and test with no network or keys | Mock announced in startup log |
 | **1.6 Resilient HTTP client** | Timeouts, retry with jitter for idempotent calls only, circuit breaker | One slow dependency must not take the system down | Initiate calls are never retried |
 | **1.7 Paytm adapter** | `PaytmPaymentGatewayAdapter`: checksum signing, offer discovery, payment link creation with the chosen offer, status check, webhook verification, `PaytmErrorTranslator`; contract tests against recorded fixtures | The real integration, isolated behind the port | Endpoint shapes marked **[Verify]** against current Paytm docs; no real IDs in fixtures |
 | **1.8 Factory, events, services** | `PaymentGatewayFactory`; `DomainEventBus` (Observer) with audit subscriber; `OfferDiscoveryService`, `PaymentHandoffService`, `PaymentStatusService` | Config chooses Mock or real; audit stays decoupled | Services import ports only |
@@ -228,7 +228,7 @@ Each layer follows the same shape: objective, what you will learn, steps (each w
 
 **Acceptance criteria**
 - [ ] `make check` passes; domain and audit-related code at 100% coverage, overall at least 85%.
-- [ ] The three sample plans compute to exactly ₹3,667 x 6, ₹3,850 x 6 and ₹2,050 x 12 on ₹22,000 with extras ₹0, ₹1,100 and ₹2,600.
+- [ ] The three sample plans on ₹22,000 compute to: no-cost 5 x ₹3,666.67 + ₹3,666.65 (displays ₹3,667 x 6, sums to exactly ₹22,000.00), ₹3,850.00 x 6 and ₹2,050.00 x 12, with extras ₹0, ₹1,100 and ₹2,600 (ADR 0001).
 - [ ] Swapping Mock and Paytm adapters is a configuration change only; contract tests pass for both.
 - [ ] A timed-out create-link call surfaces a typed error and is **not** retried; the same `Idempotency-Key` returns the original result.
 - [ ] A webhook with a bad signature is rejected and audited; a repeated valid webhook has no extra effect.

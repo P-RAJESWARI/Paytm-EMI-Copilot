@@ -26,7 +26,7 @@ Review: what the reviewer should look at first.
 ```
 
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `build`, `ci`.  
-Scopes: `domain`, `gateway`, `api`, `db`, `merchant-ui`, `customer-ui`, `ui-kit`, `ai`, `rules`.
+Scopes: `domain`, `core`, `gateway`, `api`, `db`, `merchant-ui`, `customer-ui`, `ui-kit`, `ai`, `rules`.
 
 Example:
 
@@ -57,7 +57,7 @@ Prefer this sequence so the diff reads like a story:
 
 ## 4. Merge request
 
-Generate the reviewable diff and stats with:
+Generate the reviewable diff and stats with (until a remote exists, use `main` in place of `origin/main` and skip `git fetch`; ADR 0008):
 
 ```
 git fetch origin

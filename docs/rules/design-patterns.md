@@ -9,9 +9,9 @@ Use a pattern only where it solves a real problem in this codebase. Name it once
 | **Port and Adapter** (hexagonal) | `PaymentGatewayPort` with `PaytmPaymentGatewayAdapter` and `MockPaymentGatewayAdapter`; later `SpeechPort`, `ExplanationTextPort` | Services depend on an interface, so the real vendor and a mock are interchangeable and tests need no network | 1, 4 |
 | **Adapter** | Each vendor adapter | Translates vendor request and response shapes and errors into our domain types at the boundary | 1, 4 |
 | **Factory** | `PaymentGatewayFactory`, `SpeechProviderFactory` | Chooses the Mock or real implementation from configuration in one place | 1, 4 |
-| **Strategy** | `EmiCalculationStrategy` (reducing balance, no-cost), `PlanRankingStrategy`, `ComfortBandClassificationStrategy` | Rules that vary independently are swappable and unit-testable | 1, 3 |
+| **Strategy** | `EmiCalculationStrategy` (reducing balance, no-cost, quoted total; ADR 0001), `PlanRankingStrategy`, `ComfortBandClassificationStrategy` | Rules that vary independently are swappable and unit-testable | 1, 3 |
 | **Repository** | `SaleRepository`, `ConsentRecordRepository`, `PaymentAttemptRepository`, and so on | Keeps queries out of services and lets tests use fakes | 1, 2, 3 |
-| **Value Object** | `Money`, `Paise`, `PlanSnapshot`, `ComfortRatio` | Makes invalid states impossible and keeps rounding in one place | 1 |
+| **Value Object** | `Money` (paise via `Money.to_paise()`, ADR 0008), `PlanSnapshot`, `ComfortRatio` | Makes invalid states impossible and keeps rounding in one place | 1 |
 | **DTO** | Everything in `dtos/` | Separates the public API contract from ORM models and domain types | all |
 | **Observer** (event bus) | `DomainEventBus` with subscribers: audit logger, funnel event recorder, metrics, merchant status broadcaster | Reacts to "payment link created", "sale ready to pay" without coupling services together | 1, 2, 3 |
 | **State** | `SaleStateMachine` (`CHOOSING`, `READY_TO_PAY`, `PAID`, `FAILED`, `EXPIRED`) | Legal transitions are explicit and tested; no scattered status checks | 2 |
@@ -26,7 +26,7 @@ Use a pattern only where it solves a real problem in this codebase. Name it once
 
 ### Layer 1 (gateway)
 - The **port** is defined in the domain's terms (`discover_offers`, `create_payment_link`, `get_payment_status`, `verify_webhook`), never in Paytm's terms. Paytm field names stay inside the adapter.
-- The **factory** returns the Mock unless `PAYMENT_GATEWAY_MODE=paytm` and credentials are present. Startup logs say which one is active.
+- The **factory** returns the Mock unless `PAYMENT_GATEWAY_MODE=paytm`. With `paytm` and missing credentials, startup fails with a clear error instead of falling back (ADR 0004). Startup logs say which one is active.
 - **Observer:** `PaymentLinkCreated` and `PaymentStatusChanged` events let audit and the merchant status feed subscribe without the gateway service knowing about them.
 
 ### Layer 4 (AI)

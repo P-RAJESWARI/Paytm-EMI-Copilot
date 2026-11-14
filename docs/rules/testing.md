@@ -12,7 +12,7 @@
 | Level | Location | What it covers | Tools |
 |---|---|---|---|
 | Unit | `tests/unit/` | Domain (`Money`, EMI strategies, comfort, ranking), services with fake ports | pytest, hypothesis |
-| Contract | `tests/contract/` | Every port is tested against **both** the Mock adapter and recorded real responses, so mock and real behave the same | pytest, recorded JSON fixtures |
+| Contract | `tests/contract/` | Every port is tested against **both** the Mock adapter and the real adapter fed by fixtures (documented-shape fixtures [Verify] until staging keys allow recordings; ADR 0007), so mock and real behave the same | pytest, recorded JSON fixtures |
 | Integration | `tests/integration/` | Controllers with a real PostgreSQL (Docker), repositories, migrations, event bus | pytest, httpx test client, Testcontainers or Compose |
 
 Naming: `test_<unit>_<scenario>_<expected>`, for example `test_calculate_reducing_balance_installment_rounds_last_installment_to_match_total`.
@@ -25,7 +25,7 @@ Naming: `test_<unit>_<scenario>_<expected>`, for example `test_calculate_reducin
 - A no-cost plan has extra-in-total of exactly zero.
 - Installments are non-negative and the count equals the tenure.
 - Result is deterministic: same inputs give the same output.
-- Results match a hand-checked reference table (at least 10 rows, including the three design sample plans: ₹3,667 x 6, ₹3,850 x 6, ₹2,050 x 12 on ₹22,000).
+- Results match a hand-checked reference table (at least 10 rows, including the three design sample plans on ₹22,000: no-cost 5 x ₹3,666.67 + ₹3,666.65 (displays ₹3,667 x 6), ₹3,850.00 x 6 and ₹2,050.00 x 12; ADR 0001).
 
 **Gateway adapter (Layer 1):**
 - Signature generation and verification (known-answer test).
