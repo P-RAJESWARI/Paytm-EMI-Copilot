@@ -1,9 +1,9 @@
 """Controllers translate HTTP only; the gateway factory is imported by the composition root only.
 
-Controllers may import services, dtos, domain.errors and the api/ wiring (dependencies, the
-merchant sign-in and rate-limit dependencies, and OpenAPI helpers), never repositories,
-adapters, ORM models or other domain modules (backend.md section 2). Outside adapters/, only
-api/dependencies.py imports the factory (ADR 0008).
+Controllers may import services, dtos, domain.errors and the api/ wiring (dependencies and
+sale_dependencies, the merchant sign-in and rate-limit dependencies, and OpenAPI helpers),
+never repositories, adapters, ORM models or other domain modules (backend.md section 2).
+Outside adapters/, only api/dependencies.py imports the factory (ADR 0008).
 """
 
 import sys
@@ -31,6 +31,7 @@ ALLOWED_APPLICATION_MODULES_IN_CONTROLLERS = (
     "emi_copilot.api.merchant_authentication",
     "emi_copilot.api.openapi_documentation",
     "emi_copilot.api.rate_limiting",
+    "emi_copilot.api.sale_dependencies",
     "emi_copilot.api.controllers",
 )
 ALLOWED_FRAMEWORK_PACKAGES_IN_CONTROLLERS = ("fastapi", "starlette")

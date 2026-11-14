@@ -9,6 +9,7 @@ from emi_copilot.api.controllers.payment_link_controller import payment_link_rou
 from emi_copilot.api.controllers.payment_status_controller import payment_status_router
 from emi_copilot.api.controllers.paytm_webhook_controller import paytm_webhook_router
 from emi_copilot.api.controllers.product_controller import product_router
+from emi_copilot.api.controllers.sale_controller import sale_router
 from emi_copilot.api.dependencies import build_application_lifespan
 from emi_copilot.api.error_handlers import register_error_handlers
 from emi_copilot.api.openapi_documentation import install_openapi_schema
@@ -29,6 +30,7 @@ API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
     paytm_webhook_router,
     merchant_router,
     product_router,
+    sale_router,
 )
 
 

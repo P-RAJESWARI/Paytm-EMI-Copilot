@@ -9,6 +9,7 @@ from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGateway
 from tests.fakes.fake_payment_gateway import FakePaymentGateway
 from tests.fixed_clock import FixedClock
 from tests.integration.api.api_harness import ApiHarness, open_api_harness
+from tests.integration.api.sale_api_helpers import TwoShops, store_and_pair_two_shops
 
 MOCK_WEBHOOK_SIGNING_SECRET = b"api-integration-test-mock-signing-key"
 
@@ -45,3 +46,9 @@ def fake_api(
     """Runs the application with the scripted fake gateway."""
     with open_api_harness(session_factory, fixed_clock, fake_gateway) as harness:
         yield harness
+
+
+@pytest.fixture
+def shops(mock_api: ApiHarness) -> TwoShops:
+    """Two paired shops, each with the three M2 products, on the Mock gateway application."""
+    return store_and_pair_two_shops(mock_api)

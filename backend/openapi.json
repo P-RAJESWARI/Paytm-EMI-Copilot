@@ -1476,6 +1476,749 @@
           }
         }
       }
+    },
+    "/api/v1/sales": {
+      "post": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Start a sale and get its customer QR code",
+        "description": "Starts a sale of one catalogue product at its list price (the price at the counter cannot be changed). The sale is CHOOSING and gets a 4-digit session code unique among the shop's open sales, and qr holds the URL to show as a QR code, valid for 15 minutes by default. An optional Idempotency-Key makes a retry return the same sale. Location points at the sale; the answer is never cached. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "start_sale_api_v1_sales_post",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 255,
+                  "pattern": "^[!-~]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional. 8 to 255 visible ASCII characters (a UUID or ULID is ideal). The same key with the same body returns the original sale, as it now stands, with qr null (raw QR tokens are never kept; ask POST .../qr-tokens for a new one); with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED. Keys are scoped to the shop.",
+              "examples": [
+                "5f0c2a2e-6d1b-4c55-9a43-3f1b2f7f8e11"
+              ],
+              "title": "Idempotency-Key"
+            },
+            "description": "Optional. 8 to 255 visible ASCII characters (a UUID or ULID is ideal). The same key with the same body returns the original sale, as it now stands, with qr null (raw QR tokens are never kept; ask POST .../qr-tokens for a new one); with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED. Keys are scoped to the shop."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSaleRequest"
+              },
+              "examples": {
+                "phone-128-gb": {
+                  "summary": "The ₹22,000 phone",
+                  "value": {
+                    "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The sale was started (or this is the replay of its start).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleDetailResponse"
+                },
+                "example": {
+                  "saleId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                  "sessionCode": "4821",
+                  "productName": "Example phone, 128 GB",
+                  "priceInPaise": 2200000,
+                  "status": "CHOOSING",
+                  "statusChangedAt": "2026-11-15T09:30:00Z",
+                  "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                  "startedAt": "2026-11-15T09:30:00Z",
+                  "qr": {
+                    "customerUrl": "http://localhost:5174/#t=<signed-token>",
+                    "expiresAt": "2026-11-15T09:45:00Z"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "The sale's URL.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Always no-store.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The product is not in the signed-in shop's catalogue (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PRODUCT_NOT_FOUND": {
+                    "summary": "Product not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/product-not-found",
+                      "title": "Product not found",
+                      "status": 404,
+                      "detail": "No product with this id is in the shop's catalogue.",
+                      "code": "PRODUCT_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "All 10,000 four-digit codes are on the shop's open sales; finish or wait for some first.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SESSION_CODES_EXHAUSTED": {
+                    "summary": "No free session code",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/session-codes-exhausted",
+                      "title": "No free session code",
+                      "status": 409,
+                      "detail": "Every session code is on one of the shop's open sales.",
+                      "code": "SESSION_CODES_EXHAUSTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. The Idempotency-Key was already used by this shop with a different body.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Idempotency key reused",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/idempotency-key-reused",
+                      "title": "Idempotency key reused",
+                      "status": 422,
+                      "detail": "The Idempotency-Key was used with a different body.",
+                      "code": "IDEMPOTENCY_KEY_REUSED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "List today's sales at the counter",
+        "description": "With view=counter: the shop's sales started today in the shop's time zone (IST), newest first, without expired ones. A sale still CHOOSING an hour after it started is expired first. Each sale shows only its code, product, price, status and, once the customer agreed, the chosen plan; never any customer detail. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "list_sales_api_v1_sales_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SalesView",
+              "description": "Only `counter` exists: today's sales at the counter."
+            },
+            "description": "Only `counter` exists: today's sales at the counter."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Today's sales, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterSalesResponse"
+                },
+                "example": {
+                  "sales": [
+                    {
+                      "saleId": "01JD5Z0Q8M6X3V2N7B4C9K1T0G",
+                      "sessionCode": "0917",
+                      "productName": "Example phone, 64 GB",
+                      "priceInPaise": 1800000,
+                      "status": "CHOOSING",
+                      "statusChangedAt": "2026-11-15T09:41:00Z"
+                    },
+                    {
+                      "saleId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                      "sessionCode": "4821",
+                      "productName": "Example phone, 128 GB",
+                      "priceInPaise": 2200000,
+                      "status": "READY_TO_PAY",
+                      "statusChangedAt": "2026-11-15T09:36:00Z",
+                      "chosenPlan": {
+                        "offerId": "mock-offer-no-cost-6m",
+                        "planKind": "NO_COST",
+                        "lenderLabel": "Brand",
+                        "tenureInMonths": 6,
+                        "monthlyInstallmentInPaise": 366667,
+                        "extraInTotalInPaise": 0,
+                        "totalPayableInPaise": 2200000
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/{saleId}": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Read one sale",
+        "description": "Gives one of the shop's sales as it stands now (expired first if overdue). qr is always null here: raw QR tokens are never stored, so ask POST /api/v1/sales/{saleId}/qr-tokens for a new one. Another shop's sale answers 404. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_sale_api_v1_sales__saleId__get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The sale id returned by POST /api/v1/sales.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+              ],
+              "title": "Saleid"
+            },
+            "description": "The sale id returned by POST /api/v1/sales."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sale.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleDetailResponse"
+                },
+                "example": {
+                  "saleId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                  "sessionCode": "4821",
+                  "productName": "Example phone, 128 GB",
+                  "priceInPaise": 2200000,
+                  "status": "READY_TO_PAY",
+                  "statusChangedAt": "2026-11-15T09:36:00Z",
+                  "chosenPlan": {
+                    "offerId": "mock-offer-no-cost-6m",
+                    "planKind": "NO_COST",
+                    "lenderLabel": "Brand",
+                    "tenureInMonths": 6,
+                    "monthlyInstallmentInPaise": 366667,
+                    "extraInTotalInPaise": 0,
+                    "totalPayableInPaise": 2200000
+                  },
+                  "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                  "startedAt": "2026-11-15T09:30:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The sale is not one of the signed-in shop's sales (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_NOT_FOUND": {
+                    "summary": "Sale not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-not-found",
+                      "title": "Sale not found",
+                      "status": 404,
+                      "detail": "No sale with this id belongs to the shop.",
+                      "code": "SALE_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/{saleId}/qr-tokens": {
+      "post": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Issue a new customer QR code for a sale",
+        "description": "Issues a fresh QR code while the sale is CHOOSING, which voids the previous one; any other status answers 409 SALE_STATE_CONFLICT. Location points at the sale; the answer is never cached. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "issue_qr_token_api_v1_sales__saleId__qr_tokens_post",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The sale id returned by POST /api/v1/sales.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+              ],
+              "title": "Saleid"
+            },
+            "description": "The sale id returned by POST /api/v1/sales."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The new QR code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerQrResponse"
+                },
+                "example": {
+                  "customerUrl": "http://localhost:5174/#t=<signed-token>",
+                  "expiresAt": "2026-11-15T09:45:00Z"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "The sale's URL.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Always no-store.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The sale is not one of the signed-in shop's sales (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_NOT_FOUND": {
+                    "summary": "Sale not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-not-found",
+                      "title": "Sale not found",
+                      "status": 404,
+                      "detail": "No sale with this id belongs to the shop.",
+                      "code": "SALE_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A new QR code is issued only while the customer is CHOOSING.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_STATE_CONFLICT": {
+                    "summary": "Not possible in the sale's current status",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-state-conflict",
+                      "title": "Not possible in the sale's current status",
+                      "status": 409,
+                      "detail": "A sale that is READY_TO_PAY cannot take the command ISSUE_QR_CODE.",
+                      "code": "SALE_STATE_CONFLICT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1532,6 +2275,91 @@
         ],
         "title": "CatalogueProductResponse",
         "description": "One product at its list price with the counts behind \"3 EMI plans, 1 with no extra cost\"."
+      },
+      "ChosenPlanResponse": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-no-cost-6m"
+            ]
+          },
+          "planKind": {
+            "$ref": "#/components/schemas/EmiType"
+          },
+          "lenderLabel": {
+            "type": "string",
+            "title": "Lenderlabel",
+            "examples": [
+              "Brand"
+            ]
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths",
+            "examples": [
+              6
+            ]
+          },
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise",
+            "examples": [
+              366667
+            ]
+          },
+          "extraInTotalInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Extraintotalinpaise",
+            "examples": [
+              0
+            ]
+          },
+          "totalPayableInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Totalpayableinpaise",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "offerId",
+          "planKind",
+          "lenderLabel",
+          "tenureInMonths",
+          "monthlyInstallmentInPaise",
+          "extraInTotalInPaise",
+          "totalPayableInPaise"
+        ],
+        "title": "ChosenPlanResponse",
+        "description": "The plan the customer agreed to, exactly as shown to them (plan Q17, ADR 0001).\n\nmonthlyInstallmentInPaise is the lender's quoted monthly figure; the extra and the total\ncome from the exact schedule on the sale price."
+      },
+      "CounterSalesResponse": {
+        "properties": {
+          "sales": {
+            "items": {
+              "$ref": "#/components/schemas/SaleSummaryResponse"
+            },
+            "type": "array",
+            "title": "Sales"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sales"
+        ],
+        "title": "CounterSalesResponse",
+        "description": "Today's sales at the counter, newest first; another shop's sales never appear."
       },
       "CreatePaymentLinkRequest": {
         "properties": {
@@ -1596,6 +2424,34 @@
         ],
         "title": "CreatePaymentLinkRequest",
         "description": "The plan the customer chose for one item; every figure is re-quoted server-side."
+      },
+      "CustomerQrResponse": {
+        "properties": {
+          "customerUrl": {
+            "type": "string",
+            "title": "Customerurl",
+            "description": "Encode this in the QR code. The token is in the #t= fragment, which a browser never sends to a server; do not log or store it.",
+            "examples": [
+              "http://localhost:5174/#t=<signed-token>"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiresat",
+            "description": "When the QR code stops working, UTC.",
+            "examples": [
+              "2026-11-15T09:45:00Z"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "customerUrl",
+          "expiresAt"
+        ],
+        "title": "CustomerQrResponse",
+        "description": "What the QR code encodes and when it stops working; shown once, never stored."
       },
       "DevicePairingResponse": {
         "properties": {
@@ -2132,6 +2988,206 @@
         ],
         "title": "PublicPaymentStatus",
         "description": "Where a payment stands, as the UIs see it; decoupled from the stored attempt status.\n\nThe stored statuses may be renamed or split later without breaking the wire contract."
+      },
+      "SaleDetailResponse": {
+        "properties": {
+          "saleId": {
+            "type": "string",
+            "title": "Saleid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+            ]
+          },
+          "sessionCode": {
+            "type": "string",
+            "title": "Sessioncode",
+            "description": "Four digits to tell sales apart on screen; never a credential.",
+            "examples": [
+              "4821"
+            ]
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SaleStatus"
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Statuschangedat",
+            "description": "When the status last changed, UTC."
+          },
+          "chosenPlan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChosenPlanResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "productId": {
+            "type": "string",
+            "title": "Productid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0D"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startedat",
+            "description": "When the sale started, UTC."
+          },
+          "qr": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerQrResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "saleId",
+          "sessionCode",
+          "productName",
+          "priceInPaise",
+          "status",
+          "statusChangedAt",
+          "chosenPlan",
+          "productId",
+          "startedAt",
+          "qr"
+        ],
+        "title": "SaleDetailResponse",
+        "description": "One sale with its product id and start; qr is set only in the answer that issued it."
+      },
+      "SaleStatus": {
+        "type": "string",
+        "enum": [
+          "CHOOSING",
+          "READY_TO_PAY",
+          "PAID",
+          "PAYMENT_NOT_COMPLETED",
+          "EXPIRED"
+        ],
+        "title": "SaleStatus",
+        "description": "The five merchant-visible sale statuses; stored by value, so a rename needs a migration.\n\nNone of them reveals a customer's step-by-step progress: CHOOSING covers everything from the\nQR scan to the moment the customer agrees to a plan."
+      },
+      "SaleSummaryResponse": {
+        "properties": {
+          "saleId": {
+            "type": "string",
+            "title": "Saleid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+            ]
+          },
+          "sessionCode": {
+            "type": "string",
+            "title": "Sessioncode",
+            "description": "Four digits to tell sales apart on screen; never a credential.",
+            "examples": [
+              "4821"
+            ]
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SaleStatus"
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Statuschangedat",
+            "description": "When the status last changed, UTC."
+          },
+          "chosenPlan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChosenPlanResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "saleId",
+          "sessionCode",
+          "productName",
+          "priceInPaise",
+          "status",
+          "statusChangedAt",
+          "chosenPlan"
+        ],
+        "title": "SaleSummaryResponse",
+        "description": "One sale on the counter list: code, product, price, status and, once agreed, the plan."
+      },
+      "SalesView": {
+        "type": "string",
+        "enum": [
+          "counter"
+        ],
+        "title": "SalesView",
+        "description": "Which list of sales to read; the counter view is the only one in Layer 2."
+      },
+      "StartSaleRequest": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Productid",
+            "description": "A product id from GET /api/v1/products.",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0D"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "productId"
+        ],
+        "title": "StartSaleRequest",
+        "description": "The product the customer wants; the price is always the catalogue list price."
       }
     },
     "securitySchemes": {

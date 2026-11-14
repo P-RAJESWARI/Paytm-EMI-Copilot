@@ -63,3 +63,29 @@ def test_pairing_and_merchant_requests_never_log_pin_token_or_authorization(
         "Bearer",
     ):
         assert secret_text not in logged_text
+
+
+def test_sale_requests_never_log_the_qr_token_or_its_url(
+    mock_api: ApiHarness, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Starting a sale and re-issuing its QR code log neither the token nor the customer URL."""
+    shop = store_shop(mock_api, "01JCMERCHANTLOGGING0000002", "SHOP-LOGS-QR")
+    store_demo_catalogue(mock_api, shop.merchant_id, "01JCPRODUCTLOGGINGQR0000")
+    pairing_response = mock_api.client.post(
+        PAIRING_PATH, json={"shopId": shop.shop_code, "pin": shop.pin}
+    )
+    bearer_headers = {"Authorization": f"Bearer {pairing_response.json()['accessToken']}"}
+    with caplog.at_level(logging.DEBUG):
+        sale = mock_api.client.post(
+            "/api/v1/sales",
+            json={"productId": "01JCPRODUCTLOGGINGQR000000"},
+            headers=bearer_headers,
+        ).json()
+        reissued_qr = mock_api.client.post(
+            f"/api/v1/sales/{sale['saleId']}/qr-tokens", headers=bearer_headers
+        ).json()
+        mock_api.client.get("/api/v1/sales?view=counter", headers=bearer_headers)
+    logged_text = render_log_records(caplog.records)
+    for customer_url in (sale["qr"]["customerUrl"], reissued_qr["customerUrl"]):
+        assert customer_url.split("#t=")[1] not in logged_text
+    assert "#t=" not in logged_text
