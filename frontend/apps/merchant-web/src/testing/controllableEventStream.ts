@@ -6,6 +6,8 @@ export interface ControllableEventStream {
   send: (text: string) => void;
   /** Ends the stream as the server would. */
   close: () => void;
+  /** Breaks the stream mid-read with the given error. */
+  fail: (error: Error) => void;
 }
 
 // Builds an event stream whose chunks the test decides, to drive the live status hook.
@@ -24,6 +26,9 @@ export function createControllableEventStream(): ControllableEventStream {
     },
     close: () => {
       streamController?.close();
+    },
+    fail: (error) => {
+      streamController?.error(error);
     },
   };
 }

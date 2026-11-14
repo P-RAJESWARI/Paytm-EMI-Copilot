@@ -169,6 +169,26 @@ describe('useLiveSaleStatus', () => {
     expect(invalidatedKeys(invalidateQueries)).toEqual([['sale'], ['sale']]);
   });
 
+  it('treats an unexpected error as a failed connection and falls back to polling', async () => {
+    const eventStream = createControllableEventStream();
+    const fetchFunction = vi
+      .fn<FetchFunction>()
+      .mockResolvedValueOnce(eventStream.createResponse())
+      .mockRejectedValue(new Error('Unexpected failure'));
+    const { result, invalidateQueries } = renderLiveSaleStatus(fetchFunction);
+    await advance(0);
+
+    eventStream.fail(new RangeError('Unexpected stream failure'));
+    await advance(1_000);
+    expect(fetchFunction).toHaveBeenCalledTimes(2);
+    await advance(2_000 + 4_000);
+    expect(fetchFunction).toHaveBeenCalledTimes(4);
+    expect(result.current.liveStatus.isPolling).toBe(true);
+    await advance(5_000);
+
+    expect(invalidatedKeys(invalidateQueries)).toContainEqual(['sale']);
+  });
+
   it('signs out when the stream says the token is no longer valid', async () => {
     const fetchFunction = vi.fn<FetchFunction>(() =>
       Promise.resolve(problemResponse(401, 'MERCHANT_AUTHENTICATION_REQUIRED')),

@@ -39,15 +39,6 @@ function applyLiveStatusEvent(queryClient: QueryClient, event: ServerSentEvent):
   void queryClient.invalidateQueries({ queryKey: buildSaleQueryKeyPrefix(payload.saleId) });
 }
 
-// True for the failures a dropped or refused stream causes; anything else is a bug and is rethrown.
-function isConnectionFailure(error: unknown): boolean {
-  return (
-    error instanceof TypeError ||
-    error instanceof DOMException ||
-    error instanceof LiveStatusStreamUnavailableError
-  );
-}
-
 // Keeps every sale screen live: follows GET /sales/events with fetch and the Authorization
 // header (the token never goes in a URL), reconnects with growing waits, polls every 5 s after
 // three failures in a row, signs out on 401 and stops on unmount or sign-out.
@@ -99,8 +90,9 @@ export function useLiveSaleStatus(): { isPolling: boolean } {
         await readServerSentEvents(response.body, abortController.signal, (event) => {
           applyLiveStatusEvent(queryClient, event);
         });
-      } catch (error) {
-        if (!isConnectionFailure(error)) throw error;
+      } catch {
+        // Any failure, a dropped stream or an unexpected error, counts as a failed connection, so
+        // the feed backs off and falls back to polling instead of stopping with nothing caught.
       }
       if (!abortController.signal.aborted) scheduleReconnect();
     }
