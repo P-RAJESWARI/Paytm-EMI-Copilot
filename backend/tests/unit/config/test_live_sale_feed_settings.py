@@ -1,5 +1,7 @@
 """Settings for the live sale status stream, the payment rate limits and the Mock simulator."""
 
+from datetime import timedelta
+
 import pytest
 from pydantic import ValidationError
 
@@ -83,3 +85,13 @@ def test_mock_customer_simulator_with_the_paytm_gateway_is_refused(
     monkeypatch.setenv("PAYMENT_GATEWAY_MODE", PaymentGatewayMode.PAYTM.value)
     with pytest.raises(ValidationError, match="refused with PAYMENT_GATEWAY_MODE=paytm"):
         ApplicationSettings()
+
+
+def test_payment_link_creation_is_stale_after_twice_the_connect_plus_read_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """3 s connect and 10 s read by default: an attempt in progress for 26 s is stale."""
+    assert ApplicationSettings().payment_link_creation_stale_after == timedelta(seconds=26)
+    monkeypatch.setenv("PAYMENT_GATEWAY_CONNECT_TIMEOUT_IN_SECONDS", "1.5")
+    monkeypatch.setenv("PAYMENT_GATEWAY_READ_TIMEOUT_IN_SECONDS", "4")
+    assert ApplicationSettings().payment_link_creation_stale_after == timedelta(seconds=11)

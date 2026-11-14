@@ -1,5 +1,6 @@
 """Typed application settings read from environment variables."""
 
+from datetime import timedelta
 from enum import StrEnum
 from typing import Literal, Self
 from urllib.parse import urlsplit
@@ -85,6 +86,19 @@ class ApplicationSettings(BaseSettings):
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"
+
+    @property
+    def payment_link_creation_stale_after(self) -> timedelta:
+        """Gives twice the longest one create-link call can wait: connect plus read timeout.
+
+        A replay finding an attempt in progress for longer stores it as OUTCOME_UNKNOWN (Layer 1
+        handoff question 2): by then that call has surely ended, so its process must have died.
+        """
+        longest_call_in_seconds = (
+            self.payment_gateway_connect_timeout_in_seconds
+            + self.payment_gateway_read_timeout_in_seconds
+        )
+        return 2 * timedelta(seconds=longest_call_in_seconds)
 
     @field_validator(
         "mock_gateway_webhook_signing_secret",

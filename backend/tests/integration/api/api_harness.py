@@ -10,15 +10,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.api.dependencies import (
-    build_merchant_payment_rate_limiter,
-    build_pairing_rate_limiter,
-    build_payment_webhook_rate_limiter,
+    build_rate_limiter,
     provide_clock,
+    provide_payment_gateway,
+    provide_unit_of_work_factory,
+)
+from emi_copilot.api.rate_limiting import (
     provide_merchant_payment_rate_limiter,
     provide_pairing_rate_limiter,
-    provide_payment_gateway,
     provide_payment_webhook_rate_limiter,
-    provide_unit_of_work_factory,
 )
 from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.domain.payments import AuditEvent, AuditEventType, PaymentAttempt
@@ -72,9 +72,21 @@ def open_api_harness(
     """
     settings = settings or ApplicationSettings()
     application = create_application(settings, id_generator=SequentialIdGenerator())
-    pairing_rate_limiter = build_pairing_rate_limiter(settings, clock)
-    merchant_payment_rate_limiter = build_merchant_payment_rate_limiter(settings, clock)
-    payment_webhook_rate_limiter = build_payment_webhook_rate_limiter(settings, clock)
+    pairing_rate_limiter = build_rate_limiter(
+        clock,
+        settings.merchant_pairing_rate_limit_max_requests,
+        settings.merchant_pairing_rate_limit_window_in_seconds,
+    )
+    merchant_payment_rate_limiter = build_rate_limiter(
+        clock,
+        settings.merchant_payment_rate_limit_max_requests,
+        settings.merchant_payment_rate_limit_window_in_seconds,
+    )
+    payment_webhook_rate_limiter = build_rate_limiter(
+        clock,
+        settings.payment_webhook_rate_limit_max_requests,
+        settings.payment_webhook_rate_limit_window_in_seconds,
+    )
     application.dependency_overrides[provide_payment_gateway] = lambda: payment_gateway
     application.dependency_overrides[provide_unit_of_work_factory] = lambda: partial(
         SqlAlchemyUnitOfWork, session_factory, clock

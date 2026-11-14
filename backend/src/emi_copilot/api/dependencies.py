@@ -72,11 +72,7 @@ class ApplicationComponents:
 def build_event_bus(
     id_generator: IdGenerator, sale_status_broadcaster: SaleStatusBroadcaster
 ) -> DomainEventBus:
-    """Builds the one event bus: audit first, then the funnel, sale payment rules and live feed.
-
-    The live feed is last and only queues after-commit work, so it never writes or fails a use
-    case.
-    """
+    """Builds the one event bus: audit, funnel, sale payment rules, then the after-commit feed."""
     event_bus = DomainEventBus()
     AuditSubscriber(id_generator).subscribe_to(event_bus)
     FunnelEventRecorder(id_generator).subscribe_to(event_bus)
@@ -110,46 +106,32 @@ def build_application_components(
         database_engine=database_engine,
         unit_of_work_factory=partial(SqlAlchemyUnitOfWork, session_factory, clock),
         pin_hasher=ScryptPinHasher(),
-        pairing_rate_limiter=build_pairing_rate_limiter(settings, clock),
-        merchant_payment_rate_limiter=build_merchant_payment_rate_limiter(settings, clock),
-        payment_webhook_rate_limiter=build_payment_webhook_rate_limiter(settings, clock),
+        pairing_rate_limiter=build_rate_limiter(
+            clock,
+            settings.merchant_pairing_rate_limit_max_requests,
+            settings.merchant_pairing_rate_limit_window_in_seconds,
+        ),
+        merchant_payment_rate_limiter=build_rate_limiter(
+            clock,
+            settings.merchant_payment_rate_limit_max_requests,
+            settings.merchant_payment_rate_limit_window_in_seconds,
+        ),
+        payment_webhook_rate_limiter=build_rate_limiter(
+            clock,
+            settings.payment_webhook_rate_limit_max_requests,
+            settings.payment_webhook_rate_limit_window_in_seconds,
+        ),
         customer_qr_signing_key=customer_qr_signing_key,
         session_code_generator=RandomSessionCodeGenerator(),
         sale_status_broadcaster=sale_status_broadcaster,
     )
 
 
-def build_pairing_rate_limiter(
-    settings: ApplicationSettings, clock: Clock
+def build_rate_limiter(
+    clock: Clock, maximum_requests: int, window_in_seconds: int
 ) -> FixedWindowRateLimiter:
-    """Builds the per-client limiter for pairing requests from the configured window."""
-    return FixedWindowRateLimiter(
-        clock,
-        settings.merchant_pairing_rate_limit_max_requests,
-        timedelta(seconds=settings.merchant_pairing_rate_limit_window_in_seconds),
-    )
-
-
-def build_merchant_payment_rate_limiter(
-    settings: ApplicationSettings, clock: Clock
-) -> FixedWindowRateLimiter:
-    """Builds the per-shop limiter for payment links and status checks from the settings."""
-    return FixedWindowRateLimiter(
-        clock,
-        settings.merchant_payment_rate_limit_max_requests,
-        timedelta(seconds=settings.merchant_payment_rate_limit_window_in_seconds),
-    )
-
-
-def build_payment_webhook_rate_limiter(
-    settings: ApplicationSettings, clock: Clock
-) -> FixedWindowRateLimiter:
-    """Builds the per-client limiter for gateway webhooks from the settings."""
-    return FixedWindowRateLimiter(
-        clock,
-        settings.payment_webhook_rate_limit_max_requests,
-        timedelta(seconds=settings.payment_webhook_rate_limit_window_in_seconds),
-    )
+    """Builds one in-memory limiter: at most the given requests per key in each window."""
+    return FixedWindowRateLimiter(clock, maximum_requests, timedelta(seconds=window_in_seconds))
 
 
 def build_application_lifespan(
@@ -209,25 +191,6 @@ def provide_pin_hasher(components: ComponentsDependency) -> ScryptPinHasher:
     return components.pin_hasher
 
 
-def provide_pairing_rate_limiter(components: ComponentsDependency) -> FixedWindowRateLimiter:
-    """Gives the one pairing rate limiter, whose counts span requests."""
-    return components.pairing_rate_limiter
-
-
-def provide_merchant_payment_rate_limiter(
-    components: ComponentsDependency,
-) -> FixedWindowRateLimiter:
-    """Gives the one per-shop limiter of gateway-backed merchant calls."""
-    return components.merchant_payment_rate_limiter
-
-
-def provide_payment_webhook_rate_limiter(
-    components: ComponentsDependency,
-) -> FixedWindowRateLimiter:
-    """Gives the one per-client limiter of gateway webhooks."""
-    return components.payment_webhook_rate_limiter
-
-
 def provide_access_token_lifetime(components: ComponentsDependency) -> timedelta:
     """Gives how long a paired device's bearer token lasts."""
     return timedelta(seconds=components.settings.merchant_access_token_lifetime_in_seconds)
@@ -239,15 +202,6 @@ ClockDependency = Annotated[Clock, Depends(provide_clock)]
 IdGeneratorDependency = Annotated[IdGenerator, Depends(provide_id_generator)]
 EventBusDependency = Annotated[DomainEventBus, Depends(provide_event_bus)]
 PinHasherDependency = Annotated[ScryptPinHasher, Depends(provide_pin_hasher)]
-PairingRateLimiterDependency = Annotated[
-    FixedWindowRateLimiter, Depends(provide_pairing_rate_limiter)
-]
-MerchantPaymentRateLimiterDependency = Annotated[
-    FixedWindowRateLimiter, Depends(provide_merchant_payment_rate_limiter)
-]
-PaymentWebhookRateLimiterDependency = Annotated[
-    FixedWindowRateLimiter, Depends(provide_payment_webhook_rate_limiter)
-]
 AccessTokenLifetimeDependency = Annotated[timedelta, Depends(provide_access_token_lifetime)]
 
 
@@ -259,19 +213,6 @@ def provide_offer_discovery_service(
 ) -> OfferDiscoveryService:
     """Assembles the offer discovery service from the injected components."""
     return OfferDiscoveryService(payment_gateway, unit_of_work_factory, clock, event_bus)
-
-
-def calculate_link_creation_stale_after(settings: ApplicationSettings) -> timedelta:
-    """Gives twice the longest one create-link call can wait: connect plus read timeout.
-
-    A replay finding an attempt in progress for longer stores it as OUTCOME_UNKNOWN (Layer 1
-    handoff question 2): by then the call has surely ended, so its process must have died.
-    """
-    longest_call_in_seconds = (
-        settings.payment_gateway_connect_timeout_in_seconds
-        + settings.payment_gateway_read_timeout_in_seconds
-    )
-    return 2 * timedelta(seconds=longest_call_in_seconds)
 
 
 def provide_payment_handoff_service(  # noqa: PLR0913 - one parameter per injected component
@@ -290,7 +231,7 @@ def provide_payment_handoff_service(  # noqa: PLR0913 - one parameter per inject
         clock,
         id_generator,
         event_bus,
-        link_creation_stale_after=calculate_link_creation_stale_after(components.settings),
+        link_creation_stale_after=components.settings.payment_link_creation_stale_after,
     )
 
 

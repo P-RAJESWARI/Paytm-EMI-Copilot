@@ -212,9 +212,7 @@ def test_hand_off_of_another_shops_sale_is_not_found(kit: ServiceTestKit) -> Non
         service.check_payment_status(OTHER_PRINCIPAL, SALE_ID)
 
 
-def test_create_payment_link_for_a_sale_whose_product_vanished_raises(
-    kit: ServiceTestKit,
-) -> None:
+def test_create_payment_link_for_a_sale_whose_product_vanished_raises(kit: ServiceTestKit) -> None:
     """A stored sale always has its product; if not, nothing is guessed."""
     _store_sale(kit, SaleStatus.READY_TO_PAY)
     kit.database.products_by_id.clear()
@@ -274,9 +272,7 @@ def test_check_payment_status_applies_a_paid_report_to_the_attempt_and_the_sale(
     assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.PAID
 
 
-def test_check_payment_status_of_a_failed_payment_shows_not_completed(
-    kit: ServiceTestKit,
-) -> None:
+def test_check_payment_status_of_a_failed_payment_shows_not_completed(kit: ServiceTestKit) -> None:
     """A failed payment is "not completed", never "declined"."""
     _store_sale(kit, SaleStatus.READY_TO_PAY)
     service = _build_service(kit)
