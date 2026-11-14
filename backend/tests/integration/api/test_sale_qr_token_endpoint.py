@@ -28,7 +28,7 @@ def test_post_qr_tokens_issues_a_new_qr_while_choosing(
     assert response.status_code == 201
     body = response.json()
     assert set(body) == {"customerUrl", "expiresAt"}
-    assert body["customerUrl"] != started["qr"]["customerUrl"]  # type: ignore[index]
+    assert body["customerUrl"] != started["qr"]["customerUrl"]
     assert body["expiresAt"] == "2026-11-14T10:55:00Z"
     assert response.headers["Location"] == f"{SALES_PATH}/{started['saleId']}"
     assert response.headers["Cache-Control"] == "no-store"

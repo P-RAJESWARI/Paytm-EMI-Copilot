@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from tests.integration.api.api_harness import ApiHarness
@@ -57,11 +58,11 @@ def store_and_pair_two_shops(mock_api: ApiHarness) -> TwoShops:
 
 def start_sale(
     harness: ApiHarness, headers: dict[str, str], product_id: str = PHONE_128_GB_ID
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Starts a sale through the API and gives its JSON body."""
     response = harness.client.post(SALES_PATH, json={"productId": product_id}, headers=headers)
     assert response.status_code == 201, response.text
-    body: dict[str, object] = response.json()
+    body: dict[str, Any] = response.json()
     return body
 
 
