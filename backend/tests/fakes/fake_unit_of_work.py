@@ -85,6 +85,17 @@ class FakePaymentAttemptRepository:
         """Returns the attempt for the order id; a single-threaded fake needs no lock."""
         return self.find_by_order_id(order_id)
 
+    def find_latest_for_sale(self, sale_id: str) -> PaymentAttempt | None:
+        """Returns the sale's newest attempt by creation time, then id, as the real query does."""
+        sale_attempts = [
+            attempt
+            for attempt in self._payment_attempts_by_id.values()
+            if attempt.sale_id == sale_id
+        ]
+        return max(
+            sale_attempts, key=lambda attempt: (attempt.created_at, attempt.id), default=None
+        )
+
     def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
         """Saves only the mutable fields and stamps updated_at, as the real repository does."""
         stored_attempt = self._payment_attempts_by_id.get(payment_attempt.id)

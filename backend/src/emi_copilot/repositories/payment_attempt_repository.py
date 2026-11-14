@@ -134,6 +134,20 @@ class PaymentAttemptRepository:
             PaymentAttemptModel.order_id == order_id, is_locked_for_update=True
         )
 
+    def find_latest_for_sale(self, sale_id: str) -> PaymentAttempt | None:
+        """Returns the sale's most recently created attempt, or None when it has none.
+
+        Attempts created in the same instant are told apart by id, which is time-ordered (ULID).
+        """
+        statement = (
+            select(PaymentAttemptModel)
+            .where(PaymentAttemptModel.sale_id == sale_id)
+            .order_by(PaymentAttemptModel.created_at.desc(), PaymentAttemptModel.id.desc())
+            .limit(1)
+        )
+        payment_attempt_model = self._session.scalars(statement).first()
+        return None if payment_attempt_model is None else _to_domain(payment_attempt_model)
+
     def _find_one_where(
         self, condition: ColumnElement[bool], *, is_locked_for_update: bool = False
     ) -> PaymentAttempt | None:

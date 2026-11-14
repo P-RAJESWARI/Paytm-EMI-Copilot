@@ -42,6 +42,10 @@ class PaymentAttemptStore(Protocol):
         """Saves the mutable fields of a stored attempt and returns the stored attempt."""
         ...
 
+    def find_latest_for_sale(self, sale_id: str) -> PaymentAttempt | None:
+        """Returns the sale's most recently created attempt, or None when it has none."""
+        ...
+
 
 class AuditEventStore(Protocol):
     """Appends audit events; there is deliberately no update or delete."""

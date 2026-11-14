@@ -12,13 +12,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import PaymentAttemptStatus, PaymentLinkFailureCode
+from emi_copilot.domain.sales import SaleStatus
+from emi_copilot.repositories.merchant_repository import MerchantRepository
 from emi_copilot.repositories.payment_attempt_repository import PaymentAttemptRepository
+from emi_copilot.repositories.product_repository import ProductRepository
+from emi_copilot.repositories.sale_repository import SaleRepository
 from tests.fixed_clock import FixedClock
+from tests.merchant_builders import build_catalogue_product, build_merchant
 from tests.payment_builders import (
     CREATED_AT,
     build_payment_attempt,
     build_standard_offer_snapshot,
 )
+from tests.sale_builders import SALE_ID, build_sale
 
 pytestmark = pytest.mark.integration
 
@@ -203,3 +209,32 @@ def test_find_by_order_id_for_update_returns_the_attempt_or_none(
     repository.add(payment_attempt)
     assert repository.find_by_order_id_for_update(payment_attempt.order_id) == payment_attempt
     assert repository.find_by_order_id_for_update("ORDER-NOT-STORED") is None
+
+
+def test_find_latest_for_sale_gives_the_newest_attempt_of_that_sale_only(
+    repository: PaymentAttemptRepository, session: Session, fixed_clock: FixedClock
+) -> None:
+    """Newest by creation time, then id; other sales' and sale-less attempts are ignored."""
+    MerchantRepository(session, fixed_clock).add(build_merchant())
+    ProductRepository(session, fixed_clock).add(build_catalogue_product())
+    SaleRepository(session, fixed_clock).add(build_sale(status=SaleStatus.READY_TO_PAY))
+    older_attempt = build_payment_attempt(1, sale_id=SALE_ID)
+    same_moment_higher_id_attempt = build_payment_attempt(2, sale_id=SALE_ID)
+    newest_attempt = build_payment_attempt(
+        3,
+        sale_id=SALE_ID,
+        created_at=CREATED_AT + timedelta(minutes=1),
+        updated_at=CREATED_AT + timedelta(minutes=1),
+    )
+    sale_less_newer_attempt = build_payment_attempt(
+        4,
+        created_at=CREATED_AT + timedelta(minutes=2),
+        updated_at=CREATED_AT + timedelta(minutes=2),
+    )
+    for attempt in (older_attempt, same_moment_higher_id_attempt):
+        repository.add(attempt)
+    assert repository.find_latest_for_sale(SALE_ID) == same_moment_higher_id_attempt
+    repository.add(newest_attempt)
+    repository.add(sale_less_newer_attempt)
+    assert repository.find_latest_for_sale(SALE_ID) == newest_attempt
+    assert repository.find_latest_for_sale("01JCSALE000000000000000099") is None
