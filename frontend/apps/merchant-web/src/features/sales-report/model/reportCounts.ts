@@ -1,6 +1,6 @@
-import { groupDigitsTheIndianWay } from '@emi-copilot/shared-i18n';
 import type { TFunction } from 'i18next';
 
+import { formatCountTheIndianWay } from '../../../shared/formatting/formatCount';
 import type { FunnelReport } from '../api/salesReportApi';
 
 /** A count the API may hide: 1 to 4 customers come as isSuppressed with no number (plan Q3). */
@@ -15,7 +15,7 @@ export function formatPossiblySuppressedCount(
   count: PossiblySuppressedCount,
 ): string {
   if (count.isSuppressed || count.customerCount === null) return t('report.fewerThanFive');
-  return groupDigitsTheIndianWay(count.customerCount);
+  return formatCountTheIndianWay(count.customerCount);
 }
 
 // True when nobody started an EMI sale in the range, so M5 shows its empty state instead.
