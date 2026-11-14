@@ -46,3 +46,30 @@ def test_reported_count_refuses_a_number_that_contradicts_its_flag(
     """A suppressed count cannot leak its number, and a shown one must have one."""
     with pytest.raises(InvalidReportDataError, match="suppressed"):
         ReportedCount(customer_count, is_suppressed=is_suppressed)
+
+
+@pytest.mark.parametrize(
+    ("customer_count", "previous_count", "expected_reported_count"),
+    [
+        (0, ReportedCount(None, is_suppressed=True), ReportedCount(None, is_suppressed=True)),
+        (0, ReportedCount(7, is_suppressed=False), ReportedCount(0, is_suppressed=False)),
+        (0, ReportedCount(0, is_suppressed=False), ReportedCount(0, is_suppressed=False)),
+        (3, ReportedCount(9, is_suppressed=False), ReportedCount(None, is_suppressed=True)),
+        (6, ReportedCount(None, is_suppressed=True), ReportedCount(6, is_suppressed=False)),
+    ],
+)
+def test_report_after_suppresses_a_zero_that_follows_a_suppressed_count(
+    customer_count: int, previous_count: ReportedCount, expected_reported_count: ReportedCount
+) -> None:
+    """A 0 beside "fewer than 5" would show where those few stopped; other counts as usual."""
+    policy = SmallCountSuppressionPolicy()
+    assert policy.report_after(customer_count, previous_count) == expected_reported_count
+
+
+def test_report_after_still_refuses_a_non_integer_count() -> None:
+    """The sequence rule never skips the count's own checks."""
+    with pytest.raises(InvalidReportDataError, match="count"):
+        SmallCountSuppressionPolicy().report_after(
+            False,
+            ReportedCount(None, is_suppressed=True),
+        )

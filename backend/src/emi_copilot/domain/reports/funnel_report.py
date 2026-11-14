@@ -58,11 +58,29 @@ def find_biggest_drop(counts_by_stage: Mapping[FunnelStage, int]) -> FunnelDropS
     return biggest_drop
 
 
+def report_stage_counts(
+    counts_by_stage: Mapping[FunnelStage, int], policy: SmallCountSuppressionPolicy
+) -> tuple[FunnelStageCount, ...]:
+    """Reports every stage in order; a zero right after a suppressed stage is suppressed too.
+
+    The cascade carries on: a zero after that suppressed zero is suppressed as well, so no 0
+    ever stands beside "fewer than 5" and shows where those few customers stopped.
+    """
+    stage_counts: list[FunnelStageCount] = []
+    previous_count = policy.report(0)
+    for stage in FUNNEL_STAGE_ORDER:
+        reported_count = policy.report_after(counts_by_stage.get(stage, 0), previous_count)
+        stage_counts.append(FunnelStageCount(stage, reported_count))
+        previous_count = reported_count
+    return tuple(stage_counts)
+
+
 @dataclass(frozen=True, slots=True)
 class FunnelReport:
     """A cohort funnel: the sales started in the period, counted by every stage each reached.
 
-    Counts from 1 to 4, and a biggest drop of that size, are suppressed (plan Q3).
+    Counts from 1 to 4, a zero right after a suppressed stage, and a biggest drop of 1 to 4
+    are suppressed (plan Q3). The cohort holds no sale still CHOOSING (ReportQueryRepository).
     """
 
     stages: tuple[FunnelStageCount, ...]
@@ -75,10 +93,7 @@ class FunnelReport:
         """Builds the report from raw counts per stage; a stage missing from them counts zero."""
         drop_size = find_biggest_drop(counts_by_stage)
         return cls(
-            stages=tuple(
-                FunnelStageCount(stage, policy.report(counts_by_stage.get(stage, 0)))
-                for stage in FUNNEL_STAGE_ORDER
-            ),
+            stages=report_stage_counts(counts_by_stage, policy),
             biggest_drop=(
                 None
                 if drop_size is None

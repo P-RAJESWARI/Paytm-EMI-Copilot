@@ -91,6 +91,7 @@ def build_report_services(kit: ServiceTestKit) -> ReportServices:
     analyser = MissedSalesAnalyser(
         kit.unit_of_work_factory,
         OfferDiscoveryService(gateway, kit.unit_of_work_factory, kit.clock, kit.event_bus),
+        policy,
     )
     funnel = FunnelReportService(kit.unit_of_work_factory, periods, policy)
     missed_sales = MissedSalesReportService(analyser, periods, policy)
@@ -149,8 +150,13 @@ class SyntheticWeek:
         *,
         product_id: str = PHONE_128_GB_ID,
         started_at: datetime | None = None,
+        status: SaleStatus | None = None,
     ) -> None:
-        """Stores one sale that reached every stage up to last_stage, budget on BUDGET_TOLD."""
+        """Stores one sale that reached every stage up to last_stage, budget on BUDGET_TOLD.
+
+        Its status is PAID once agreed and EXPIRED before, unless one is given (CHOOSING for a
+        customer still at the counter).
+        """
         self._sale_number += 1
         moment = started_at or self._kit.clock.now() - timedelta(hours=self._sale_number)
         product = self._kit.database.products_by_id[product_id]
@@ -162,7 +168,7 @@ class SyntheticWeek:
             product_id=product_id,
             price=Money.from_rupees("22000"),
             session_code=SessionCode(f"{self._sale_number:04d}"),
-            status=SaleStatus.PAID if has_agreed else SaleStatus.EXPIRED,
+            status=status or (SaleStatus.PAID if has_agreed else SaleStatus.EXPIRED),
             started_at=moment,
             status_changed_at=moment,
         )
@@ -183,10 +189,11 @@ class SyntheticWeek:
             )
 
 
-def store_synthetic_week(kit: ServiceTestKit) -> None:
+def store_synthetic_week(kit: ServiceTestKit) -> SyntheticWeek:
     """Six missed on the 128 GB phone (₹2,400 to ₹2,950), two agreed, one 64 GB not missed.
 
     Plus one missed sale of another shop and one of last week, which no report may count.
+    Gives the week, so a test can store more sales after these.
     """
     week = SyntheticWeek(kit)
     for budget_in_rupees in ("2400", "2600", "2700", "2800", "2900", "2950"):
@@ -198,3 +205,4 @@ def store_synthetic_week(kit: ServiceTestKit) -> None:
     week.store_sale(
         FunnelStage.PLANS_VIEWED, "1000", started_at=kit.clock.now() - timedelta(days=7)
     )
+    return week

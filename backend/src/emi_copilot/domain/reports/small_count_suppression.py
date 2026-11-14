@@ -25,7 +25,8 @@ class ReportedCount:
 class SmallCountSuppressionPolicy:
     """The one rule every report applies to a count: zero and 5 or more are shown, 1 to 4 are not.
 
-    Zero is shown because it identifies nobody, and the empty report must read as empty.
+    Zero is shown because it identifies nobody, and the empty report must read as empty; the one
+    exception is a zero that follows a suppressed count in a sequence (report_after).
     """
 
     def __init__(self, minimum_shown_count: int = MINIMUM_SHOWN_CUSTOMER_COUNT) -> None:
@@ -46,3 +47,14 @@ class SmallCountSuppressionPolicy:
         if 0 < customer_count < self._minimum_shown_count:
             return ReportedCount(customer_count=None, is_suppressed=True)
         return ReportedCount(customer_count=customer_count, is_suppressed=False)
+
+    def report_after(self, customer_count: int, previous_count: ReportedCount) -> ReportedCount:
+        """Reports a count that follows another in a sequence, such as the next funnel stage.
+
+        A zero right after a suppressed count is suppressed too: a 0 beside "fewer than 5" would
+        tell the merchant that those few customers all stopped at the earlier step.
+        """
+        reported_count = self.report(customer_count)
+        if previous_count.is_suppressed and customer_count == 0:
+            return ReportedCount(customer_count=None, is_suppressed=True)
+        return reported_count

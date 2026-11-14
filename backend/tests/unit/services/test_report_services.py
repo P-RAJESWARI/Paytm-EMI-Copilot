@@ -8,17 +8,24 @@ import pytest
 from emi_copilot.domain.errors import InvalidReportingPeriodError
 from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.money import Money
+from emi_copilot.domain.reports.funnel_report import FunnelReport
+from emi_copilot.domain.reports.missed_sales import MissedSalesReport
 from emi_copilot.domain.reports.reporting_period import ReportingRange
 from emi_copilot.domain.reports.small_count_suppression import ReportedCount
 from emi_copilot.domain.reports.suggested_actions import (
     CheaperModelAction,
     LongerNoCostPlanAction,
+    SuggestedAction,
 )
+from emi_copilot.domain.reports.weekly_message_template import WeeklyMessages
+from emi_copilot.domain.sales import SaleStatus
 from tests.payment_builders import CREATED_AT
 from tests.unit.services.conftest import ServiceTestKit
 from tests.unit.services.report_service_wiring import (
     PHONE_64_GB_ID,
     PHONE_128_GB_ID,
+    ReportServices,
+    SyntheticWeek,
     build_report_services,
     store_synthetic_week,
 )
@@ -36,8 +43,10 @@ def test_funnel_report_counts_this_weeks_cohort_of_the_shop_only(kit: ServiceTes
         CURRENT_WEEK_MONDAY,
         date(2026, 11, 15),
     )
-    assert [stage.count.customer_count for stage in view.report.stages] == [9, 9, 9, None, 0]
+    assert [stage.count.customer_count for stage in view.report.stages] == [9, 9, 9, None, None]
     assert view.report.count_for(FunnelStage.AGREED) == ReportedCount(None, is_suppressed=True)
+    # PAID is 0 right after the suppressed AGREED, so it is suppressed too.
+    assert view.report.count_for(FunnelStage.PAID) == ReportedCount(None, is_suppressed=True)
     assert view.report.biggest_drop is not None
     assert view.report.biggest_drop.after_stage is FunnelStage.PLANS_VIEWED
 
@@ -164,3 +173,73 @@ def test_weekly_message_of_a_past_week_can_be_read(kit: ServiceTestKit) -> None:
     )
     assert view.messages.english.title == "Your EMI sales, 2 to 8 November"
     assert "wanted under" not in " ".join(view.messages.english.paragraphs)
+
+
+EveryReport = tuple[FunnelReport, MissedSalesReport, tuple[SuggestedAction, ...], WeeklyMessages]
+
+
+def _read_every_report(services: ReportServices, reporting_range: ReportingRange) -> EveryReport:
+    """Reads the funnel, missed sales, actions and this week's message as the merchant would."""
+    return (
+        services.funnel.get_funnel_report(PRINCIPAL, reporting_range).report,
+        services.missed_sales.get_missed_sales_report(PRINCIPAL, reporting_range).report,
+        services.suggested_actions.get_suggested_actions(PRINCIPAL, reporting_range),
+        services.weekly_message.get_weekly_message(PRINCIPAL, None).messages,
+    )
+
+
+@pytest.mark.parametrize("reporting_range", list(ReportingRange))
+def test_a_sale_still_choosing_never_changes_any_report(
+    kit: ServiceTestKit, reporting_range: ReportingRange
+) -> None:
+    """Rule 6: a customer at the counter with a low budget and the plans seen adds nothing."""
+    week = store_synthetic_week(kit)
+    services = build_report_services(kit)
+    before = _read_every_report(services, reporting_range)
+    week.store_sale(
+        FunnelStage.PLANS_VIEWED,
+        "1000",
+        started_at=kit.clock.now() - timedelta(minutes=5),
+        status=SaleStatus.CHOOSING,
+    )
+    assert _read_every_report(services, reporting_range) == before
+
+
+def test_today_with_one_customer_choosing_after_a_low_budget_shows_nothing_of_them(
+    kit: ServiceTestKit,
+) -> None:
+    """The only sale today is still choosing: zeros, no ceiling, no product, no action."""
+    SyntheticWeek(kit).store_sale(FunnelStage.PLANS_VIEWED, "2400", status=SaleStatus.CHOOSING)
+    funnel, missed_sales, actions, messages = _read_every_report(
+        build_report_services(kit), ReportingRange.TODAY
+    )
+    assert [stage.count for stage in funnel.stages] == [ReportedCount(0, is_suppressed=False)] * 5
+    assert missed_sales.missed_count == ReportedCount(0, is_suppressed=False)
+    assert (missed_sales.budget_ceiling, missed_sales.product_insight) == (None, None)
+    assert actions == ()
+    assert messages.english.paragraphs == ("No EMI sales this week yet.",)
+
+
+def test_a_suppressed_missed_count_hides_every_figure_derived_from_it(kit: ServiceTestKit) -> None:
+    """Three missed of eight budgets: no ceiling, product, under-ceiling bucket or action."""
+    week = SyntheticWeek(kit)
+    for budget_in_rupees in ("2400", "2600", "2900"):
+        week.store_sale(FunnelStage.PLANS_VIEWED, budget_in_rupees)
+    for _ in range(5):
+        week.store_sale(FunnelStage.AGREED, "3200")
+    services = build_report_services(kit)
+    report = services.missed_sales.get_missed_sales_report(
+        PRINCIPAL, ReportingRange.THIS_WEEK
+    ).report
+    actions = services.suggested_actions.get_suggested_actions(PRINCIPAL, ReportingRange.THIS_WEEK)
+    message = services.weekly_message.get_weekly_message(PRINCIPAL, None).messages.english
+    assert report.missed_count == ReportedCount(None, is_suppressed=True)
+    assert (report.budget_ceiling, report.product_insight) == (None, None)
+    assert report.budget_buckets.are_buckets_hidden is False
+    assert [bucket.is_under_ceiling for bucket in report.budget_buckets.buckets] == [False] * 5
+    assert [bucket.plans for bucket in report.budget_buckets.buckets] == [()] * 5
+    assert actions == ()
+    assert message.paragraphs == (
+        "0 of 8 customers bought on EMI. "
+        "The biggest drop was after agreeing to a plan, before paying.",
+    )

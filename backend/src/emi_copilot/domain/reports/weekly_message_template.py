@@ -90,7 +90,7 @@ class WeeklyMessageTemplate:
                     self._describe_money_due(wording, facts.money_due),
                 ]
             ),
-            _join_sentences([self._describe_first_action(wording, facts.suggested_actions)]),
+            _join_sentences([self._describe_first_action(wording, facts)]),
         )
         return WeeklyMessageText(
             title=_describe_period(wording, facts.period),
@@ -138,12 +138,16 @@ class WeeklyMessageTemplate:
         )
 
     def _describe_first_action(
-        self, wording: WeeklyMessageWording, suggested_actions: Sequence[SuggestedAction]
+        self, wording: WeeklyMessageWording, facts: WeeklyMessageFacts
     ) -> str | None:
-        """Says the first suggested action with its computed figures; None without one."""
-        if not suggested_actions:
+        """Says the first suggested action with its computed figures; None without one.
+
+        Every action comes from the missed sales, so none is said while their count is
+        suppressed: its figures would describe one to four customers.
+        """
+        if not facts.suggested_actions or facts.missed_sales.missed_count.is_suppressed:
             return None
-        action = suggested_actions[0]
+        action = facts.suggested_actions[0]
         if isinstance(action, LongerNoCostPlanAction):
             return self._describe_longer_no_cost_action(wording, action)
         return self._describe_cheaper_model_action(wording, action)

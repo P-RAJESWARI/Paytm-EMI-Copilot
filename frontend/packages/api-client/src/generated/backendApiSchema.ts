@@ -317,7 +317,7 @@ export interface paths {
         };
         /**
          * Read where customers drop off
-         * @description M5 funnel: the sales started in the period (a cohort), counted by every stage each reached: STARTED, BUDGET_TOLD, PLANS_VIEWED, AGREED, PAID. biggestDrop is the largest fall between adjacent stages (afterStage is the earlier one; ties go to the earliest), null when no stage falls. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
+         * @description M5 funnel: the sales started in the period (a cohort), counted by every stage each reached: STARTED, BUDGET_TOLD, PLANS_VIEWED, AGREED, PAID. biggestDrop is the largest fall between adjacent stages (afterStage is the earlier one; ties go to the earliest), null when no stage falls. Only sales that are no longer CHOOSING are counted (READY_TO_PAY, PAID, PAYMENT_NOT_COMPLETED, EXPIRED), so a customer still at the counter shows in no report. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown, except a 0 right after a suppressed funnel stage, which is suppressed too. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
          */
         get: operations["get_funnel_report_api_v1_reports_funnel_get"];
         put?: never;
@@ -337,7 +337,7 @@ export interface paths {
         };
         /**
          * Read the missed sales and monthly budget ranges
-         * @description M5 missed sales: sales started in the period that told a monthly amount below the cheapest no-extra-cost plan of their product and never agreed. budgetCeilingInPaise is the smallest range boundary (₹2,500, ₹3,000, ₹3,500, ₹4,000) at or above every missed amount, null when none was missed or one lies above ₹4,000. productInsight is the product with the most missed sales, with gateway-quoted figures. budgetBuckets counts every told amount per range (lower bound included); fewer than 5 tellers hide them all (areBudgetBucketsHidden). The gateway is asked for each product's plans. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
+         * @description M5 missed sales: sales started in the period that told a monthly amount below the cheapest no-extra-cost plan of their product and never agreed. budgetCeilingInPaise is the smallest range boundary (₹2,500, ₹3,000, ₹3,500, ₹4,000) at or above every missed amount, null when none was missed or one lies above ₹4,000. productInsight is the product with the most missed sales, with gateway-quoted figures. budgetBuckets counts every told amount per range (lower bound included); fewer than 5 tellers hide them all (areBudgetBucketsHidden). Figures derived from a suppressed missed count are left out: with missedCustomerCount suppressed, budgetCeilingInPaise and productInsight are null, no bucket isUnderCeiling and no bucket lists plans; with only the insight product's own count from 1 to 4, productInsight is null and no bucket lists plans. The gateway is asked for each product's plans. Only sales that are no longer CHOOSING are counted (READY_TO_PAY, PAID, PAYMENT_NOT_COMPLETED, EXPIRED), so a customer still at the counter shows in no report. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown, except a 0 right after a suppressed funnel stage, which is suppressed too. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
          */
         get: operations["get_missed_sales_report_api_v1_reports_missed_sales_get"];
         put?: never;
@@ -357,7 +357,7 @@ export interface paths {
         };
         /**
          * Read what the shop can do to sell more
-         * @description Deterministic suggestions as stable codes with paise parameters, never prose: ASK_BRAND_FOR_LONGER_NO_COST_PLAN (9 and 12-month no-cost installments on the insight product's price) and KEEP_CHEAPER_MODEL_READY (a cheaper model whose no-extra-cost monthly fits under the ceiling). Empty when nothing was missed. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
+         * @description Deterministic suggestions as stable codes with paise parameters, never prose: ASK_BRAND_FOR_LONGER_NO_COST_PLAN (9 and 12-month no-cost installments on the insight product's price) and KEEP_CHEAPER_MODEL_READY (a cheaper model whose no-extra-cost monthly fits under the ceiling). Empty when nothing was missed, and while the missed count (or the insight product's own) is from 1 to 4. Only sales that are no longer CHOOSING are counted (READY_TO_PAY, PAID, PAYMENT_NOT_COMPLETED, EXPIRED), so a customer still at the counter shows in no report. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown, except a 0 right after a suppressed funnel stage, which is suppressed too. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
          */
         get: operations["get_suggested_actions_api_v1_reports_suggested_actions_get"];
         put?: never;
@@ -802,7 +802,7 @@ export interface components {
         };
         /**
          * FunnelReportResponse
-         * @description M5 "Where customers drop off": the cohort of sales started in the period.
+         * @description M5 "Where customers drop off": the period's started sales that are no longer CHOOSING.
          */
         FunnelReportResponse: {
             range: components["schemas"]["ReportingRange"];

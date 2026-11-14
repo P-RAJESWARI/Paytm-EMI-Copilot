@@ -4,8 +4,12 @@
 seeing the plans). Budgets per range 5, 7, 14, 21, 49 (96). The 12 budgets under ₹3,000 are the
 12 missed sales, all on the 128 GB phone (cheapest no-cost plan ₹3,666.67). Every other budget
 below its product's cheapest no-cost monthly belongs to a sale that agreed, and the 8 who left
-before the plans told budgets at or above it. Three of the 120 are today's M2 counter sales:
-4812 PAID (earbuds), 4817 READY_TO_PAY (64 GB phone, no-cost plan), 4821 CHOOSING (128 GB).
+before the plans told budgets at or above it. Today's three M2 counter sales are 4812 PAID
+(earbuds), 4817 READY_TO_PAY (64 GB phone, no-cost plan) and 4821 CHOOSING (128 GB). A sale
+still CHOOSING is in no report (CLAUDE.md rule 6), so 4821 is not one of the 120: 121 sales are
+seeded, and one more 128 GB customer who left before telling a budget (EXPIRED earlier this
+week) takes the place 4821 used to fill. Once 4821 itself expires (an hour after the seed, on
+the next counter read) it joins the week and STARTED reads 121; reseed for the exact design.
 Synthetic data, never labelled on screen (DESIGN_SPEC section 1).
 """
 
@@ -45,11 +49,11 @@ PAID = HistoryOutcome.PAID
 NOT_COMPLETED = HistoryOutcome.PAYMENT_NOT_COMPLETED
 
 LEFT_BEFORE_TELLING_A_BUDGET = (
-    _sales(PHONE_128, FunnelStage.STARTED, EXPIRED, (None,) * 12)
+    _sales(PHONE_128, FunnelStage.STARTED, EXPIRED, (None,) * 13)
     + _sales(PHONE_64, FunnelStage.STARTED, EXPIRED, (None,) * 7)
     + _sales(EARBUDS, FunnelStage.STARTED, EXPIRED, (None,) * 4)
 )
-"""23 history sales; with today's 4821 that is the drop of 24 after STARTED."""
+"""24 history sales: the drop of 24 after STARTED (today's 4821, still choosing, is not counted)."""
 
 LEFT_BEFORE_SEEING_THE_PLANS = _sales(
     PHONE_128, FunnelStage.BUDGET_TOLD, EXPIRED, _amounts(3700, 3800, 3900, 4000, 4200, 4500)
@@ -111,7 +115,10 @@ TODAYS_COUNTER_SALES = (
     HistorySale(PHONE_64, FunnelStage.AGREED, "3200", HistoryOutcome.READY_TO_PAY, "4817", 12),
     HistorySale(PHONE_128, FunnelStage.STARTED, None, HistoryOutcome.CHOOSING, "4821", 3),
 )
-"""M2's "At the counter now": started today, so the counter list shows exactly these three."""
+"""M2's "At the counter now": started today, so the counter list shows exactly these three.
+
+4812 and 4817 are in the reports; 4821 is CHOOSING, so no report counts it while it is.
+"""
 
 DEMO_REPORT_HISTORY = (
     LEFT_BEFORE_TELLING_A_BUDGET
@@ -122,4 +129,4 @@ DEMO_REPORT_HISTORY = (
     + PAID_SALES
     + TODAYS_COUNTER_SALES
 )
-"""All 120 sales of the design week."""
+"""All 121 seeded sales: the 120 of the design week's reports, and 4821 still choosing."""

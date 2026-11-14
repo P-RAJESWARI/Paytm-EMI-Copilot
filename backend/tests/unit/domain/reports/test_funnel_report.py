@@ -85,3 +85,32 @@ def test_small_counts_and_a_small_biggest_drop_are_suppressed() -> None:
     assert report.biggest_drop is not None
     assert report.biggest_drop.after_stage is FunnelStage.AGREED
     assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)
+
+
+def test_zero_stages_after_a_suppressed_stage_are_suppressed_in_a_cascade() -> None:
+    """Three started and none went on: no 0 stands beside "fewer than 5" anywhere after it."""
+    report = FunnelReport.from_stage_counts({FunnelStage.STARTED: 3}, SmallCountSuppressionPolicy())
+    assert [stage_count.count for stage_count in report.stages] == [
+        ReportedCount(None, is_suppressed=True)
+    ] * len(FUNNEL_STAGE_ORDER)
+
+
+def test_a_zero_after_a_shown_stage_is_still_shown() -> None:
+    """Seven started and none told a budget: the 0 identifies nobody, so it stays."""
+    report = FunnelReport.from_stage_counts({FunnelStage.STARTED: 7}, SmallCountSuppressionPolicy())
+    assert [stage_count.count.customer_count for stage_count in report.stages] == [7, 0, 0, 0, 0]
+
+
+def test_a_shown_count_after_a_suppressed_stage_keeps_its_number() -> None:
+    """Only zeros follow suppression; a rise to 5 or more is shown (agreements without steps)."""
+    report = FunnelReport.from_stage_counts(
+        {FunnelStage.STARTED: 9, FunnelStage.BUDGET_TOLD: 2, FunnelStage.AGREED: 6},
+        SmallCountSuppressionPolicy(),
+    )
+    assert [stage_count.count.customer_count for stage_count in report.stages] == [
+        9,
+        None,
+        None,
+        6,
+        0,
+    ]

@@ -61,7 +61,7 @@ class FunnelDropResponse(CamelCaseResponseModel):
 
 
 class FunnelReportResponse(CamelCaseResponseModel):
-    """M5 "Where customers drop off": the cohort of sales started in the period."""
+    """M5 "Where customers drop off": the period's started sales that are no longer CHOOSING."""
 
     reporting_range: Annotated[ReportingRange, Field(alias="range")]
     period_start_date: date

@@ -111,6 +111,20 @@ def test_suppressed_numbers_leave_their_sentences_out() -> None:
     assert "3" not in " ".join(english.paragraphs[:2]).replace("13 Jan", "")
 
 
+def test_a_suppressed_missed_count_leaves_the_action_sentence_out_too() -> None:
+    """Every action comes from the missed sales; with 3 missed, none is said, even if given."""
+    phone_128_gb, *other_products = build_design_missed_sales_analysis().products_missed_sales
+    analysis = MissedSalesAnalysis.from_products(
+        [replace(phone_128_gb, tally=replace(phone_128_gb.tally, missed_count=3)), *other_products]
+    )
+    facts = replace(build_design_facts(), missed_sales=_missed_sales_report(analysis))
+    assert facts.suggested_actions
+    for language in MessageLanguage:
+        paragraphs = TEMPLATE.render_in(language, facts).paragraphs
+        assert len(paragraphs) == 2
+        assert "₹2,444" not in " ".join(paragraphs)
+
+
 def test_a_suppressed_drop_and_no_money_due_or_action_leave_only_the_sales_sentence() -> None:
     """A drop of 3 is not described; nothing due and no action leave no second or third part."""
     counts = dict.fromkeys(DESIGN_COUNTS, 9) | {FunnelStage.PAID: 6}

@@ -40,8 +40,11 @@ from emi_copilot.dtos.suggested_action_dtos import SuggestedActionsResponse
 report_router = APIRouter(tags=["reports"])
 
 SUPPRESSION_NOTE = (
+    "Only sales that are no longer CHOOSING are counted (READY_TO_PAY, PAID, "
+    "PAYMENT_NOT_COMPLETED, EXPIRED), so a customer still at the counter shows in no report. "
     "A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more "
-    "are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. "
+    "are shown, except a 0 right after a suppressed funnel stage, which is suppressed too. "
+    "Periods are in IST; THIS_WEEK is Monday to Sunday. "
 )
 REPORT_PROBLEMS = (REQUEST_VALIDATION_PROBLEM, MERCHANT_AUTHENTICATION_PROBLEM)
 GATEWAY_BACKED_REPORT_PROBLEMS = (
@@ -89,9 +92,11 @@ def get_funnel_report(
         "amount, null when none was missed or one lies above ₹4,000. productInsight is the "
         "product with the most missed sales, with gateway-quoted figures. budgetBuckets counts "
         "every told amount per range (lower bound included); fewer than 5 tellers hide them all "
-        "(areBudgetBucketsHidden). The gateway is asked for each product's plans. "
-        + SUPPRESSION_NOTE
-        + MERCHANT_BEARER_NOTE
+        "(areBudgetBucketsHidden). Figures derived from a suppressed missed count are left out: "
+        "with missedCustomerCount suppressed, budgetCeilingInPaise and productInsight are null, "
+        "no bucket isUnderCeiling and no bucket lists plans; with only the insight product's own "
+        "count from 1 to 4, productInsight is null and no bucket lists plans. The gateway is "
+        "asked for each product's plans. " + SUPPRESSION_NOTE + MERCHANT_BEARER_NOTE
     ),
     response_description="The missed-sales card.",
     responses={
@@ -119,7 +124,8 @@ def get_missed_sales_report(
         "Deterministic suggestions as stable codes with paise parameters, never prose: "
         "ASK_BRAND_FOR_LONGER_NO_COST_PLAN (9 and 12-month no-cost installments on the "
         "insight product's price) and KEEP_CHEAPER_MODEL_READY (a cheaper model whose "
-        "no-extra-cost monthly fits under the ceiling). Empty when nothing was missed. "
+        "no-extra-cost monthly fits under the ceiling). Empty when nothing was missed, and "
+        "while the missed count (or the insight product's own) is from 1 to 4. "
         + SUPPRESSION_NOTE
         + MERCHANT_BEARER_NOTE
     ),

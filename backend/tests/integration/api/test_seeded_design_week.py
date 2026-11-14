@@ -33,7 +33,7 @@ def _seed_and_pair(mock_api: ApiHarness, gateway: MockPaymentGatewayAdapter) -> 
         time_zone=ZoneInfo("Asia/Kolkata"),
         choosing_lifetime=timedelta(hours=1),
     )
-    assert service.seed("RAVI-0193", DEMO_REPORT_HISTORY).added_sale_count == 120
+    assert service.seed("RAVI-0193", DEMO_REPORT_HISTORY).added_sale_count == 121
     assert service.seed("RAVI-0193", DEMO_REPORT_HISTORY).added_sale_count == 0
     pairing = mock_api.client.post(
         "/api/v1/merchants/pairing", json={"shopId": "RAVI-0193", "pin": SYNTHETIC_PIN}

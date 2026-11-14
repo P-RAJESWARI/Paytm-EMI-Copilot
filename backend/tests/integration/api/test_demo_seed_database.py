@@ -59,13 +59,16 @@ def test_seeded_demo_shop_pairs_with_the_pin_and_lists_the_m2_offer_counts(
     ]
 
 
-def test_seed_report_history_run_twice_stores_the_120_sales_once(
+def test_seed_report_history_run_twice_stores_the_121_sales_once(
     session_factory: sessionmaker[Session], fixed_clock: FixedClock
 ) -> None:
-    """The step writes the design week once; a shop with sales is left alone."""
+    """The step writes the design week once; a shop with sales is left alone.
+
+    121 sales: the 120 the design week's reports count, and 4821 still choosing at the counter.
+    """
     unit_of_work_factory = partial(SqlAlchemyUnitOfWork, session_factory, fixed_clock)
     seed_demo_merchant(unit_of_work_factory, SYNTHETIC_PIN)
     seed_report_history(unit_of_work_factory, SYNTHETIC_PIN)
     seed_report_history(unit_of_work_factory, SYNTHETIC_PIN)
-    assert count_rows(session_factory, "sale") == 120
-    assert count_rows(session_factory, "funnel_event") == 120 + 96 + 88 + 51 + 44
+    assert count_rows(session_factory, "sale") == 121
+    assert count_rows(session_factory, "funnel_event") == 121 + 96 + 88 + 51 + 44

@@ -76,7 +76,7 @@ class ReportFixture:
         """Opens a fresh unit of work on the test database."""
         return SqlAlchemyUnitOfWork(self._session_factory, self._clock)
 
-    def store_sale(
+    def store_sale(  # noqa: PLR0913 - one keyword per sale fact a test may vary
         self,
         last_stage: FunnelStage,
         budget_in_rupees: str | None = None,
@@ -84,8 +84,9 @@ class ReportFixture:
         merchant_id: str = MERCHANT_ID,
         product_id: str = PRODUCT_ID,
         started_at: datetime = SALE_STARTED_AT,
+        status: SaleStatus = SaleStatus.EXPIRED,
     ) -> None:
-        """Stores an expired sale that reached every stage up to last_stage."""
+        """Stores a sale (expired unless told) that reached every stage up to last_stage."""
         self._sale_number += 1
         sale_id = f"01JCREPORTSALE{self._sale_number:012d}"
         with self.open_unit_of_work() as unit_of_work:
@@ -95,7 +96,7 @@ class ReportFixture:
                     merchant_id=merchant_id,
                     product_id=product_id,
                     session_code=SessionCode(f"{self._sale_number:04d}"),
-                    status=SaleStatus.EXPIRED,
+                    status=status,
                     started_at=started_at,
                     status_changed_at=started_at,
                 )
@@ -241,3 +242,21 @@ def test_has_any_for_merchant_tells_shops_with_sales_apart(report_fixture: Repor
     with report_fixture.open_unit_of_work() as unit_of_work:
         assert unit_of_work.sales.has_any_for_merchant(MERCHANT_ID) is True
         assert unit_of_work.sales.has_any_for_merchant(OTHER_MERCHANT_ID) is False
+
+
+def test_a_sale_still_choosing_is_in_no_cohort(report_fixture: ReportFixture) -> None:
+    """Rule 6: a live customer's budget and plans seen are counted by no query until it ends."""
+    report_fixture.store_sale(FunnelStage.PLANS_VIEWED, "2400", status=SaleStatus.CHOOSING)
+    threshold = {PRODUCT_ID: Money.from_rupees("3666.67")}
+    with report_fixture.open_unit_of_work() as unit_of_work:
+        queries = unit_of_work.report_queries
+        stage_counts = queries.count_sales_reaching_each_stage(
+            MERCHANT_ID, PERIOD_STARTS_AT, PERIOD_ENDS_AT
+        )
+        budget_counts = queries.count_budgets_per_range(
+            MERCHANT_ID, PERIOD_STARTS_AT, PERIOD_ENDS_AT, BUDGET_BUCKET_BOUNDARIES
+        )
+        tallies = queries.tally_missed_sales(
+            MERCHANT_ID, PERIOD_STARTS_AT, PERIOD_ENDS_AT, threshold
+        )
+    assert (stage_counts, budget_counts, tallies) == ({}, (0, 0, 0, 0, 0), {})

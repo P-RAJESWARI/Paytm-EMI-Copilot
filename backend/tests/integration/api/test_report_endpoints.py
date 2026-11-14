@@ -1,16 +1,19 @@
 """Report endpoints on the test database: shop-scoped aggregates, empty shapes, idempotent send."""
 
+from datetime import timedelta
 from typing import Any
 
 import pytest
 from sqlalchemy import Connection, text
 
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
+from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.domain.funnel import FunnelEvent, FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from tests.integration.api.api_harness import ApiHarness
 from tests.integration.api.sale_api_helpers import (
+    COUNTER_PATH,
     PHONE_128_GB_ID,
     TwoShops,
     agree_to_offer_in_the_service,
@@ -53,11 +56,22 @@ def _tell_budget_and_view_plans(harness: ApiHarness, sale_id: str, budget_in_rup
 
 
 def _store_week(harness: ApiHarness, gateway: MockPaymentGatewayAdapter, shops: TwoShops) -> None:
-    """Six 128 GB sales with budgets ₹2,400 to ₹2,950 never agreed, one agreed at ₹3,800."""
+    """Six 128 GB sales with budgets ₹2,400 to ₹2,950 never agreed, one agreed at ₹3,800.
+
+    The six are then left past the choosing lifetime and the counter list records their expiry,
+    so all seven are finished sales the reports may count.
+    """
     for budget_in_rupees in ("2400", "2600", "2700", "2800", "2900", "2950", "3800"):
         sale_id = start_sale(harness, shops.first_shop_headers, PHONE_128_GB_ID)["saleId"]
         _tell_budget_and_view_plans(harness, sale_id, budget_in_rupees)
     agree_to_offer_in_the_service(harness, gateway, sale_id)
+    _expire_choosing_sales(harness, shops.first_shop_headers)
+
+
+def _expire_choosing_sales(harness: ApiHarness, headers: dict[str, str]) -> None:
+    """Moves the clock past the choosing lifetime and reads the counter list, which expires them."""
+    harness.clock.advance(timedelta(seconds=ApplicationSettings().sale_choosing_expiry_in_seconds))
+    assert harness.client.get(COUNTER_PATH, headers=headers).status_code == 200
 
 
 def test_report_endpoints_need_the_merchant_token(mock_api: ApiHarness) -> None:
@@ -122,7 +136,8 @@ def test_report_counts_equal_independent_count_queries_and_stay_in_their_shop(
         database_connection.execute(
             text(
                 "SELECT f.stage, count(*) FROM funnel_event f JOIN sale s ON s.id = f.sale_id"
-                " WHERE s.merchant_id = :merchant_id GROUP BY f.stage"
+                " WHERE s.merchant_id = :merchant_id AND s.status <> 'CHOOSING'"
+                " GROUP BY f.stage"
             ),
             {"merchant_id": FIRST_SHOP_MERCHANT_ID},
         ).all()
@@ -132,7 +147,7 @@ def test_report_counts_equal_independent_count_queries_and_stay_in_their_shop(
         "BUDGET_TOLD": independent_counts["BUDGET_TOLD"],
         "PLANS_VIEWED": independent_counts["PLANS_VIEWED"],
         "AGREED": None,
-        "PAID": 0,
+        "PAID": None,
     }
     assert independent_counts["STARTED"] == 7
     other_shop = _read(mock_api, "/funnel?range=TODAY", shops.second_shop_headers)
@@ -163,6 +178,39 @@ def test_missed_sales_and_actions_come_from_the_quoted_plans(
         {"tenureInMonths": 9, "monthlyInstallmentInPaise": 244_444},
         {"tenureInMonths": 12, "monthlyInstallmentInPaise": 183_333},
     ]
+
+
+def test_one_customer_still_choosing_today_shows_in_no_report_until_the_sale_ends(
+    mock_api: ApiHarness, shops: TwoShops
+) -> None:
+    """Rule 6: a live customer who told ₹2,400 and saw the plans is in no report at all.
+
+    Once the sale expires it joins the cohort, still as "fewer than 5" with nothing derived.
+    """
+    headers = shops.first_shop_headers
+    sale_id = start_sale(mock_api, headers, PHONE_128_GB_ID)["saleId"]
+    _tell_budget_and_view_plans(mock_api, sale_id, "2400")
+    for reporting_range in ("TODAY", "THIS_WEEK"):
+        funnel = _read(mock_api, f"/funnel?range={reporting_range}", headers)
+        missed = _read(mock_api, f"/missed-sales?range={reporting_range}", headers)
+        actions = _read(mock_api, f"/suggested-actions?range={reporting_range}", headers)
+        assert [stage["customerCount"] for stage in funnel["stages"]] == [0, 0, 0, 0, 0]
+        assert funnel["biggestDrop"] is None
+        assert (missed["missedCustomerCount"], missed["budgetTotalCustomerCount"]) == (0, 0)
+        assert (missed["budgetCeilingInPaise"], missed["productInsight"]) == (None, None)
+        assert actions == {"actions": []}
+    message = _read(mock_api, "/weekly-message", headers)
+    assert message["messages"]["en"]["paragraphs"] == ["No EMI sales this week yet."]
+    _expire_choosing_sales(mock_api, headers)
+    funnel = _read(mock_api, "/funnel?range=TODAY", headers)
+    missed = _read(mock_api, "/missed-sales?range=TODAY", headers)
+    assert [stage["isSuppressed"] for stage in funnel["stages"]] == [True] * 5
+    assert (missed["isSuppressed"], missed["budgetCeilingInPaise"], missed["productInsight"]) == (
+        True,
+        None,
+        None,
+    )
+    assert _read(mock_api, "/suggested-actions?range=TODAY", headers) == {"actions": []}
 
 
 def test_sending_the_weekly_message_is_idempotent(mock_api: ApiHarness, shops: TwoShops) -> None:

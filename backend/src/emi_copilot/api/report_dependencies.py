@@ -66,8 +66,8 @@ def provide_missed_sales_analyser(
     unit_of_work_factory: UnitOfWorkFactoryDependency,
     offer_discovery_service: OfferDiscoveryServiceDependency,
 ) -> MissedSalesAnalyser:
-    """Assembles the analyser on offer discovery."""
-    return MissedSalesAnalyser(unit_of_work_factory, offer_discovery_service)
+    """Assembles the analyser on offer discovery and the small-count policy."""
+    return MissedSalesAnalyser(unit_of_work_factory, offer_discovery_service, SUPPRESSION_POLICY)
 
 
 MissedSalesAnalyserDependency = Annotated[

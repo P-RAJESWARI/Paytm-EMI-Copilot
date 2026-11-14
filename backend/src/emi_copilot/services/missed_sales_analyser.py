@@ -11,6 +11,7 @@ from emi_copilot.domain.reports.missed_sales import (
     ProductOffers,
 )
 from emi_copilot.domain.reports.reporting_period import ReportingPeriod
+from emi_copilot.domain.reports.small_count_suppression import SmallCountSuppressionPolicy
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
 from emi_copilot.services.offer_discovery_service import OfferDiscoveryService
 
@@ -30,17 +31,22 @@ class MissedSalesAnalyser:
 
     The products are read and the transaction closed before any gateway call; the counts run
     in a second, read-only transaction. Every plan figure is the gateway's quote with our
-    schedule (OfferDiscoveryService), never recomputed. A gateway error fails the report.
+    schedule (OfferDiscoveryService), never recomputed. A gateway error fails the report. Sales
+    still CHOOSING are not counted, and every figure derived from a suppressed missed count is
+    dropped here (MissedSalesAnalysis.without_suppressed_details), so the card, the suggestions
+    and the weekly message all read the same suppressed analysis.
     """
 
     def __init__(
         self,
         unit_of_work_factory: UnitOfWorkFactory,
         offer_discovery_service: OfferDiscoveryService,
+        policy: SmallCountSuppressionPolicy,
     ) -> None:
-        """Keeps the unit-of-work factory and offer discovery."""
+        """Keeps the unit-of-work factory, offer discovery and the count policy."""
         self._unit_of_work_factory = unit_of_work_factory
         self._offer_discovery_service = offer_discovery_service
+        self._policy = policy
 
     def analyse(self, principal: MerchantPrincipal, period: ReportingPeriod) -> MissedSalesFindings:
         """Gives the shop's missed sales per product and its budget counts for the period."""
@@ -73,5 +79,5 @@ class MissedSalesAnalyser:
                 )
                 for product_offers in products_offers
             ]
-        )
+        ).without_suppressed_details(self._policy)
         return MissedSalesFindings(analysis=analysis, budget_counts=budget_counts)

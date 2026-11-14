@@ -9,7 +9,7 @@ from emi_copilot.domain.money import Money
 from emi_copilot.domain.reports.budget_buckets import build_budget_ranges
 from emi_copilot.domain.reports.missed_sales import MissedSalesTally, is_missed_sale
 from emi_copilot.domain.reports.weekly_message_record import WeeklyMessageSentRecord
-from emi_copilot.domain.sales import Sale
+from emi_copilot.domain.sales import Sale, SaleStatus
 
 
 class FakeReportQueryRepository:
@@ -23,7 +23,10 @@ class FakeReportQueryRepository:
     def _events_of_period(
         self, merchant_id: str, starts_at: datetime, ends_at: datetime
     ) -> list[tuple[Sale, FunnelEvent]]:
-        """Pairs every funnel event of the merchant's sales started in the period with its sale."""
+        """Pairs every funnel event of the merchant's sales started in the period with its sale.
+
+        Like the SQL, a sale still CHOOSING is in no cohort (CLAUDE.md rule 6).
+        """
         return [
             (sale, event)
             for event in self._funnel_events
@@ -31,6 +34,7 @@ class FakeReportQueryRepository:
             if sale is not None
             and sale.merchant_id == merchant_id
             and starts_at <= sale.started_at < ends_at
+            and sale.status is not SaleStatus.CHOOSING
         ]
 
     def count_sales_reaching_each_stage(

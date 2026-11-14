@@ -7,7 +7,7 @@ rules for the threshold, the ceiling and the insight product live here.
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from emi_copilot.domain.catalogue import CatalogueProduct
 from emi_copilot.domain.money import Money
@@ -199,6 +199,23 @@ class MissedSalesAnalysis:
             total_missed_count=sum(product.missed_count for product in products_missed_sales),
             budget_ceiling=find_budget_ceiling(max(missed_budgets, default=None)),
         )
+
+    def without_suppressed_details(
+        self, policy: SmallCountSuppressionPolicy
+    ) -> "MissedSalesAnalysis":
+        """Drops every figure derived from a suppressed (1 to 4) missed count; counts stay.
+
+        A ceiling, an insight product or a suggestion built from one to four customers' budgets
+        would describe those customers, so derived fields follow suppression. With the total
+        suppressed, the overall ceiling and the insight go. With only the insight product's own
+        count suppressed, the insight goes (its ceiling, plans and suggestions come from it) and
+        the overall ceiling, built from 5 or more budgets, stays.
+        """
+        if policy.report(self.total_missed_count).is_suppressed:
+            return replace(self, insight=None, budget_ceiling=None)
+        if self.insight is not None and policy.report(self.insight.missed_count).is_suppressed:
+            return replace(self, insight=None)
+        return self
 
 
 @dataclass(frozen=True, slots=True)

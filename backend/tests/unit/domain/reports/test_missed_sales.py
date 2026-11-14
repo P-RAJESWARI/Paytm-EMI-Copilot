@@ -8,6 +8,7 @@ from emi_copilot.domain.reports.budget_buckets import build_budget_bucket_report
 from emi_copilot.domain.reports.missed_sales import (
     MissedSalesAnalysis,
     MissedSalesReport,
+    ProductMissedSales,
     ProductOffers,
     build_product_insight,
     choose_insight_product,
@@ -218,3 +219,49 @@ def test_product_insight_needs_a_no_extra_cost_plan() -> None:
         ProductOffers(EARBUDS, build_earbuds_offers()), 5, "300"
     )
     assert build_product_insight(tally_without_plan) is None
+
+
+def _phone_128_gb_missed(missed_count: int, highest_budget_in_rupees: str) -> ProductMissedSales:
+    """The 128 GB phone with a missed tally of the given size and highest budget."""
+    return build_product_missed_sales(
+        ProductOffers(PHONE_128_GB, build_phone_128_gb_offers()),
+        missed_count,
+        highest_budget_in_rupees,
+    )
+
+
+def test_suppressed_total_drops_the_ceiling_and_the_insight() -> None:
+    """Three missed customers: their ceiling and product would describe them, so both go."""
+    analysis = MissedSalesAnalysis.from_products(
+        [_phone_128_gb_missed(3, "2900")]
+    ).without_suppressed_details(SmallCountSuppressionPolicy())
+    assert analysis.total_missed_count == 3
+    assert (analysis.insight, analysis.budget_ceiling) == (None, None)
+    report = MissedSalesReport.from_analysis(
+        analysis,
+        build_budget_bucket_report((0, 0, 0, 0, 0), None, (), SmallCountSuppressionPolicy()),
+        SmallCountSuppressionPolicy(),
+    )
+    assert (report.budget_ceiling, report.product_insight) == (None, None)
+
+
+def test_suppressed_insight_product_drops_the_insight_but_keeps_the_overall_ceiling() -> None:
+    """Six missed over two products, three each: the ceiling covers six, the insight only three."""
+    analysis = MissedSalesAnalysis.from_products(
+        [
+            _phone_128_gb_missed(3, "2900"),
+            build_product_missed_sales(
+                ProductOffers(build_product(7, "Tablet", "30000"), build_phone_128_gb_offers()),
+                3,
+                "2400",
+            ),
+        ]
+    ).without_suppressed_details(SmallCountSuppressionPolicy())
+    assert analysis.insight is None
+    assert analysis.budget_ceiling == Money.from_rupees("3000")
+
+
+def test_shown_missed_counts_keep_every_detail() -> None:
+    """The design week's 12 on one product: nothing is dropped."""
+    analysis = build_design_missed_sales_analysis()
+    assert analysis.without_suppressed_details(SmallCountSuppressionPolicy()) is analysis

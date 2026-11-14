@@ -3,6 +3,12 @@
 Every method takes the merchant id and a half-open period [starts_at, ends_at) on the sale's
 start (a cohort: sales started in the period, counted by the stages they reached). Each returns
 counts, or a count and the highest budget per product; never a sale, an id or one budget per row.
+
+A sale still CHOOSING is in no cohort (CLAUDE.md rule 6, ADR 0018): counting it would let the
+merchant watch one live customer tell a budget and view the plans. A sale enters the reports
+once it is READY_TO_PAY, PAID, PAYMENT_NOT_COMPLETED or EXPIRED, states the counter list already
+shows. An overdue CHOOSING sale enters once its expiry is recorded (SaleExpiryStep runs on every
+counter read and sale command).
 """
 
 from collections.abc import Mapping, Sequence
@@ -15,6 +21,7 @@ from sqlalchemy.orm import Session, aliased
 from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.reports.missed_sales import MissedSalesTally
+from emi_copilot.domain.sales import SaleStatus
 from emi_copilot.models import FunnelEventModel, SaleModel
 
 _BudgetEvent = aliased(FunnelEventModel, name="budget_event")
@@ -24,11 +31,12 @@ _AgreedEvent = aliased(FunnelEventModel, name="agreed_event")
 def _sale_in_period(
     merchant_id: str, starts_at: datetime, ends_at: datetime
 ) -> ColumnElement[bool]:
-    """Selects the merchant's sales started in [starts_at, ends_at)."""
+    """Selects the merchant's sales started in [starts_at, ends_at) that are no longer CHOOSING."""
     return (
         (SaleModel.merchant_id == merchant_id)
         & (SaleModel.started_at >= starts_at)
         & (SaleModel.started_at < ends_at)
+        & (SaleModel.status != SaleStatus.CHOOSING.value)
     )
 
 
