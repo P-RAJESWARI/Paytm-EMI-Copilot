@@ -25,7 +25,8 @@ class PaymentAttempt:
 
     It is immutable: a status or gateway-reference change produces a new instance (for example
     with dataclasses.replace) that the repository saves. Status transitions are not checked here.
-    The gateway mode is the adapter name ("mock" or "paytm") that served the attempt.
+    The gateway mode is the adapter name of the gateway that served the attempt (for example
+    "mock"), as reported by the gateway port.
     """
 
     id: str

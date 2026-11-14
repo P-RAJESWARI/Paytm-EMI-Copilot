@@ -7,10 +7,13 @@ from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import (
     AuditEvent,
     AuditEventType,
+    EmiOffer,
     EmiType,
+    OfferDiscoveryQuery,
     OfferSnapshot,
     PaymentAttempt,
     PaymentAttemptStatus,
+    PaymentLinkRequest,
 )
 
 CREATED_AT = datetime(2026, 11, 14, 10, 30, 0, 123456, tzinfo=UTC)
@@ -77,3 +80,41 @@ def build_audit_event(event_number: int = 1, /, **overrides: object) -> AuditEve
         details={"status": "LINK_CREATED", "amount_in_paise": 2_200_000},
     )
     return replace(audit_event, **overrides)  # type: ignore[arg-type]
+
+
+def build_offer_discovery_query(**overrides: object) -> OfferDiscoveryQuery:
+    """Builds a query for the design sample item at ₹22,000 with synthetic catalogue ids."""
+    offer_discovery_query = OfferDiscoveryQuery(
+        price=Money.from_rupees("22000"),
+        product_id="product-sample-0001",
+        brand_id="brand-sample-0001",
+        category_id="category-sample-0001",
+    )
+    return replace(offer_discovery_query, **overrides)  # type: ignore[arg-type]
+
+
+def build_emi_offer(**overrides: object) -> EmiOffer:
+    """Builds design plan B as quoted: 6 x ₹3,850.00 with ₹1,100 extra in total."""
+    emi_offer = EmiOffer(
+        offer_id="offer-plan-b",
+        lender_label="Your card's bank",
+        emi_type=EmiType.STANDARD,
+        tenure_in_months=6,
+        quoted_monthly_installment=Money.from_rupees("3850.00"),
+        quoted_extra_in_total=Money.from_rupees("1100"),
+    )
+    return replace(emi_offer, **overrides)  # type: ignore[arg-type]
+
+
+def build_payment_link_request(**overrides: object) -> PaymentLinkRequest:
+    """Builds a request to pay ₹22,000 on design plan A for the first sample order."""
+    payment_link_request = PaymentLinkRequest(
+        order_id="ORDER-SAMPLE-0001",
+        amount=Money.from_rupees("22000"),
+        offer=build_no_cost_offer_snapshot(),
+        product_id="product-sample-0001",
+        brand_id="brand-sample-0001",
+        category_id="category-sample-0001",
+        customer_reference="01JCSAMPLECUSTOMER00000001",
+    )
+    return replace(payment_link_request, **overrides)  # type: ignore[arg-type]

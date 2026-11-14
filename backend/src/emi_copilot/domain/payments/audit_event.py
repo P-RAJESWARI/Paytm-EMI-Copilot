@@ -47,8 +47,8 @@ class AuditEvent:
     """An immutable fact about a subject, such as a payment attempt; written once, never changed.
 
     Details hold identifiers, statuses, reason codes and integer paise only. They must never hold
-    personal data (names, phone numbers, income), tokens, OTPs, signatures or checksums, secrets,
-    card fields or raw vendor payloads (security-and-compliance.md sections 2, 3 and 9).
+    personal data (names, phone numbers, income), tokens, OTPs, webhook or request signatures,
+    secrets, card fields or raw vendor payloads (security-and-compliance.md sections 2, 3 and 9).
     """
 
     id: str

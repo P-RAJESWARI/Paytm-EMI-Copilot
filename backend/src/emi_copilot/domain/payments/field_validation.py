@@ -28,6 +28,24 @@ def require_whole_paise_money(
         raise error_type(f"The {description} must be Money in whole paise.")
 
 
+def require_positive_whole_paise_money(
+    value: object, description: str, error_type: type[DomainError]
+) -> None:
+    """Raises error_type unless the value is whole-paise Money above zero rupees."""
+    if not isinstance(value, Money) or not value.is_whole_paise or value.is_zero:
+        raise error_type(f"The {description} must be Money in whole paise above zero.")
+
+
+def require_tenure_in_months(
+    value: object, description: str, error_type: type[DomainError]
+) -> None:
+    """Raises error_type unless the value is a whole number of months, at least one; bools fail."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise error_type(f"The {description} must be a whole number of months.")
+    if value < 1:
+        raise error_type(f"The {description} must be at least 1 month.")
+
+
 def require_timezone_aware_moment(
     value: object, description: str, error_type: type[DomainError]
 ) -> None:

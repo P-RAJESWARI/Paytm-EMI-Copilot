@@ -8,6 +8,7 @@ from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments.emi_type import EmiType
 from emi_copilot.domain.payments.field_validation import (
     require_non_empty_text,
+    require_tenure_in_months,
     require_whole_paise_money,
 )
 
@@ -85,7 +86,7 @@ class OfferSnapshot:
         require_non_empty_text(self.lender_label, "lender label", InvalidOfferSnapshotError)
         if not isinstance(self.emi_type, EmiType):
             raise InvalidOfferSnapshotError("The EMI type must be an EmiType.")
-        self._require_valid_tenure()
+        require_tenure_in_months(self.tenure_in_months, "tenure", InvalidOfferSnapshotError)
         for amount, description in (
             (self.regular_installment, "regular installment"),
             (self.last_installment, "last installment"),
@@ -94,13 +95,6 @@ class OfferSnapshot:
         ):
             require_whole_paise_money(amount, description, InvalidOfferSnapshotError)
         self._require_consistent_amounts()
-
-    def _require_valid_tenure(self) -> None:
-        """Raises unless the tenure is a whole number of months, at least one."""
-        if isinstance(self.tenure_in_months, bool) or not isinstance(self.tenure_in_months, int):
-            raise InvalidOfferSnapshotError("The tenure must be a whole number of months.")
-        if self.tenure_in_months < 1:
-            raise InvalidOfferSnapshotError("The tenure must be at least 1 month.")
 
     def _require_consistent_amounts(self) -> None:
         """Raises unless the installments, total and extra agree with each other exactly."""
