@@ -16,6 +16,18 @@ import {
 } from '../testing/salesReportTestData';
 import { stubClipboard } from '../testing/stubClipboard';
 
+/** The missed-sales answer when 1 to 4 were missed: no count and nothing derived from it. */
+const SUPPRESSED_MISSED_SALES_REPORT = {
+  ...TEST_MISSED_SALES_REPORT,
+  missedCustomerCount: null,
+  isSuppressed: true,
+  budgetCeilingInPaise: null,
+  productInsight: null,
+  budgetTotalCustomerCount: null,
+  areBudgetBucketsHidden: true,
+  budgetBuckets: [],
+};
+
 const SHARE_TEXT =
   'Ravi Electronics, This week: 12 customers wanted Example phone, 128 GB under ₹3,000 a month with nothing extra. The lowest no-cost plan is ₹3,667 a month. Could you offer a 9 or 12-month no-cost plan on this model?';
 
@@ -199,6 +211,11 @@ describe('M5 sales report', () => {
       await screen.findByRole('heading', { level: 2, name: 'No EMI sales today yet' }),
     ).toBeTruthy();
     expect(
+      screen.getByText(
+        'When a customer asks about EMI, start a new EMI sale. Your report fills in as customers finish choosing.',
+      ),
+    ).toBeTruthy();
+    expect(
       within(screen.getByRole('main'))
         .getByRole('link', { name: 'New EMI sale' })
         .getAttribute('href'),
@@ -211,8 +228,8 @@ describe('M5 sales report', () => {
     ).toBe(true);
   });
 
-  it('shows "fewer than 5" for hidden counts and hides the budget chart when too few told a budget', async () => {
-    renderSalesReport({
+  it('shows "fewer than 5" for hidden counts, names a hidden drop without a number and hides the chart', async () => {
+    const { container } = renderSalesReport({
       'GET /api/v1/reports/funnel': () =>
         jsonResponse({
           ...TEST_FUNNEL_REPORT,
@@ -221,32 +238,125 @@ describe('M5 sales report', () => {
           ),
           biggestDrop: { afterStage: 'AGREED', customerCount: null, isSuppressed: true },
         }),
-      'GET /api/v1/reports/missed-sales': () =>
-        jsonResponse({
-          ...TEST_MISSED_SALES_REPORT,
-          missedCustomerCount: null,
-          isSuppressed: true,
-          budgetTotalCustomerCount: null,
-          areBudgetBucketsHidden: true,
-          budgetBuckets: [],
-        }),
+      'GET /api/v1/reports/missed-sales': () => jsonResponse(SUPPRESSED_MISSED_SALES_REPORT),
+      'GET /api/v1/reports/suggested-actions': () => jsonResponse({ actions: [] }),
     });
     await waitForLoadedReport();
 
     const funnel = screen.getByRole('region', { name: 'Where customers drop off' });
     expect(within(funnel).getAllByRole('listitem').at(-1)?.textContent).toBe('Paidfewer than 5');
+    expect(within(funnel).getByText('The biggest drop was after agreeing to a plan.')).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /Fewer than 5 customers wanted a lower monthly amount with nothing extra\. No plan fit\./,
+      }),
+    );
+    const panel = screen.getByRole('region', { name: 'Missed sales detail' });
     expect(
-      within(funnel).getByText(
-        'Fewer than 5 customers left after agreeing to a plan. That is the biggest drop.',
+      within(panel).getByText(
+        'Fewer than 5 customers missed out in this period, so the detail stays hidden to keep their answers private.',
       ),
     ).toBeTruthy();
-    await userEvent.click(
-      screen.getByRole('button', { name: /Fewer than 5 customers wanted under ₹3,000/ }),
-    );
     expect(
-      screen.getByText(
+      within(panel).getByText(
         'Fewer than 5 customers told a budget in this period, so this chart stays hidden to keep their answers private.',
       ),
+    ).toBeTruthy();
+    expect(within(panel).queryByRole('button', { name: 'Share with brand rep' })).toBeNull();
+    expect(panel.textContent).not.toMatch(/₹/);
+    await expectNoAccessibilityViolations(container);
+  });
+
+  it('hides a drop beside a suppressed stage and the zeros after it, without a false "fewer than 5"', async () => {
+    renderSalesReport({
+      'GET /api/v1/reports/funnel': () =>
+        jsonResponse({
+          ...TEST_FUNNEL_REPORT,
+          stages: TEST_FUNNEL_REPORT.stages.map((stage) =>
+            stage.stage === 'STARTED'
+              ? { ...stage, customerCount: 20 }
+              : { ...stage, customerCount: null, isSuppressed: true },
+          ),
+          biggestDrop: { afterStage: 'STARTED', customerCount: null, isSuppressed: true },
+        }),
+    });
+    await waitForLoadedReport();
+
+    const funnel = screen.getByRole('region', { name: 'Where customers drop off' });
+    expect(
+      within(funnel)
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toEqual([
+      'Started20',
+      'Told a budgetfewer than 5',
+      'Saw the plansfewer than 5',
+      'Agreed to a planfewer than 5',
+      'Paidfewer than 5',
+    ]);
+    expect(within(funnel).getByText('The biggest drop was after starting.')).toBeTruthy();
+    expect(funnel.textContent).not.toMatch(/left after/);
+  });
+
+  it('shows the budget chart without a ceiling legend or plans when the missed count is hidden', async () => {
+    const { container } = renderSalesReport({
+      'GET /api/v1/reports/missed-sales': () =>
+        jsonResponse({
+          ...SUPPRESSED_MISSED_SALES_REPORT,
+          budgetTotalCustomerCount: 12,
+          areBudgetBucketsHidden: false,
+          budgetBuckets: TEST_MISSED_SALES_REPORT.budgetBuckets.slice(0, 2).map((bucket) => ({
+            ...bucket,
+            customerCount: 6,
+            isUnderCeiling: false,
+            plans: [],
+          })),
+        }),
+      'GET /api/v1/reports/suggested-actions': () => jsonResponse({ actions: [] }),
+    });
+    await waitForLoadedReport();
+
+    await userEvent.click(screen.getByRole('button', { name: /Missed sales/ }));
+
+    const panel = screen.getByRole('region', { name: 'Missed sales detail' });
+    const budgetTable = within(panel).getByRole('table', {
+      name: 'Monthly budgets customers entered (12)',
+    });
+    expect(
+      within(budgetTable)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['Monthly budget', 'Customers']);
+    expect(
+      within(budgetTable)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent),
+    ).toEqual(['Under ₹2,5006', '₹2,500 to ₹3,0006']);
+    expect(within(panel).queryByText(/and above$/)).toBeNull();
+    expect(within(panel).queryByText(/^Under ₹3,000$/)).toBeNull();
+    await expectNoAccessibilityViolations(container);
+  });
+
+  it('gives the missed count without a ceiling when the API sends none', async () => {
+    renderSalesReport({
+      'GET /api/v1/reports/missed-sales': () =>
+        jsonResponse({
+          ...TEST_MISSED_SALES_REPORT,
+          budgetCeilingInPaise: null,
+          productInsight: null,
+        }),
+    });
+    await waitForLoadedReport();
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: /12 customers wanted a lower monthly amount with nothing extra\. No plan fit\./,
+      }),
+    );
+
+    expect(
+      screen.getByText('No single product had enough missed sales in this period to name it.'),
     ).toBeTruthy();
   });
 
@@ -266,9 +376,8 @@ describe('M5 sales report', () => {
     await waitForLoadedReport();
 
     await userEvent.click(screen.getByRole('button', { name: /No missed sales in this period\./ }));
-    expect(
-      screen.getByText('There is no single product behind the missed sales in this period.'),
-    ).toBeTruthy();
+    const panel = screen.getByRole('region', { name: 'Missed sales detail' });
+    expect(within(panel).getByText('No missed sales in this period.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Share with brand rep' })).toBeNull();
     await userEvent.click(
       screen.getByRole('button', { name: /Nothing is due from brands right now\./ }),

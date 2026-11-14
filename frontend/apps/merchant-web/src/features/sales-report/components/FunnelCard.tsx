@@ -10,7 +10,7 @@ export interface FunnelCardProps {
 }
 
 // "Where customers drop off": five bars from the API counts (a hidden count draws no bar and
-// reads "fewer than 5") and the biggest drop the API found.
+// reads "fewer than 5") and the biggest drop the API found, named without a number when hidden.
 export function FunnelCard({ funnel }: FunnelCardProps) {
   const { t } = useTranslation();
   const headingId = useId();
@@ -24,7 +24,7 @@ export function FunnelCard({ funnel }: FunnelCardProps) {
     const stagePhrase = t(`report.funnel.afterStage.${biggestDrop.afterStage}`);
     biggestDropText =
       biggestDrop.isSuppressed || biggestDrop.customerCount === null
-        ? t('report.funnel.biggestDropFew', { stagePhrase })
+        ? t('report.funnel.biggestDropWithoutCount', { stagePhrase })
         : t('report.funnel.biggestDrop', { count: biggestDrop.customerCount, stagePhrase });
   }
   return (

@@ -14,7 +14,7 @@ export const SALES_REPORT_ENGLISH_TRANSLATIONS = {
         THIS_WEEK: 'No EMI sales this week yet',
         THIS_MONTH: 'No EMI sales this month yet',
       },
-      body: 'When a customer asks about EMI, start a new EMI sale. Your report fills in from there.',
+      body: 'When a customer asks about EMI, start a new EMI sale. Your report fills in as customers finish choosing.',
     },
     funnel: {
       title: 'Where customers drop off',
@@ -35,8 +35,7 @@ export const SALES_REPORT_ENGLISH_TRANSLATIONS = {
       biggestDrop_one: '{{count}} customer left after {{stagePhrase}}. That is the biggest drop.',
       biggestDrop_other:
         '{{count}} customers left after {{stagePhrase}}. That is the biggest drop.',
-      biggestDropFew:
-        'Fewer than 5 customers left after {{stagePhrase}}. That is the biggest drop.',
+      biggestDropWithoutCount: 'The biggest drop was after {{stagePhrase}}.',
     },
     missedSales: {
       title: 'Missed sales',
@@ -48,7 +47,15 @@ export const SALES_REPORT_ENGLISH_TRANSLATIONS = {
         '{{count}} customers wanted under {{ceiling}} a month with nothing extra. No plan fit.',
       headlineFew:
         'Fewer than 5 customers wanted under {{ceiling}} a month with nothing extra. No plan fit.',
-      noInsight: 'There is no single product behind the missed sales in this period.',
+      headlineWithoutCeiling_one:
+        '{{count}} customer wanted a lower monthly amount with nothing extra. No plan fit.',
+      headlineWithoutCeiling_other:
+        '{{count}} customers wanted a lower monthly amount with nothing extra. No plan fit.',
+      headlineFewWithoutCeiling:
+        'Fewer than 5 customers wanted a lower monthly amount with nothing extra. No plan fit.',
+      detailHidden:
+        'Fewer than 5 customers missed out in this period, so the detail stays hidden to keep their answers private.',
+      noInsight: 'No single product had enough missed sales in this period to name it.',
       lowestNoCost: '{{productName}}: the lowest no-cost plan is {{monthly}} a month.',
       leastExtraUnderCeiling:
         'The plan under {{ceiling}} a month with the least extra adds {{extra}} extra in total.',
@@ -138,7 +145,7 @@ export const SALES_REPORT_TAMIL_TRANSLATIONS: TranslationsMatching<
         THIS_WEEK: 'இந்த வாரம் இன்னும் EMI விற்பனை இல்லை', // draft: needs native review
         THIS_MONTH: 'இந்த மாதம் இன்னும் EMI விற்பனை இல்லை', // draft: needs native review
       },
-      body: 'வாடிக்கையாளர் EMI பற்றிக் கேட்டால் புதிய EMI விற்பனையைத் தொடங்குங்கள். அங்கிருந்து உங்கள் அறிக்கை நிரம்பும்.', // draft: needs native review
+      body: 'வாடிக்கையாளர் EMI பற்றிக் கேட்டால் புதிய EMI விற்பனையைத் தொடங்குங்கள். வாடிக்கையாளர்கள் தேர்வை முடிக்கும்போது உங்கள் அறிக்கை நிரம்பும்.', // draft: needs native review
     },
     funnel: {
       title: 'வாடிக்கையாளர்கள் எங்கே விலகுகிறார்கள்', // draft: needs native review
@@ -159,8 +166,7 @@ export const SALES_REPORT_TAMIL_TRANSLATIONS: TranslationsMatching<
       biggestDrop_one: '{{stagePhrase}} பின் {{count}} வாடிக்கையாளர் விலகினார். இதுவே பெரிய சரிவு.', // draft: needs native review
       biggestDrop_other:
         '{{stagePhrase}} பின் {{count}} வாடிக்கையாளர்கள் விலகினர். இதுவே பெரிய சரிவு.', // draft: needs native review
-      biggestDropFew:
-        '{{stagePhrase}} பின் 5-க்கும் குறைவான வாடிக்கையாளர்கள் விலகினர். இதுவே பெரிய சரிவு.', // draft: needs native review
+      biggestDropWithoutCount: '{{stagePhrase}} பின் பெரிய சரிவு ஏற்பட்டது.', // draft: needs native review
     },
     missedSales: {
       title: 'தவறிய விற்பனைகள்', // draft: needs native review
@@ -172,7 +178,15 @@ export const SALES_REPORT_TAMIL_TRANSLATIONS: TranslationsMatching<
         '{{count}} வாடிக்கையாளர்கள் கூடுதல் இல்லாமல் மாதம் {{ceiling}}-க்குள் விரும்பினர். எந்தத் திட்டமும் பொருந்தவில்லை.', // draft: needs native review
       headlineFew:
         '5-க்கும் குறைவான வாடிக்கையாளர்கள் கூடுதல் இல்லாமல் மாதம் {{ceiling}}-க்குள் விரும்பினர். எந்தத் திட்டமும் பொருந்தவில்லை.', // draft: needs native review
-      noInsight: 'இந்தக் காலத்தின் தவறிய விற்பனைகளுக்குப் பின் ஒரே பொருள் இல்லை.', // draft: needs native review
+      headlineWithoutCeiling_one:
+        '{{count}} வாடிக்கையாளர் கூடுதல் இல்லாமல் குறைந்த மாதத் தொகையை விரும்பினார். எந்தத் திட்டமும் பொருந்தவில்லை.', // draft: needs native review
+      headlineWithoutCeiling_other:
+        '{{count}} வாடிக்கையாளர்கள் கூடுதல் இல்லாமல் குறைந்த மாதத் தொகையை விரும்பினர். எந்தத் திட்டமும் பொருந்தவில்லை.', // draft: needs native review
+      headlineFewWithoutCeiling:
+        '5-க்கும் குறைவான வாடிக்கையாளர்கள் கூடுதல் இல்லாமல் குறைந்த மாதத் தொகையை விரும்பினர். எந்தத் திட்டமும் பொருந்தவில்லை.', // draft: needs native review
+      detailHidden:
+        'இந்தக் காலத்தில் 5-க்கும் குறைவானவர்களே விற்பனையைத் தவறவிட்டதால், அவர்களின் பதில்களைப் பாதுகாக்க விவரம் மறைக்கப்பட்டுள்ளது.', // draft: needs native review
+      noInsight: 'இந்தக் காலத்தில் பெயரிடும் அளவுக்குத் தவறிய விற்பனை உள்ள ஒரே பொருள் இல்லை.', // draft: needs native review
       lowestNoCost: '{{productName}}: குறைந்த கட்டணமில்லா திட்டம் மாதம் {{monthly}}.', // draft: needs native review
       leastExtraUnderCeiling:
         'மாதம் {{ceiling}}-க்குள் உள்ள குறைந்த கூடுதல் திட்டம் மொத்தம் {{extra}} கூடுதல் சேர்க்கிறது.', // draft: needs native review

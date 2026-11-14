@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { MissedSalesReport } from '../api/salesReportApi';
+import { describeMissingProductInsight } from '../model/describeMissedSales';
 import { BudgetBucketChart } from './BudgetBucketChart';
 
 export interface MissedSalesPanelContentProps {
@@ -27,7 +28,7 @@ export function MissedSalesPanelContent({
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         {insight === null || ceilingInPaise === null ? (
-          <p className="text-body text-slate">{t('report.missedSales.noInsight')}</p>
+          <p className="text-body text-slate">{describeMissingProductInsight(t, missedSales)}</p>
         ) : (
           <div className="flex flex-col gap-2 text-body text-deep-navy">
             <p className="font-bold">

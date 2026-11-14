@@ -13,7 +13,7 @@ export interface BudgetBucketChartProps {
 const TALLEST_BAR_HEIGHT_IN_PIXELS = 104;
 
 // "Monthly budgets customers entered": decorative bars plus a screen-reader table with the same
-// API counts; a calm note replaces it when too few customers told a budget (plan Q3).
+// API counts; a calm note replaces it when too few told a budget (plan Q3). No ceiling, no legend.
 export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
   const { t } = useTranslation();
   const headingId = useId();
@@ -33,6 +33,7 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
     missedSales.budgetCeilingInPaise === null
       ? undefined
       : formatRupeesFromPaise(missedSales.budgetCeilingInPaise);
+  const hasPlansColumn = buckets.some((bucket) => bucket.plans.length > 0);
   const totalText = formatPossiblySuppressedCount(t, {
     customerCount: missedSales.budgetTotalCustomerCount,
     isSuppressed: missedSales.budgetTotalCustomerCount === null,
@@ -83,7 +84,7 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
           <tr>
             <th scope="col">{t('report.budgets.columnRange')}</th>
             <th scope="col">{t('report.budgets.columnCustomers')}</th>
-            <th scope="col">{t('report.budgets.columnPlans')}</th>
+            {hasPlansColumn ? <th scope="col">{t('report.budgets.columnPlans')}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -91,7 +92,7 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
             <tr key={bucket.lowerBoundInPaise}>
               <th scope="row">{describeBudgetBucketRange(t, bucket)}</th>
               <td>{formatPossiblySuppressedCount(t, bucket)}</td>
-              <td>{describeBucketPlans(t, bucket).join(', ')}</td>
+              {hasPlansColumn ? <td>{describeBucketPlans(t, bucket).join(', ')}</td> : null}
             </tr>
           ))}
         </tbody>
