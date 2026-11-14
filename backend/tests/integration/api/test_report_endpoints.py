@@ -205,6 +205,7 @@ def test_one_customer_still_choosing_today_shows_in_no_report_until_the_sale_end
     funnel = _read(mock_api, "/funnel?range=TODAY", headers)
     missed = _read(mock_api, "/missed-sales?range=TODAY", headers)
     assert [stage["isSuppressed"] for stage in funnel["stages"]] == [True] * 5
+    assert funnel["biggestDrop"] is None
     assert (missed["isSuppressed"], missed["budgetCeilingInPaise"], missed["productInsight"]) == (
         True,
         None,

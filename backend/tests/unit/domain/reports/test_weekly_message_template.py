@@ -92,7 +92,7 @@ def test_suppressed_numbers_leave_their_sentences_out() -> None:
     """3 paid and 3 missed are "fewer than 5", so neither sentence is written.
 
     With 3 paid of 51 agreed, the biggest drop moves to after agreeing; it sits beside the hidden
-    paid count, so it is hidden too and its sentence is left out.
+    paid count, so the report omits it and its sentence is left out.
     """
     small_counts = {**DESIGN_COUNTS, FunnelStage.PAID: 3}
     phone_128_gb, *other_products = build_design_missed_sales_analysis().products_missed_sales
@@ -105,8 +105,7 @@ def test_suppressed_numbers_leave_their_sentences_out() -> None:
         missed_sales=_missed_sales_report(analysis),
     )
     english = TEMPLATE.render_in(MessageLanguage.ENGLISH, facts)
-    assert facts.funnel.biggest_drop is not None
-    assert facts.funnel.biggest_drop.count.is_suppressed
+    assert facts.funnel.biggest_drop is None
     assert english.paragraphs[0] == "₹1,84,000 is due from brands, first payment around 13 Jan."
     assert "biggest drop" not in " ".join(english.paragraphs)
     assert "3" not in english.paragraphs[0].replace("13 Jan", "")

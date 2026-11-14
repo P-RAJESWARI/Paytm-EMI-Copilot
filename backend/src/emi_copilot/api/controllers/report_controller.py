@@ -61,8 +61,10 @@ GATEWAY_BACKED_REPORT_PROBLEMS = (
         "M5 funnel: the sales started in the period (a cohort), counted by every stage each "
         "reached: STARTED, BUDGET_TOLD, PLANS_VIEWED, AGREED, PAID. biggestDrop is the largest "
         "fall between adjacent stages (afterStage is the earlier one; ties go to the earliest), "
-        "null when no stage falls; it is suppressed when it sits beside a suppressed stage, so "
-        "the hidden count cannot be worked out by subtraction. "
+        "null when no stage falls. It is also null when it sits beside a suppressed stage, so "
+        "neither the hidden count (by subtraction) nor where those few customers stopped (by "
+        "its afterStage) can be worked out; between two shown stages a drop of 1 to 4 keeps "
+        "its afterStage and is sent as customerCount null with isSuppressed true. "
         + SUPPRESSION_NOTE
         + MERCHANT_BEARER_NOTE
     ),

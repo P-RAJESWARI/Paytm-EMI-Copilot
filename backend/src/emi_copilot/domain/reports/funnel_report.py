@@ -79,11 +79,14 @@ def report_drop(
     drop_size: FunnelDropSize,
     stages: tuple[FunnelStageCount, ...],
     policy: SmallCountSuppressionPolicy,
-) -> FunnelDrop:
-    """Reports the biggest drop; it is suppressed when it is 1 to 4 or either stage is suppressed.
+) -> FunnelDrop | None:
+    """Reports the biggest drop: None beside a suppressed stage; a count of 1 to 4 is suppressed.
 
-    A shown drop beside a suppressed stage would let the merchant subtract and recover the hidden
-    count (20 started, a drop of 17, so 3 told a budget), which rule 6 forbids.
+    Beside a suppressed stage even the stage name is withheld: its count could be subtracted to
+    recover the hidden one (20 started, a drop of 17, so 3 told a budget), and its name alone
+    tells where a few customers stopped (1 started, told a budget and saw the plans: "after
+    seeing the plans" points at that one person), which rule 6 forbids. Between two shown stages
+    a drop of 1 to 4 keeps its stage, which the merchant sees anyway, and hides its count.
     """
     later_stage = FUNNEL_STAGE_ORDER[FUNNEL_STAGE_ORDER.index(drop_size.after_stage) + 1]
     is_a_neighbour_suppressed = any(
@@ -92,7 +95,7 @@ def report_drop(
         if stage_count.stage in (drop_size.after_stage, later_stage)
     )
     if is_a_neighbour_suppressed:
-        return FunnelDrop(drop_size.after_stage, ReportedCount(None, is_suppressed=True))
+        return None
     return FunnelDrop(drop_size.after_stage, policy.report(drop_size.customer_count))
 
 
@@ -100,9 +103,9 @@ def report_drop(
 class FunnelReport:
     """A cohort funnel: the sales started in the period, counted by every stage each reached.
 
-    Counts from 1 to 4, a zero right after a suppressed stage, and a biggest drop of 1 to 4 or
-    beside a suppressed stage are suppressed (plan Q3). The cohort holds no sale still
-    CHOOSING (ReportQueryRepository).
+    Counts from 1 to 4, a zero right after a suppressed stage, and a biggest drop of 1 to 4 are
+    suppressed (plan Q3); a biggest drop beside a suppressed stage is omitted (None), stage and
+    all. The cohort holds no sale still CHOOSING (ReportQueryRepository).
     """
 
     stages: tuple[FunnelStageCount, ...]

@@ -47,8 +47,8 @@ def test_funnel_report_counts_this_weeks_cohort_of_the_shop_only(kit: ServiceTes
     assert view.report.count_for(FunnelStage.AGREED) == ReportedCount(None, is_suppressed=True)
     # PAID is 0 right after the suppressed AGREED, so it is suppressed too.
     assert view.report.count_for(FunnelStage.PAID) == ReportedCount(None, is_suppressed=True)
-    assert view.report.biggest_drop is not None
-    assert view.report.biggest_drop.after_stage is FunnelStage.PLANS_VIEWED
+    # The biggest fall is after PLANS_VIEWED, beside the hidden AGREED, so it is omitted.
+    assert view.report.biggest_drop is None
 
 
 def test_another_shop_sees_only_its_own_single_sale_suppressed(kit: ServiceTestKit) -> None:

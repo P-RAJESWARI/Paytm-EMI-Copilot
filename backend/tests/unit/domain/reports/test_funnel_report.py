@@ -68,8 +68,8 @@ def test_a_funnel_that_only_rises_or_stays_has_no_drop() -> None:
     assert find_biggest_drop({FunnelStage.PAID: 3}) is None
 
 
-def test_small_counts_and_a_small_biggest_drop_are_suppressed() -> None:
-    """7 started, 4 paid: 4 is hidden, and so is the drop of 3."""
+def test_small_counts_are_suppressed() -> None:
+    """7 started, 4 paid: the 4 is hidden."""
     report = FunnelReport.from_stage_counts(
         {
             FunnelStage.STARTED: 7,
@@ -82,8 +82,25 @@ def test_small_counts_and_a_small_biggest_drop_are_suppressed() -> None:
     )
     assert report.count_for(FunnelStage.STARTED) == ReportedCount(7, is_suppressed=False)
     assert report.count_for(FunnelStage.PAID) == ReportedCount(None, is_suppressed=True)
+
+
+def test_a_small_drop_between_two_shown_stages_keeps_its_stage_and_hides_its_count() -> None:
+    """12 started and 9 went on: both stages are shown, so naming the stage reveals nothing new."""
+    report = FunnelReport.from_stage_counts(
+        {FunnelStage.STARTED: 12}
+        | dict.fromkeys(
+            (
+                FunnelStage.BUDGET_TOLD,
+                FunnelStage.PLANS_VIEWED,
+                FunnelStage.AGREED,
+                FunnelStage.PAID,
+            ),
+            9,
+        ),
+        SmallCountSuppressionPolicy(),
+    )
     assert report.biggest_drop is not None
-    assert report.biggest_drop.after_stage is FunnelStage.AGREED
+    assert report.biggest_drop.after_stage is FunnelStage.STARTED
     assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)
 
 
@@ -116,23 +133,36 @@ def test_a_shown_count_after_a_suppressed_stage_keeps_its_number() -> None:
     ]
 
 
-def test_a_drop_beside_a_suppressed_stage_is_suppressed_so_it_cannot_be_subtracted() -> None:
-    """20 started and 3 told a budget: showing a drop of 17 would reveal the hidden 3."""
+def test_a_drop_beside_a_suppressed_stage_is_omitted_so_it_cannot_be_subtracted() -> None:
+    """20 started and 3 told a budget: a drop of 17 would reveal the hidden 3, so none is given."""
     report = FunnelReport.from_stage_counts(
         {FunnelStage.STARTED: 20, FunnelStage.BUDGET_TOLD: 3}, SmallCountSuppressionPolicy()
     )
     assert report.count_for(FunnelStage.BUDGET_TOLD) == ReportedCount(None, is_suppressed=True)
-    assert report.biggest_drop is not None
-    assert report.biggest_drop.after_stage is FunnelStage.STARTED
-    assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)
+    assert report.biggest_drop is None
 
 
-def test_a_drop_whose_earlier_stage_is_suppressed_is_suppressed() -> None:
-    """A later stage of 0 after a hidden 4 is itself hidden, and so is the drop between them."""
+def test_a_drop_of_five_or_more_into_a_hidden_stage_is_omitted() -> None:
+    """9 told a budget and 4 saw the plans: the drop of 5 sits beside the hidden 4, so none."""
     report = FunnelReport.from_stage_counts(
         {FunnelStage.STARTED: 9, FunnelStage.BUDGET_TOLD: 9, FunnelStage.PLANS_VIEWED: 4},
         SmallCountSuppressionPolicy(),
     )
-    assert report.biggest_drop is not None
-    assert report.biggest_drop.after_stage is FunnelStage.BUDGET_TOLD
-    assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)
+    assert report.count_for(FunnelStage.PLANS_VIEWED) == ReportedCount(None, is_suppressed=True)
+    assert report.biggest_drop is None
+
+
+def test_one_expired_customer_leaves_no_stage_name_where_they_stopped() -> None:
+    """1 started, told a budget and saw the plans: every stage is hidden and so is the drop's stage.
+
+    "The biggest drop was after seeing the plans" would say where that one customer stopped.
+    """
+    report = FunnelReport.from_stage_counts(
+        {FunnelStage.STARTED: 1, FunnelStage.BUDGET_TOLD: 1, FunnelStage.PLANS_VIEWED: 1},
+        SmallCountSuppressionPolicy(),
+    )
+    assert all(stage_count.count.is_suppressed for stage_count in report.stages)
+    assert find_biggest_drop(
+        {FunnelStage.STARTED: 1, FunnelStage.BUDGET_TOLD: 1, FunnelStage.PLANS_VIEWED: 1}
+    ) == FunnelDropSize(FunnelStage.PLANS_VIEWED, 1)
+    assert report.biggest_drop is None

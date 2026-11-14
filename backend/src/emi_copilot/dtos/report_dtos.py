@@ -53,7 +53,7 @@ class FunnelStageCountResponse(CamelCaseResponseModel):
 
 
 class FunnelDropResponse(CamelCaseResponseModel):
-    """The largest fall between adjacent stages; afterStage is the earlier stage."""
+    """The largest fall between two shown adjacent stages; afterStage is the earlier stage."""
 
     after_stage: FunnelStage
     customer_count: CustomerCount
