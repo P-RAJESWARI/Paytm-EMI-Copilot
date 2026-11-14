@@ -28,6 +28,7 @@ from emi_copilot.domain.payments import (
 )
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork, UnitOfWorkFactory
+from emi_copilot.services.merchant_payment_scope import find_merchant_payment_attempt
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,14 +131,8 @@ class PaymentStatusService:
         existence stays hidden and the gateway is never asked about them.
         """
         with self._unit_of_work_factory() as unit_of_work:
-            attempt = unit_of_work.payment_attempts.find_by_order_id(order_id)
-            is_shops_attempt = (
-                attempt is not None
-                and attempt.sale_id is not None
-                and unit_of_work.sales.find_by_id_for_merchant(merchant_id, attempt.sale_id)
-                is not None
-            )
-        if not is_shops_attempt:
+            shops_attempt = find_merchant_payment_attempt(unit_of_work, merchant_id, order_id)
+        if shops_attempt is None:
             raise PaymentAttemptNotFoundError(f"No payment of this shop has order id {order_id}.")
         return self.get_payment_status(order_id)
 

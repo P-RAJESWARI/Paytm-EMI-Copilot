@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from emi_copilot.config.settings import ApplicationSettings
+from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
 from tests.unit.config.test_settings import SETTINGS_ENVIRONMENT_VARIABLES
 
 
@@ -63,4 +63,23 @@ def test_application_settings_with_unusable_live_feed_value_raises_validation_er
     """A bound outside its range fails at startup."""
     monkeypatch.setenv(variable_name, unusable_value)
     with pytest.raises(ValidationError):
+        ApplicationSettings()
+
+
+def test_mock_customer_simulator_is_off_unless_switched_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The demo simulator exists only when someone asks for it."""
+    assert ApplicationSettings().mock_customer_simulator_enabled is False
+    monkeypatch.setenv("MOCK_CUSTOMER_SIMULATOR_ENABLED", "true")
+    assert ApplicationSettings().mock_customer_simulator_enabled is True
+
+
+def test_mock_customer_simulator_with_the_paytm_gateway_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """It can pay only Mock links, so it never runs beside the real gateway."""
+    monkeypatch.setenv("MOCK_CUSTOMER_SIMULATOR_ENABLED", "true")
+    monkeypatch.setenv("PAYMENT_GATEWAY_MODE", PaymentGatewayMode.PAYTM.value)
+    with pytest.raises(ValidationError, match="refused with PAYMENT_GATEWAY_MODE=paytm"):
         ApplicationSettings()

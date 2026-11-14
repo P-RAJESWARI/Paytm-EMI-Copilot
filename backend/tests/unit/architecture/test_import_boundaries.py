@@ -84,6 +84,13 @@ def test_payment_gateway_port_imports_only_standard_library_and_domain() -> None
     assert find_disallowed_imports(PAYMENT_GATEWAY_PORT_FILE) == []
 
 
+def test_mock_payment_simulator_port_imports_only_standard_library_and_domain() -> None:
+    """The Mock's customer-control port is in domain terms too, like the gateway port."""
+    simulator_port_file = PAYMENT_GATEWAY_PORT_FILE.with_name("mock_payment_simulator_port.py")
+    assert simulator_port_file.is_file()
+    assert find_disallowed_imports(simulator_port_file) == []
+
+
 @pytest.mark.parametrize(
     ("module_name", "expected_allowed"),
     [

@@ -10,11 +10,16 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends
 
+from emi_copilot.adapters.payment_gateway.mock_payment_simulator_port import (
+    MockPaymentSimulatorPort,
+)
 from emi_copilot.api.dependencies import (
     ClockDependency,
     ComponentsDependency,
     EventBusDependency,
+    GatewayDependency,
     IdGeneratorDependency,
+    OfferDiscoveryServiceDependency,
     PaymentHandoffServiceDependency,
     PaymentStatusServiceDependency,
     UnitOfWorkFactoryDependency,
@@ -24,6 +29,8 @@ from emi_copilot.services.customer_qr_link_issuer import CustomerQrLinkIssuer
 from emi_copilot.services.get_sale_service import GetSaleService
 from emi_copilot.services.issue_qr_token_service import IssueQrTokenService
 from emi_copilot.services.list_counter_sales_service import ListCounterSalesService
+from emi_copilot.services.mark_sale_ready_to_pay_service import MarkSaleReadyToPayService
+from emi_copilot.services.mock_customer_simulator_service import MockCustomerSimulatorService
 from emi_copilot.services.sale_expiry import SaleExpiryStep
 from emi_copilot.services.sale_handoff_service import SaleHandoffService
 from emi_copilot.services.sale_status_feed_service import SaleStatusFeedService
@@ -154,4 +161,61 @@ def provide_sale_status_feed_service(
 
 SaleStatusFeedServiceDependency = Annotated[
     SaleStatusFeedService, Depends(provide_sale_status_feed_service)
+]
+
+
+class MockPaymentSimulatorUnavailableError(RuntimeError):
+    """Raised when the simulator is asked to pay but the configured gateway is not the Mock."""
+
+
+def provide_mark_sale_ready_to_pay_service(
+    unit_of_work_factory: UnitOfWorkFactoryDependency,
+    offer_discovery_service: OfferDiscoveryServiceDependency,
+    clock: ClockDependency,
+    event_bus: EventBusDependency,
+    sale_expiry: SaleExpiryDependency,
+) -> MarkSaleReadyToPayService:
+    """Assembles the service that records a customer's agreed plan (simulator, then Layer 3)."""
+    return MarkSaleReadyToPayService(
+        unit_of_work_factory, offer_discovery_service, clock, event_bus, sale_expiry
+    )
+
+
+def provide_mock_payment_simulator(payment_gateway: GatewayDependency) -> MockPaymentSimulatorPort:
+    """Gives the Mock gateway's customer controls; any other gateway is a wiring error (500).
+
+    Settings refuse the simulator in paytm mode, so this only fails with a test double.
+    """
+    if not isinstance(payment_gateway, MockPaymentSimulatorPort):
+        raise MockPaymentSimulatorUnavailableError(
+            "The Mock customer simulator needs the Mock payment gateway."
+        )
+    return payment_gateway
+
+
+MarkSaleReadyToPayServiceDependency = Annotated[
+    MarkSaleReadyToPayService, Depends(provide_mark_sale_ready_to_pay_service)
+]
+MockPaymentSimulatorDependency = Annotated[
+    MockPaymentSimulatorPort, Depends(provide_mock_payment_simulator)
+]
+
+
+def provide_mock_customer_simulator_service(
+    unit_of_work_factory: UnitOfWorkFactoryDependency,
+    mark_sale_ready_to_pay_service: MarkSaleReadyToPayServiceDependency,
+    payment_status_service: PaymentStatusServiceDependency,
+    mock_payment_simulator: MockPaymentSimulatorDependency,
+) -> MockCustomerSimulatorService:
+    """Assembles the labelled demo simulator on the services the real flow uses."""
+    return MockCustomerSimulatorService(
+        unit_of_work_factory,
+        mark_sale_ready_to_pay_service,
+        payment_status_service,
+        mock_payment_simulator,
+    )
+
+
+MockCustomerSimulatorServiceDependency = Annotated[
+    MockCustomerSimulatorService, Depends(provide_mock_customer_simulator_service)
 ]

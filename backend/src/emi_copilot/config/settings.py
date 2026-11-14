@@ -79,6 +79,9 @@ class ApplicationSettings(BaseSettings):
     # is replaced by a single resync message, and how often a quiet stream sends a heartbeat.
     sale_event_stream_maximum_queued_messages: int = Field(default=100, ge=1, le=10_000)
     sale_event_stream_heartbeat_interval_in_seconds: float = Field(default=15.0, gt=0, le=300)
+    # MockCustomerSimulator (plan step 2.3, rules 9 and 10): demo-only endpoints that play the
+    # customer agreeing to a plan and paying a Mock link. Off by default; refused in paytm mode.
+    mock_customer_simulator_enabled: bool = False
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"
@@ -126,6 +129,18 @@ class ApplicationSettings(BaseSettings):
                 unknown_zone_error
             )
         return value
+
+    @model_validator(mode="after")
+    def refuse_mock_customer_simulator_with_the_real_gateway(self) -> Self:
+        """Refuses to start with the simulator on in paytm mode: it can only pay Mock links."""
+        if (
+            self.mock_customer_simulator_enabled
+            and self.payment_gateway_mode is PaymentGatewayMode.PAYTM
+        ):
+            raise ValueError(
+                "MOCK_CUSTOMER_SIMULATOR_ENABLED=true is refused with PAYMENT_GATEWAY_MODE=paytm"
+            )
+        return self
 
     @model_validator(mode="after")
     def check_retry_delays_are_ordered(self) -> Self:

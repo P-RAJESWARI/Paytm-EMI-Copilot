@@ -1,4 +1,4 @@
-"""Services depend on the gateway port, repositories, domain, events and six core modules only.
+"""Services depend on the gateway ports, repositories, domain, events and six core modules only.
 
 They never import a concrete adapter (the Mock, any Paytm module or the factory), a web
 framework, the database library or the API layer (backend.md section 2, ADR 0008).
@@ -17,6 +17,8 @@ from tests.unit.architecture.test_import_boundaries import (
 
 ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.adapters.payment_gateway.port",
+    # The Mock's customer controls, a port too, used only by the labelled MockCustomerSimulator.
+    "emi_copilot.adapters.payment_gateway.mock_payment_simulator_port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
     # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens

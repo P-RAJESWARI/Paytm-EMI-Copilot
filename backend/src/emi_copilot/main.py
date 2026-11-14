@@ -1,9 +1,14 @@
 """Application factory: wires settings, logging, middleware and routers. No business logic."""
 
+import logging
+
 from fastapi import APIRouter, FastAPI
 
 from emi_copilot.api.controllers.health_controller import health_router
 from emi_copilot.api.controllers.merchant_controller import merchant_router
+from emi_copilot.api.controllers.mock_customer_simulator_controller import (
+    mock_customer_simulator_router,
+)
 from emi_copilot.api.controllers.offer_controller import offer_router
 from emi_copilot.api.controllers.payment_link_controller import payment_link_router
 from emi_copilot.api.controllers.payment_status_controller import payment_status_router
@@ -23,6 +28,11 @@ from emi_copilot.core.request_context import CorrelationIdMiddleware
 
 API_VERSION_1_PREFIX = "/api/v1"
 API_VERSION = "0.1.0"
+MOCK_CUSTOMER_SIMULATOR_ACTIVE_WARNING = (
+    "MockCustomerSimulator active: demo endpoints play the customer agreeing and paying"
+)
+
+application_factory_logger = logging.getLogger(__name__)
 
 # Resource controllers join this tuple as they are built; /health stays unversioned.
 API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
@@ -45,7 +55,8 @@ def create_application(
 ) -> FastAPI:
     """Builds the FastAPI application; its components are built at startup by the lifespan.
 
-    The id generator, injectable for tests, makes correlation ids and every domain id.
+    The id generator, injectable for tests, makes correlation ids and every domain id. The
+    labelled MockCustomerSimulator is mounted only when its setting is on, with a warning.
     """
     active_settings = settings or ApplicationSettings()
     active_id_generator = id_generator or UlidIdGenerator()
@@ -62,5 +73,11 @@ def create_application(
     application.include_router(health_router)
     for versioned_router in API_VERSION_1_ROUTERS:
         application.include_router(versioned_router, prefix=API_VERSION_1_PREFIX)
+    if active_settings.mock_customer_simulator_enabled:
+        application.include_router(mock_customer_simulator_router, prefix=API_VERSION_1_PREFIX)
+        application_factory_logger.warning(
+            MOCK_CUSTOMER_SIMULATOR_ACTIVE_WARNING,
+            extra={"mock_customer_simulator": "enabled"},
+        )
     install_openapi_schema(application)
     return application
