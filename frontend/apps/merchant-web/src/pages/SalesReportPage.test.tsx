@@ -338,6 +338,55 @@ describe('M5 sales report', () => {
     await expectNoAccessibilityViolations(container);
   });
 
+  it('labels hidden budget buckets "Hidden", never "fewer than 5", in the chart, its table and Tamil', async () => {
+    const { container } = renderSalesReport({
+      'GET /api/v1/reports/missed-sales': () =>
+        jsonResponse({
+          ...TEST_MISSED_SALES_REPORT,
+          // Complementary suppression: the second hidden bucket may hold 5 or more.
+          budgetBuckets: TEST_MISSED_SALES_REPORT.budgetBuckets.map((bucket, bucketIndex) =>
+            bucketIndex < 2 ? { ...bucket, customerCount: null, isSuppressed: true } : bucket,
+          ),
+        }),
+    });
+    await waitForLoadedReport();
+
+    await userEvent.click(screen.getByRole('button', { name: /Missed sales/ }));
+
+    const panel = screen.getByRole('region', { name: 'Missed sales detail' });
+    const budgetTable = within(panel).getByRole('table', {
+      name: 'Monthly budgets customers entered (96)',
+    });
+    expect(
+      within(budgetTable)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent),
+    ).toEqual([
+      'Under ₹2,500HiddenDemo cardless lender (Mock) ₹2,050',
+      '₹2,500 to ₹3,000Hidden',
+      '₹3,000 to ₹3,50014',
+      "₹3,500 to ₹4,00021No-cost ₹3,667, Your card's bank ₹3,850",
+      '₹4,000 and above49',
+    ]);
+    expect(within(panel).getAllByText('Hidden')).toHaveLength(4);
+    expect(
+      within(panel).getByText('Some ranges are hidden to keep customers’ answers private.'),
+    ).toBeTruthy();
+    expect(panel.textContent).not.toMatch(/fewer than 5/i);
+    await expectNoAccessibilityViolations(container);
+
+    await userEvent.click(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('button', {
+        name: 'தமிழ்',
+      }),
+    );
+
+    const tamilPanel = screen.getByRole('region', { name: 'தவறிய விற்பனை விவரம்' });
+    expect(within(tamilPanel).getAllByText('மறைக்கப்பட்டது')).toHaveLength(4);
+    expect(tamilPanel.textContent).not.toMatch(/5-க்கும் குறைவான/);
+  });
+
   it('gives the missed count without a ceiling when the API sends none', async () => {
     renderSalesReport({
       'GET /api/v1/reports/missed-sales': () =>

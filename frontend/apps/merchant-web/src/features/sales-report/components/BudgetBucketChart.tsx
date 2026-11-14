@@ -4,7 +4,11 @@ import { useTranslation } from 'react-i18next';
 
 import type { MissedSalesReport } from '../api/salesReportApi';
 import { describeBucketPlans, describeBudgetBucketRange } from '../model/describeBudgetBucket';
-import { formatPossiblySuppressedCount } from '../model/reportCounts';
+import {
+  formatBudgetBucketCount,
+  formatPossiblySuppressedCount,
+  isBudgetBucketCountHidden,
+} from '../model/reportCounts';
 
 export interface BudgetBucketChartProps {
   missedSales: MissedSalesReport;
@@ -12,8 +16,13 @@ export interface BudgetBucketChartProps {
 
 const TALLEST_BAR_HEIGHT_IN_PIXELS = 104;
 
+// Every hidden bucket draws the same short dashed stub, so its bar never hints at its size.
+const HIDDEN_BAR_CLASS_NAMES =
+  'block h-2 w-full rounded-input border border-dashed border-border-strong bg-grey-tint';
+
 // "Monthly budgets customers entered": decorative bars plus a screen-reader table with the same
-// API counts; a calm note replaces it when too few told a budget (plan Q3). No ceiling, no legend.
+// API counts; a hidden bucket reads "Hidden" (it may hold 5 or more) with a privacy note; a calm
+// note replaces the chart when too few told a budget (plan Q3). No ceiling, no legend.
 export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
   const { t } = useTranslation();
   const headingId = useId();
@@ -26,8 +35,9 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
   }
   const buckets = missedSales.budgetBuckets;
   const visibleCounts = buckets.map((bucket) =>
-    bucket.isSuppressed ? 0 : (bucket.customerCount ?? 0),
+    isBudgetBucketCountHidden(bucket) ? 0 : (bucket.customerCount ?? 0),
   );
+  const hasHiddenBucket = buckets.some(isBudgetBucketCountHidden);
   const largestCount = Math.max(1, ...visibleCounts);
   const ceiling =
     missedSales.budgetCeilingInPaise === null
@@ -61,14 +71,18 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
         {buckets.map((bucket, bucketIndex) => (
           <div key={bucket.lowerBoundInPaise} className="flex flex-col items-center gap-1">
             <span className="text-label tabular-nums text-deep-navy">
-              {formatPossiblySuppressedCount(t, bucket)}
+              {formatBudgetBucketCount(t, bucket)}
             </span>
-            <span
-              className={`block w-full rounded-input ${bucket.isUnderCeiling ? 'bg-orange' : 'bg-steel-blue'}`}
-              style={{
-                height: `${Math.round(((visibleCounts[bucketIndex] ?? 0) / largestCount) * TALLEST_BAR_HEIGHT_IN_PIXELS)}px`,
-              }}
-            />
+            {isBudgetBucketCountHidden(bucket) ? (
+              <span className={HIDDEN_BAR_CLASS_NAMES} />
+            ) : (
+              <span
+                className={`block w-full rounded-input ${bucket.isUnderCeiling ? 'bg-orange' : 'bg-steel-blue'}`}
+                style={{
+                  height: `${Math.round(((visibleCounts[bucketIndex] ?? 0) / largestCount) * TALLEST_BAR_HEIGHT_IN_PIXELS)}px`,
+                }}
+              />
+            )}
             <span className="text-center text-caption text-slate">
               {describeBudgetBucketRange(t, bucket)}
             </span>
@@ -91,12 +105,15 @@ export function BudgetBucketChart({ missedSales }: BudgetBucketChartProps) {
           {buckets.map((bucket) => (
             <tr key={bucket.lowerBoundInPaise}>
               <th scope="row">{describeBudgetBucketRange(t, bucket)}</th>
-              <td>{formatPossiblySuppressedCount(t, bucket)}</td>
+              <td>{formatBudgetBucketCount(t, bucket)}</td>
               {hasPlansColumn ? <td>{describeBucketPlans(t, bucket).join(', ')}</td> : null}
             </tr>
           ))}
         </tbody>
       </table>
+      {hasHiddenBucket ? (
+        <p className="text-label font-normal text-slate">{t('report.budgets.hiddenBucketsNote')}</p>
+      ) : null}
     </section>
   );
 }

@@ -75,6 +75,8 @@ export const SALES_REPORT_ENGLISH_TRANSLATIONS = {
       title: 'Monthly budgets customers entered ({{total}})',
       hidden:
         'Fewer than 5 customers told a budget in this period, so this chart stays hidden to keep their answers private.',
+      hiddenCount: 'Hidden',
+      hiddenBucketsNote: 'Some ranges are hidden to keep customers’ answers private.',
       legendUnder: 'Under {{ceiling}}',
       legendFrom: '{{ceiling}} and above',
       rangeUnder: 'Under {{upper}}',
@@ -207,6 +209,8 @@ export const SALES_REPORT_TAMIL_TRANSLATIONS: TranslationsMatching<
       title: 'வாடிக்கையாளர்கள் சொன்ன மாதாந்திர பட்ஜெட் ({{total}})', // draft: needs native review
       hidden:
         'இந்தக் காலத்தில் 5-க்கும் குறைவானவர்களே பட்ஜெட் சொன்னதால், அவர்களின் பதில்களைப் பாதுகாக்க இந்த வரைபடம் மறைக்கப்பட்டுள்ளது.', // draft: needs native review
+      hiddenCount: 'மறைக்கப்பட்டது', // draft: needs native review
+      hiddenBucketsNote: 'வாடிக்கையாளர்களின் பதில்களைப் பாதுகாக்க சில வரம்புகள் மறைக்கப்பட்டுள்ளன.', // draft: needs native review
       legendUnder: '{{ceiling}}-க்குக் கீழ்', // draft: needs native review
       legendFrom: '{{ceiling}} மற்றும் அதற்கு மேல்', // draft: needs native review
       rangeUnder: '{{upper}}-க்குக் கீழ்', // draft: needs native review
