@@ -18,6 +18,7 @@ from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import AuditEventType, EmiType
 from emi_copilot.domain.sales import ChosenPlan, SaleStatus
+from emi_copilot.events.sale_status_broadcaster import SaleStatusBroadcaster
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.services.customer_qr_link_issuer import CustomerQrLinkIssuer
 from emi_copilot.services.list_counter_sales_service import ListCounterSalesService
@@ -76,7 +77,7 @@ def services(
             build_catalogue_product(gateway_product_id=MOCK_PHONE_128_GB_PRODUCT_ID)
         )
     unit_of_work_factory = partial(SqlAlchemyUnitOfWork, session_factory, fixed_clock)
-    event_bus = build_event_bus(SequentialIdGenerator("01JCEVENTROW"))
+    event_bus = build_event_bus(SequentialIdGenerator("01JCEVENTROW"), SaleStatusBroadcaster(10))
     expiry = SaleExpiryStep(event_bus, timedelta(hours=1))
     mock_gateway = MockPaymentGatewayAdapter(fixed_clock, b"integration-test-mock-signing-key-32b")
     return DatabaseSaleServices(

@@ -32,6 +32,7 @@ from emi_copilot.events.audit_subscriber import AuditSubscriber
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.events.funnel_event_recorder import FunnelEventRecorder
 from emi_copilot.events.sale_payment_outcome_subscriber import SalePaymentOutcomeSubscriber
+from emi_copilot.events.sale_status_broadcaster import SaleStatusBroadcaster
 from emi_copilot.repositories.database import create_database_engine, create_session_factory
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
@@ -47,9 +48,9 @@ from emi_copilot.services.product_catalogue_service import ProductCatalogueServi
 class ApplicationComponents:
     """Everything built once per process: settings, time, ids, gateway, events and database.
 
-    The PIN hasher (with its decoy hash), the pairing rate limiter, the customer QR signing key
-    and the session code generator live here too, because they must outlive one request. The
-    key is kept out of repr.
+    The PIN hasher (with its decoy hash), the pairing rate limiter, the customer QR signing key,
+    the session code generator and the live sale status broadcaster live here too, because they
+    must outlive one request. The key is kept out of repr.
     """
 
     settings: ApplicationSettings
@@ -63,14 +64,22 @@ class ApplicationComponents:
     pairing_rate_limiter: FixedWindowRateLimiter
     customer_qr_signing_key: bytes = field(repr=False)
     session_code_generator: SessionCodeGenerator
+    sale_status_broadcaster: SaleStatusBroadcaster
 
 
-def build_event_bus(id_generator: IdGenerator) -> DomainEventBus:
-    """Builds the one event bus with audit first, then the funnel and the sale payment rules."""
+def build_event_bus(
+    id_generator: IdGenerator, sale_status_broadcaster: SaleStatusBroadcaster
+) -> DomainEventBus:
+    """Builds the one event bus: audit first, then the funnel, sale payment rules and live feed.
+
+    The live feed is last and only queues after-commit work, so it never writes or fails a use
+    case.
+    """
     event_bus = DomainEventBus()
     AuditSubscriber(id_generator).subscribe_to(event_bus)
     FunnelEventRecorder(id_generator).subscribe_to(event_bus)
     SalePaymentOutcomeSubscriber(event_bus).subscribe()
+    sale_status_broadcaster.subscribe_to(event_bus)
     return event_bus
 
 
@@ -84,7 +93,10 @@ def build_application_components(
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
     customer_qr_signing_key = resolve_customer_qr_signing_key(settings)
-    event_bus = build_event_bus(id_generator)
+    sale_status_broadcaster = SaleStatusBroadcaster(
+        settings.sale_event_stream_maximum_queued_messages
+    )
+    event_bus = build_event_bus(id_generator, sale_status_broadcaster)
     database_engine = create_database_engine(settings)
     session_factory = create_session_factory(database_engine)
     return ApplicationComponents(
@@ -99,6 +111,7 @@ def build_application_components(
         pairing_rate_limiter=build_pairing_rate_limiter(settings, clock),
         customer_qr_signing_key=customer_qr_signing_key,
         session_code_generator=RandomSessionCodeGenerator(),
+        sale_status_broadcaster=sale_status_broadcaster,
     )
 
 

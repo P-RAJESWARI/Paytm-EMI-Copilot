@@ -15,6 +15,7 @@ from emi_copilot.domain.payments import (
     VerifiedWebhookEvent,
 )
 from emi_copilot.domain.sales import SaleStatus
+from emi_copilot.events.sale_status_broadcaster import SaleStatusBroadcaster
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.services.payment_status_service import PaymentStatusService
 from tests.fakes.fake_payment_gateway import FakePaymentGateway, build_signed_notification
@@ -64,7 +65,7 @@ def apply_paid_webhook(
         partial(SqlAlchemyUnitOfWork, session_factory, clock),
         clock,
         SequentialIdGenerator("01JCDELIVERY"),
-        build_event_bus(SequentialIdGenerator()),
+        build_event_bus(SequentialIdGenerator(), SaleStatusBroadcaster(10)),
     )
     status_service.apply_webhook(build_signed_notification(SIGNATURE))
 
