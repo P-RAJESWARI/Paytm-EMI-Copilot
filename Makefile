@@ -25,7 +25,8 @@ COVERAGE_GATES := \
 	src/emi_copilot/services:90 \
 	src/emi_copilot/adapters:90
 
-.PHONY: help setup dev db-up db-down lint typecheck test test-with-coverage coverage-gates check migrate
+.PHONY: help setup dev db-up db-down lint typecheck test test-with-coverage coverage-gates check migrate \
+	openapi
 
 help: ## List the available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -80,3 +81,6 @@ check: lint typecheck db-up test-with-coverage coverage-gates ## Lint, types, te
 
 migrate: db-up ## Apply all Alembic migrations to the development database
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) alembic upgrade head
+
+openapi: ## Export and validate the OpenAPI schema to backend/openapi.json (commit the result)
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python scripts/export_openapi.py

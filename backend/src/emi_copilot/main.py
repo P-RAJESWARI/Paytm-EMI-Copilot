@@ -4,6 +4,9 @@ from fastapi import APIRouter, FastAPI
 
 from emi_copilot.api.controllers.health_controller import health_router
 from emi_copilot.api.controllers.offer_controller import offer_router
+from emi_copilot.api.controllers.payment_link_controller import payment_link_router
+from emi_copilot.api.controllers.payment_status_controller import payment_status_router
+from emi_copilot.api.controllers.paytm_webhook_controller import paytm_webhook_router
 from emi_copilot.api.dependencies import build_application_lifespan
 from emi_copilot.api.error_handlers import register_error_handlers
 from emi_copilot.api.openapi_documentation import install_openapi_schema
@@ -17,7 +20,12 @@ API_VERSION_1_PREFIX = "/api/v1"
 API_VERSION = "0.1.0"
 
 # Resource controllers join this tuple as they are built; /health stays unversioned.
-API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (offer_router,)
+API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
+    offer_router,
+    payment_link_router,
+    payment_status_router,
+    paytm_webhook_router,
+)
 
 
 def create_application(

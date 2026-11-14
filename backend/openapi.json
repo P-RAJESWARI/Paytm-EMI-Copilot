@@ -1,0 +1,1465 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EMI-at-Counter Copilot API",
+    "description": "REST contract for the merchant and customer apps. JSON is camelCase, money is integer paise (never a float) and every error is an RFC 7807 problem with a stable code.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Liveness check",
+        "description": "Returns ok while the process can serve requests. Unauthenticated.",
+        "operationId": "get_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/offers": {
+      "get": {
+        "tags": [
+          "offers"
+        ],
+        "summary": "List the EMI offers for an item",
+        "description": "Asks the payment gateway for every EMI plan on one item at one price and returns them in the gateway's order; no plan is hidden or ranked. monthlyInstallmentInPaise is the lender's quoted figure; the last installment, extra in total and total payable come from our exact schedule, which adds up to the paisa (ADR 0001). Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "operationId": "list_offers_api_v1_offers_get",
+        "parameters": [
+          {
+            "name": "priceInPaise",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "exclusiveMinimum": 0,
+              "description": "Item price in paise.",
+              "examples": [
+                2200000
+              ],
+              "title": "Priceinpaise"
+            },
+            "description": "Item price in paise."
+          },
+          {
+            "name": "productId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "Catalogue product id.",
+              "examples": [
+                "product-tv-43"
+              ],
+              "title": "Productid"
+            },
+            "description": "Catalogue product id."
+          },
+          {
+            "name": "brandId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "Catalogue brand id.",
+              "examples": [
+                "brand-demo"
+              ],
+              "title": "Brandid"
+            },
+            "description": "Catalogue brand id."
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "Catalogue category id.",
+              "examples": [
+                "category-televisions"
+              ],
+              "title": "Categoryid"
+            },
+            "description": "Catalogue category id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The offers, in the gateway's order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffersResponse"
+                },
+                "example": {
+                  "offers": [
+                    {
+                      "offerId": "mock-offer-no-cost-6m",
+                      "lenderLabel": "Brand",
+                      "emiType": "NO_COST",
+                      "tenureInMonths": 6,
+                      "monthlyInstallmentInPaise": 366667,
+                      "lastInstallmentInPaise": 366665,
+                      "extraInTotalInPaise": 0,
+                      "totalPayableInPaise": 2200000,
+                      "priceInPaise": 2200000
+                    },
+                    {
+                      "offerId": "mock-offer-card-6m",
+                      "lenderLabel": "Your card's bank",
+                      "emiType": "STANDARD",
+                      "tenureInMonths": 6,
+                      "monthlyInstallmentInPaise": 385000,
+                      "lastInstallmentInPaise": 385000,
+                      "extraInTotalInPaise": 110000,
+                      "totalPayableInPaise": 2310000,
+                      "priceInPaise": 2200000
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payment-links": {
+      "post": {
+        "tags": [
+          "payment links"
+        ],
+        "summary": "Create a payment link for the chosen plan",
+        "description": "Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a payment link exactly once per Idempotency-Key; the call is never retried. The same key and body return the original 201 response. A gateway timeout answers 504 and the key then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). Location points at the payment's status. Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "operationId": "create_payment_link_api_v1_payment_links_post",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$",
+              "description": "Required. 8 to 255 visible ASCII characters, no spaces (a UUID or ULID is ideal). The same key with the same body returns the original 201 response; with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED (ADR 0005).",
+              "examples": [
+                "5f0c2a2e-6d1b-4c55-9a43-3f1b2f7f8e11"
+              ],
+              "title": "Idempotency-Key"
+            },
+            "description": "Required. 8 to 255 visible ASCII characters, no spaces (a UUID or ULID is ideal). The same key with the same body returns the original 201 response; with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED (ADR 0005)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentLinkRequest"
+              },
+              "examples": {
+                "plan-b": {
+                  "summary": "Design plan B on a ₹22,000 item",
+                  "value": {
+                    "offerId": "mock-offer-card-6m",
+                    "priceInPaise": 2200000,
+                    "productId": "product-tv-43",
+                    "brandId": "brand-demo",
+                    "categoryId": "category-televisions"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The link was created (or this is the replay of its creation).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkResponse"
+                },
+                "example": {
+                  "orderId": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
+                  "paymentUrl": "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123",
+                  "status": "AWAITING_PAYMENT",
+                  "offer": {
+                    "offerId": "mock-offer-card-6m",
+                    "lenderLabel": "Your card's bank",
+                    "emiType": "STANDARD",
+                    "tenureInMonths": 6,
+                    "regularInstallmentInPaise": 385000,
+                    "lastInstallmentInPaise": 385000,
+                    "extraInTotalInPaise": 110000,
+                    "totalPayableInPaise": 2310000,
+                    "priceInPaise": 2200000
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "The status URL of this payment.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The gateway no longer quotes the chosen offer for this item and price.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "OFFER_NOT_FOUND": {
+                    "summary": "Offer not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/offer-not-found",
+                      "title": "Offer not found",
+                      "status": 404,
+                      "detail": "The chosen offer is not quoted for this item and price.",
+                      "code": "OFFER_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A replay of a key whose first call has no usable link; start again with a new key, or wait while the first call is still running.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_LINK_OUTCOME_UNKNOWN": {
+                    "summary": "Payment link outcome unknown",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-outcome-unknown",
+                      "title": "Payment link outcome unknown",
+                      "status": 409,
+                      "detail": "This key's payment link call has an unknown outcome; start again with a new key.",
+                      "code": "PAYMENT_LINK_OUTCOME_UNKNOWN",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_CREATION_FAILED": {
+                    "summary": "Payment link was not created",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-creation-failed",
+                      "title": "Payment link was not created",
+                      "status": 409,
+                      "detail": "This key's payment link was not created.",
+                      "code": "PAYMENT_LINK_CREATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_CREATION_IN_PROGRESS": {
+                    "summary": "Payment link creation in progress",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-creation-in-progress",
+                      "title": "Payment link creation in progress",
+                      "status": 409,
+                      "detail": "The first request with this key is running.",
+                      "code": "PAYMENT_LINK_CREATION_IN_PROGRESS",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. The Idempotency-Key was already used with a different body.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Idempotency key reused",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/idempotency-key-reused",
+                      "title": "Idempotency key reused",
+                      "status": 422,
+                      "detail": "The Idempotency-Key was used with a different body.",
+                      "code": "IDEMPOTENCY_KEY_REUSED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{orderId}/status": {
+      "get": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Get a payment's status",
+        "description": "Asks the gateway about the order server-side, applies the answer and returns the public status: CREATING_LINK, LINK_FAILED, OUTCOME_UNKNOWN, AWAITING_PAYMENT, PAYMENT_PENDING, PAID or PAYMENT_FAILED. A client's word is never taken as a status. amountPaidInPaise is set only when paid. Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_payment_status_api_v1_payments__orderId__status_get",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The order id returned when the payment link was created.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0A"
+              ],
+              "title": "Orderid"
+            },
+            "description": "The order id returned when the payment link was created."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The payment's current status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentStatusResponse"
+                },
+                "example": {
+                  "orderId": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
+                  "status": "PAID",
+                  "amountPaidInPaise": 2200000
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No payment of ours has this order id.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_ATTEMPT_NOT_FOUND": {
+                    "summary": "Payment not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-attempt-not-found",
+                      "title": "Payment not found",
+                      "status": 404,
+                      "detail": "No payment attempt has order id 01JD5Z0Q8M6X3V2N7B4C9K1T0A.",
+                      "code": "PAYMENT_ATTEMPT_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/paytm": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Receive a payment notification from the gateway",
+        "description": "Called by the payment gateway, not by our apps. The body is form-encoded key/value text [Verify] of at most 16 KiB. Its signature (CHECKSUMHASH) is verified over every field before any field is read; a mismatch answers 401 and is audited. A verified notification answers 202 with no body, also when it repeats an earlier one (no extra effect) or names an order that is not ours. Authenticated by the signature only; no credentials (ADR 0009).",
+        "operationId": "receive_paytm_webhook_api_v1_webhooks_paytm_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "example": {
+                "ORDERID": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
+                "STATUS": "TXN_SUCCESS",
+                "CHECKSUMHASH": "signature-over-every-other-field"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Verified and applied; no body."
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The signature is missing or does not match the fields; the rejection is audited.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "WEBHOOK_SIGNATURE_INVALID": {
+                    "summary": "Webhook rejected",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/webhook-signature-invalid",
+                      "title": "Webhook rejected",
+                      "status": 401,
+                      "detail": "The notification checksum is missing or does not match its fields.",
+                      "code": "WEBHOOK_SIGNATURE_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The body is larger than 16 KiB.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_BODY_TOO_LARGE": {
+                    "summary": "Request body too large",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-body-too-large",
+                      "title": "Request body too large",
+                      "status": 413,
+                      "detail": "The webhook body exceeds 16384 bytes.",
+                      "code": "REQUEST_BODY_TOO_LARGE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The body is not form-encoded.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "Unsupported media type",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/unsupported-media-type",
+                      "title": "Unsupported media type",
+                      "status": 415,
+                      "detail": "The webhook body must be application/x-www-form-urlencoded.",
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreatePaymentLinkRequest": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-card-6m"
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "productId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Productid",
+            "examples": [
+              "product-tv-43"
+            ]
+          },
+          "brandId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Brandid",
+            "examples": [
+              "brand-demo"
+            ]
+          },
+          "categoryId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Categoryid",
+            "examples": [
+              "category-televisions"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "offerId",
+          "priceInPaise",
+          "productId",
+          "brandId",
+          "categoryId"
+        ],
+        "title": "CreatePaymentLinkRequest",
+        "description": "The plan the customer chose for one item; every figure is re-quoted server-side."
+      },
+      "EmiOfferResponse": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-card-6m"
+            ]
+          },
+          "lenderLabel": {
+            "type": "string",
+            "title": "Lenderlabel",
+            "examples": [
+              "Your card's bank"
+            ]
+          },
+          "emiType": {
+            "$ref": "#/components/schemas/EmiType"
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths",
+            "examples": [
+              6
+            ]
+          },
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "lastInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Lastinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "extraInTotalInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Extraintotalinpaise",
+            "examples": [
+              110000
+            ]
+          },
+          "totalPayableInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Totalpayableinpaise",
+            "examples": [
+              2310000
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "offerId",
+          "lenderLabel",
+          "emiType",
+          "tenureInMonths",
+          "monthlyInstallmentInPaise",
+          "lastInstallmentInPaise",
+          "extraInTotalInPaise",
+          "totalPayableInPaise",
+          "priceInPaise"
+        ],
+        "title": "EmiOfferResponse",
+        "description": "One EMI plan: the lender's monthly figure beside our exact schedule totals (ADR 0001).\n\nmonthlyInstallmentInPaise is the lender's quoted figure. The other amounts come from our\nschedule: the remainder sits on the last installment, so the installments add up to\ntotalPayableInPaise exactly."
+      },
+      "EmiType": {
+        "type": "string",
+        "enum": [
+          "NO_COST",
+          "STANDARD"
+        ],
+        "title": "EmiType",
+        "description": "The pricing kind of an EMI plan; stored by value inside frozen offer snapshots."
+      },
+      "FieldErrorResponse": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field",
+            "examples": [
+              "priceInPaise"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "Input should be greater than 0"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldErrorResponse",
+        "description": "One invalid request field, named as on the wire, with an English message."
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "description": "Body returned by GET /health while the process is able to serve requests."
+      },
+      "OfferSnapshotResponse": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-card-6m"
+            ]
+          },
+          "lenderLabel": {
+            "type": "string",
+            "title": "Lenderlabel",
+            "examples": [
+              "Your card's bank"
+            ]
+          },
+          "emiType": {
+            "$ref": "#/components/schemas/EmiType"
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths",
+            "examples": [
+              6
+            ]
+          },
+          "regularInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Regularinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "lastInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Lastinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "extraInTotalInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Extraintotalinpaise",
+            "examples": [
+              110000
+            ]
+          },
+          "totalPayableInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Totalpayableinpaise",
+            "examples": [
+              2310000
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "offerId",
+          "lenderLabel",
+          "emiType",
+          "tenureInMonths",
+          "regularInstallmentInPaise",
+          "lastInstallmentInPaise",
+          "extraInTotalInPaise",
+          "totalPayableInPaise",
+          "priceInPaise"
+        ],
+        "title": "OfferSnapshotResponse",
+        "description": "The exact plan frozen when the link was made: tenure - 1 regular installments, then a last.\n\nThe amounts are our schedule's, so they add up to totalPayableInPaise to the paisa."
+      },
+      "OffersResponse": {
+        "properties": {
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/EmiOfferResponse"
+            },
+            "type": "array",
+            "title": "Offers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "offers"
+        ],
+        "title": "OffersResponse",
+        "description": "Every offer the gateway quotes for the item, in the gateway's order; none is hidden."
+      },
+      "PaymentLinkResponse": {
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "title": "Orderid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0A"
+            ]
+          },
+          "paymentUrl": {
+            "type": "string",
+            "title": "Paymenturl",
+            "examples": [
+              "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicPaymentStatus",
+            "examples": [
+              "AWAITING_PAYMENT"
+            ]
+          },
+          "offer": {
+            "$ref": "#/components/schemas/OfferSnapshotResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderId",
+          "paymentUrl",
+          "status",
+          "offer"
+        ],
+        "title": "PaymentLinkResponse",
+        "description": "The link to hand to the customer, as created; poll the Location URL for later status.\n\nstatus is always the status the link had when it was created (AWAITING_PAYMENT), so a replay\nwith the same Idempotency-Key returns exactly the original response (api-conventions.md\nsection 5). The current status is served by GET /api/v1/payments/{orderId}/status."
+      },
+      "PaymentStatusResponse": {
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "title": "Orderid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0A"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicPaymentStatus",
+            "examples": [
+              "PAID"
+            ]
+          },
+          "amountPaidInPaise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9007199254740991.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amountpaidinpaise",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderId",
+          "status",
+          "amountPaidInPaise"
+        ],
+        "title": "PaymentStatusResponse",
+        "description": "Where one payment stands, confirmed with the gateway server-side on this request.\n\namountPaidInPaise is set only when the gateway reports the payment as paid; it can be below\nthe link amount when a discount applied."
+      },
+      "ProblemDetailsResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "examples": [
+              "https://emicopilot.example/problems/offer-not-found"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "examples": [
+              "Offer not found"
+            ]
+          },
+          "status": {
+            "type": "integer",
+            "maximum": 599.0,
+            "minimum": 400.0,
+            "title": "Status",
+            "examples": [
+              404
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "examples": [
+              "The chosen offer is not quoted for this item and price."
+            ]
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "examples": [
+              "OFFER_NOT_FOUND"
+            ]
+          },
+          "correlationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlationid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+            ]
+          },
+          "fieldErrors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldErrorResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fielderrors",
+            "description": "Set only on request validation problems."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code",
+          "correlationId"
+        ],
+        "title": "ProblemDetailsResponse",
+        "description": "An error: a stable code for the UI to translate and an English detail for developers.\n\nIt never holds a stack trace, SQL, a vendor payload or personal data."
+      },
+      "PublicPaymentStatus": {
+        "type": "string",
+        "enum": [
+          "CREATING_LINK",
+          "LINK_FAILED",
+          "OUTCOME_UNKNOWN",
+          "AWAITING_PAYMENT",
+          "PAYMENT_PENDING",
+          "PAID",
+          "PAYMENT_FAILED"
+        ],
+        "title": "PublicPaymentStatus",
+        "description": "Where a payment stands, as the UIs see it; decoupled from the stored attempt status.\n\nThe stored statuses may be renamed or split later without breaking the wire contract."
+      }
+    }
+  }
+}

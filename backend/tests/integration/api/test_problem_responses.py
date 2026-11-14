@@ -23,6 +23,8 @@ class ExplodingOfferDiscoveryService:
     [
         ("GET", "/api/v1/offers?priceInPaise=2200000&productId=p&brandId=b&categoryId=c"),
         ("GET", "/api/v1/offers"),
+        ("GET", "/api/v1/payments/01JD0000000000000000UNKNWN/status"),
+        ("POST", "/api/v1/webhooks/paytm"),
         ("GET", "/api/v1/no-such-resource"),
         ("DELETE", "/api/v1/offers"),
     ],
