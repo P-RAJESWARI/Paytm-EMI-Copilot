@@ -1629,6 +1629,80 @@
         }
       }
     },
+    "/api/v1/sales/events": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Follow the shop's sale statuses live",
+        "description": "Server-Sent Events. `event: sale-status` carries one sale's new status, with exactly saleId, status and statusChangedAt as JSON in data; it is sent only after the change is committed, and only to the shop that owns the sale. `event: resync` (data {}) means messages were dropped because the client fell behind: read GET /api/v1/sales?view=counter again. A `: heartbeat` comment comes every 15 seconds while nothing happens. The stream ends when the device token expires. Send the token in the Authorization header (fetch-based client), never in the URL. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "stream_sale_status_events_api_v1_sales_events_get",
+        "responses": {
+          "200": {
+            "description": "An endless text/event-stream until the token expires.",
+            "content": {
+              "text/event-stream": {
+                "example": "event: sale-status\ndata: {\"saleId\":\"sale-id\",\"status\":\"READY_TO_PAY\",\"statusChangedAt\":\"2026-11-15T09:36:00Z\"}\n\n: heartbeat\n\nevent: resync\ndata: {}\n\n",
+                "schema": {
+                  "$ref": "#/components/schemas/SaleStatusEventPayload"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ]
+      }
+    },
     "/api/v1/sales": {
       "post": {
         "tags": [
@@ -4288,6 +4362,34 @@
         ],
         "title": "SaleStatus",
         "description": "The five merchant-visible sale statuses; stored by value, so a rename needs a migration.\n\nNone of them reveals a customer's step-by-step progress: CHOOSING covers everything from the\nQR scan to the moment the customer agrees to a plan."
+      },
+      "SaleStatusEventPayload": {
+        "properties": {
+          "saleId": {
+            "type": "string",
+            "title": "Saleid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SaleStatus"
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Statuschangedat",
+            "description": "When the status changed, UTC."
+          }
+        },
+        "type": "object",
+        "required": [
+          "saleId",
+          "status",
+          "statusChangedAt"
+        ],
+        "title": "SaleStatusEventPayload",
+        "description": "The data of one sale-status event: which sale, its status now and since when."
       },
       "SaleSummaryResponse": {
         "properties": {

@@ -168,6 +168,7 @@ def test_merchant_operations_include_pairing_profile_products_and_sales(
         "GET /api/v1/products",
         "POST /api/v1/sales",
         "GET /api/v1/sales",
+        "GET /api/v1/sales/events",
         "GET /api/v1/sales/{saleId}",
         "POST /api/v1/sales/{saleId}/qr-tokens",
         "GET /api/v1/sales/{saleId}/handoff",

@@ -83,6 +83,7 @@ ALLOWED_PROPERTIES_BY_SCHEMA: Mapping[str, frozenset[str]] = MappingProxyType(
             }
         ),
         "PaymentStatusResponse": frozenset({"orderId", "status", "amountPaidInPaise"}),
+        "SaleStatusEventPayload": frozenset({"saleId", "status", "statusChangedAt"}),
         "SaleStatus": frozenset(),
         "EmiType": frozenset(),
         "EdcEmiProgramme": frozenset(),

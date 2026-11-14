@@ -26,6 +26,7 @@ from emi_copilot.services.issue_qr_token_service import IssueQrTokenService
 from emi_copilot.services.list_counter_sales_service import ListCounterSalesService
 from emi_copilot.services.sale_expiry import SaleExpiryStep
 from emi_copilot.services.sale_handoff_service import SaleHandoffService
+from emi_copilot.services.sale_status_feed_service import SaleStatusFeedService
 from emi_copilot.services.start_sale_service import StartSaleService
 
 
@@ -138,3 +139,19 @@ def provide_sale_handoff_service(  # noqa: PLR0913 - one parameter per injected 
 
 
 SaleHandoffServiceDependency = Annotated[SaleHandoffService, Depends(provide_sale_handoff_service)]
+
+
+def provide_sale_status_feed_service(
+    components: ComponentsDependency, clock: ClockDependency
+) -> SaleStatusFeedService:
+    """Builds the live feed service on the startup broadcaster and the configured heartbeat."""
+    return SaleStatusFeedService(
+        components.sale_status_broadcaster,
+        clock,
+        timedelta(seconds=components.settings.sale_event_stream_heartbeat_interval_in_seconds),
+    )
+
+
+SaleStatusFeedServiceDependency = Annotated[
+    SaleStatusFeedService, Depends(provide_sale_status_feed_service)
+]

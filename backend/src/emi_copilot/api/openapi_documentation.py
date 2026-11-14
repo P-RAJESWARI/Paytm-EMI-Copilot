@@ -15,6 +15,7 @@ from emi_copilot.dtos.problem_details_dto import (
 )
 
 JSON_MEDIA_TYPE = "application/json"
+EVENT_STREAM_MEDIA_TYPE = "text/event-stream"
 EXAMPLE_CORRELATION_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
 UNAUTHENTICATED_NOTE = (
     "Layer 1 gateway endpoint: unauthenticated (ADR 0009); it reads public offer terms only. "
@@ -122,6 +123,22 @@ def move_problem_schemas_to_problem_media_type(openapi_schema: dict[str, Any]) -
                     }
 
 
+def move_event_stream_schemas_to_event_stream_media_type(openapi_schema: dict[str, Any]) -> None:
+    """Serves a streamed response's payload schema under text/event-stream only.
+
+    FastAPI places a response model under application/json; a response that declares
+    text/event-stream sends no JSON body, so its schema moves to the stream's media type, where
+    it describes the JSON in each event's data line.
+    """
+    for path_item in openapi_schema.get("paths", {}).values():
+        for operation in path_item.values():
+            for response in operation.get("responses", {}).values():
+                content = response.get("content", {})
+                if EVENT_STREAM_MEDIA_TYPE in content and JSON_MEDIA_TYPE in content:
+                    json_content = content.pop(JSON_MEDIA_TYPE)
+                    content[EVENT_STREAM_MEDIA_TYPE]["schema"] = json_content["schema"]
+
+
 def install_openapi_schema(application: FastAPI) -> None:
     """Replaces the application's OpenAPI builder with one that applies the problem media type."""
 
@@ -135,6 +152,7 @@ def install_openapi_schema(application: FastAPI) -> None:
                 routes=application.routes,
             )
             move_problem_schemas_to_problem_media_type(openapi_schema)
+            move_event_stream_schemas_to_event_stream_media_type(openapi_schema)
             application.openapi_schema = openapi_schema
         return application.openapi_schema
 

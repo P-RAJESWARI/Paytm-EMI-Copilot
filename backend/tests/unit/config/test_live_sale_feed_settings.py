@@ -15,9 +15,10 @@ def clear_settings_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_application_settings_without_environment_uses_documented_live_feed_defaults() -> None:
-    """100 unread stream messages; 60 payment calls a shop and 600 webhooks a client a minute."""
+    """15 s heartbeats, 100 unread messages; 60 payment calls a shop, 600 webhooks a client."""
     settings = ApplicationSettings()
     assert settings.sale_event_stream_maximum_queued_messages == 100
+    assert settings.sale_event_stream_heartbeat_interval_in_seconds == 15.0
     assert settings.merchant_payment_rate_limit_max_requests == 60
     assert settings.merchant_payment_rate_limit_window_in_seconds == 60
     assert settings.payment_webhook_rate_limit_max_requests == 600
@@ -29,12 +30,14 @@ def test_application_settings_reads_live_feed_values_from_environment(
 ) -> None:
     """The stream bound and the payment and webhook limits are configurable."""
     monkeypatch.setenv("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "5")
+    monkeypatch.setenv("SALE_EVENT_STREAM_HEARTBEAT_INTERVAL_IN_SECONDS", "0.5")
     monkeypatch.setenv("MERCHANT_PAYMENT_RATE_LIMIT_MAX_REQUESTS", "7")
     monkeypatch.setenv("MERCHANT_PAYMENT_RATE_LIMIT_WINDOW_IN_SECONDS", "30")
     monkeypatch.setenv("PAYMENT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS", "100")
     monkeypatch.setenv("PAYMENT_WEBHOOK_RATE_LIMIT_WINDOW_IN_SECONDS", "10")
     settings = ApplicationSettings()
     assert settings.sale_event_stream_maximum_queued_messages == 5
+    assert settings.sale_event_stream_heartbeat_interval_in_seconds == 0.5
     assert settings.merchant_payment_rate_limit_max_requests == 7
     assert settings.merchant_payment_rate_limit_window_in_seconds == 30
     assert settings.payment_webhook_rate_limit_max_requests == 100
@@ -46,6 +49,8 @@ def test_application_settings_reads_live_feed_values_from_environment(
     [
         ("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "0"),
         ("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "10001"),
+        ("SALE_EVENT_STREAM_HEARTBEAT_INTERVAL_IN_SECONDS", "0"),
+        ("SALE_EVENT_STREAM_HEARTBEAT_INTERVAL_IN_SECONDS", "301"),
         ("MERCHANT_PAYMENT_RATE_LIMIT_MAX_REQUESTS", "0"),
         ("MERCHANT_PAYMENT_RATE_LIMIT_WINDOW_IN_SECONDS", "0"),
         ("PAYMENT_WEBHOOK_RATE_LIMIT_MAX_REQUESTS", "0"),

@@ -76,8 +76,9 @@ class ApplicationSettings(BaseSettings):
     # A sale still CHOOSING this long after it started expires (plan Q18).
     sale_choosing_expiry_in_seconds: int = Field(default=3_600, ge=60, le=86_400)
     # Live sale status streams: how many unread messages one stream may hold before its backlog
-    # is replaced by a single resync message.
+    # is replaced by a single resync message, and how often a quiet stream sends a heartbeat.
     sale_event_stream_maximum_queued_messages: int = Field(default=100, ge=1, le=10_000)
+    sale_event_stream_heartbeat_interval_in_seconds: float = Field(default=15.0, gt=0, le=300)
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"

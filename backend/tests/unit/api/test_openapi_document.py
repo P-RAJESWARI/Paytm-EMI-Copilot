@@ -216,3 +216,16 @@ def test_openapi_document_is_built_once_and_cached() -> None:
     """The schema is generated on first request and then served from the cache."""
     application = create_application(ApplicationSettings())
     assert application.openapi() is application.openapi()
+
+
+def test_sale_event_stream_documents_its_payload_under_text_event_stream_only(
+    openapi_document: dict[str, Any],
+) -> None:
+    """The stream's 200 is text/event-stream with the pinned payload schema, never JSON."""
+    success_content = openapi_document["paths"]["/api/v1/sales/events"]["get"]["responses"]["200"][
+        "content"
+    ]
+    assert set(success_content) == {"text/event-stream"}
+    assert success_content["text/event-stream"]["schema"] == {
+        "$ref": "#/components/schemas/SaleStatusEventPayload"
+    }

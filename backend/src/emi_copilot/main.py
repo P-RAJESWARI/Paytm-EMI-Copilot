@@ -10,6 +10,7 @@ from emi_copilot.api.controllers.payment_status_controller import payment_status
 from emi_copilot.api.controllers.paytm_webhook_controller import paytm_webhook_router
 from emi_copilot.api.controllers.product_controller import product_router
 from emi_copilot.api.controllers.sale_controller import sale_router
+from emi_copilot.api.controllers.sale_event_stream_controller import sale_event_stream_router
 from emi_copilot.api.controllers.sale_handoff_controller import sale_handoff_router
 from emi_copilot.api.dependencies import build_application_lifespan
 from emi_copilot.api.error_handlers import register_error_handlers
@@ -31,6 +32,8 @@ API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
     paytm_webhook_router,
     merchant_router,
     product_router,
+    # Before sale_router: /sales/events must not be matched as /sales/{saleId}.
+    sale_event_stream_router,
     sale_router,
     sale_handoff_router,
 )
