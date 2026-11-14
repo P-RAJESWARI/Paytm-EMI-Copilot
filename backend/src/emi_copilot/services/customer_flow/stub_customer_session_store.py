@@ -1,5 +1,6 @@
 """STUB until Phase 3C: customer sessions held in memory, one store per application instance."""
 
+import hmac
 import threading
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
@@ -22,12 +23,16 @@ class StubConsentRecord:
 
 @dataclass(frozen=True, slots=True)
 class StubCustomerSession:
-    """STUB until Phase 3C: one customer's progress; None means "not done yet"."""
+    """STUB until Phase 3C: one customer's progress; None means "not done yet".
+
+    A re-scan of the QR replaces only the token and token_issued_at; the progress and the
+    consent records are kept, because consent is append-only evidence (ADR 0021).
+    """
 
     customer_session_id: str
     session_token: str
     session_code: str
-    started_at: datetime
+    token_issued_at: datetime
     monthly_budget: Money | None = None
     has_comfort_check_consent: bool | None = None
     one_time_code_issued_at: datetime | None = None
@@ -53,6 +58,18 @@ class StubCustomerSessionTable:
     def find(self, customer_session_id: str) -> StubCustomerSession | None:
         """Gives the session with the id, or None."""
         return self._sessions_by_id.get(customer_session_id)
+
+    def find_by_token(self, session_token: str) -> StubCustomerSession | None:
+        """Gives the session holding the token, comparing in constant time, or None."""
+        presented_token = session_token.encode("utf-8")
+        return next(
+            (
+                session
+                for session in self._sessions_by_id.values()
+                if hmac.compare_digest(session.session_token.encode("utf-8"), presented_token)
+            ),
+            None,
+        )
 
     def save(self, session: StubCustomerSession) -> None:
         """Stores the session, replacing any earlier state under its id."""

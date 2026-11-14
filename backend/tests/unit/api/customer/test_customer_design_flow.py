@@ -7,6 +7,7 @@ from emi_copilot.api.controllers.customer_response_examples import (
     COMFORT_CHECK_RESPONSE_EXAMPLE,
     CONSENT_RESPONSE_EXAMPLE,
     CUSTOMER_SESSION_RESPONSE_EXAMPLE,
+    CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE,
     OTP_CHALLENGE_RESPONSE_EXAMPLE,
     PLAN_ALTERNATIVES_RESPONSE_EXAMPLE,
     PLANS_RESPONSE_EXAMPLE,
@@ -35,6 +36,8 @@ def test_design_flow_answers_exactly_the_documented_examples(customer_api: Custo
         "consentId": "example",
     }
     assert session.get_receipt().json() == RECEIPT_RESPONSE_EXAMPLE
+    summary_response = customer_api.client.get(session.base_path, headers=session.headers)
+    assert summary_response.json() == CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE
 
 
 def test_design_plans_are_in_c4_order_with_design_amounts(customer_api: CustomerApi) -> None:
@@ -199,3 +202,37 @@ def test_consent_to_the_cheaper_model_alternative_records_that_product(
     assert consented_plan["priceInPaise"] == 1_800_000
     assert consented_plan["financedAmountInPaise"] == 1_800_000
     assert consented_plan["downPaymentInPaise"] == 0
+
+
+def test_start_session_points_location_at_the_session_summary(customer_api: CustomerApi) -> None:
+    """201 with Location; the summary there never repeats the token."""
+    response = customer_api.client.post(
+        "/api/v1/customer-sessions", json={"qrToken": "stub-qr-4821"}
+    )
+    location = response.headers["Location"]
+    summary_response = customer_api.client.get(
+        location, headers={"X-Customer-Session-Token": response.json()["sessionToken"]}
+    )
+    assert response.status_code == 201
+    assert location == "/api/v1/customer-sessions/stub-customer-session-4821"
+    assert summary_response.status_code == 200
+    assert "sessionToken" not in summary_response.json()
+    assert summary_response.json()["comfortCheckStatus"] is None
+
+
+def test_rescan_keeps_consent_and_replays_the_original_consent(customer_api: CustomerApi) -> None:
+    """A second scan gives a new token; the old key replays the first consent unchanged."""
+    first_session = customer_api.start_session()
+    first_session.confirm_budget()
+    first_session.request_code()
+    first_consent = first_session.give_consent().json()
+    second_session = customer_api.start_session()
+    replayed_response = second_session.give_consent()
+    summary = customer_api.client.get(
+        second_session.base_path, headers=second_session.headers
+    ).json()
+    assert replayed_response.status_code == 201
+    assert replayed_response.json()["consentId"] == first_consent["consentId"]
+    assert summary["hasConsented"]
+    assert summary["hasConfirmedBudget"]
+    assert first_session.get_plans().status_code == 401

@@ -1,8 +1,9 @@
 """Documented success bodies of the customer flow: a real run of the stub, ids replaced.
 
 They were produced by the Phase 3A contract application at 2026-11-15T09:30:00Z with the
-design sample (standard QR, ₹3,000 budget, comfort check allowed, no-cost plan chosen). A test
-replays that run and requires these bodies, so the documented numbers cannot drift.
+design sample (standard QR, ₹3,000 budget, comfort check allowed, no-cost plan chosen); the
+session summary is read last. A test replays that run and requires these bodies, so the
+documented numbers cannot drift.
 """
 
 from typing import Any
@@ -233,4 +234,15 @@ RECEIPT_RESPONSE_EXAMPLE: dict[str, Any] = {
         "downPaymentInPaise": 0,
         "financedAmountInPaise": 2200000,
     },
+}
+CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "customerSessionId": "stub-customer-session-4821",
+    "sessionCode": "4821",
+    "shopName": "Ravi Electronics",
+    "productName": "Example phone, 128 GB",
+    "priceInPaise": 2200000,
+    "expiresAt": "2026-11-15T10:00:00Z",
+    "hasConfirmedBudget": True,
+    "comfortCheckStatus": "COMPLETED",
+    "hasConsented": True,
 }

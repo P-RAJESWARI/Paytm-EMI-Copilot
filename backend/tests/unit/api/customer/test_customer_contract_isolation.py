@@ -23,10 +23,11 @@ def test_main_application_has_no_customer_session_route() -> None:
 
 
 def test_contract_application_serves_only_the_customer_routes_under_api_v1() -> None:
-    """The contract app documents the seven customer operations and nothing else."""
+    """The contract app documents the nine customer operations and nothing else."""
     paths = build_customer_contract_application().openapi()["paths"]
     assert {path: sorted(path_item) for path, path_item in paths.items()} == {
         "/api/v1/customer-sessions": ["post"],
+        CUSTOMER_SESSION_PATH: ["get"],
         CUSTOMER_SESSION_PATH + "/budget": ["put"],
         CUSTOMER_SESSION_PATH + "/comfort-check": ["post"],
         CUSTOMER_SESSION_PATH + "/plans": ["get"],

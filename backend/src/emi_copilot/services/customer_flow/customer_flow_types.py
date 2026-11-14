@@ -59,6 +59,24 @@ class StartedCustomerSession:
 
 
 @dataclass(frozen=True, slots=True)
+class CustomerSessionSummary:
+    """The session as C1 shows it, plus the customer's own progress; never the token.
+
+    comfort_check_status is None until the customer answers the comfort check.
+    """
+
+    customer_session_id: str
+    session_code: str
+    shop_name: str
+    product_name: str
+    price: Money
+    expires_at: datetime
+    has_confirmed_budget: bool
+    comfort_check_status: ComfortCheckStatus | None
+    has_consented: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ComfortCheckOutcome:
     """The C3 answer: completed with the synthetic profile read, or skipped with none read."""
 

@@ -235,3 +235,37 @@ def test_consent_replay_with_another_code_returns_the_original(customer_api: Cus
     replayed_response = session.give_consent(otp="654321")
     assert replayed_response.status_code == 201
     assert replayed_response.json() == first_response.json()
+
+
+def test_probing_another_session_id_gives_one_answer_whether_it_exists_or_not(
+    customer_api: CustomerApi,
+) -> None:
+    """A valid token with any other id is the same 404, so session ids cannot be probed."""
+    standard_session = customer_api.start_session()
+    risky_session = customer_api.start_session("stub-qr-4822")
+    existing_other = customer_api.client.get(
+        risky_session.base_path, headers=standard_session.headers
+    )
+    missing_other = customer_api.client.get(
+        "/api/v1/customer-sessions/stub-customer-session-0000", headers=standard_session.headers
+    )
+    assert_problem(existing_other, 404, "CUSTOMER_SESSION_NOT_FOUND")
+    assert_problem(missing_other, 404, "CUSTOMER_SESSION_NOT_FOUND")
+    assert {**existing_other.json(), "correlationId": None} == {
+        **missing_other.json(),
+        "correlationId": None,
+    }
+
+
+def test_unknown_token_gives_401_for_existing_and_missing_session_ids(
+    customer_api: CustomerApi,
+) -> None:
+    """A token that opens no session is the same 401 whatever id it is sent with."""
+    session = customer_api.start_session()
+    unknown_token = {SESSION_TOKEN_HEADER: "stub-unknown"}
+    for path in (session.base_path, "/api/v1/customer-sessions/stub-customer-session-0000"):
+        assert_problem(
+            customer_api.client.get(path, headers=unknown_token),
+            401,
+            "CUSTOMER_SESSION_TOKEN_INVALID",
+        )

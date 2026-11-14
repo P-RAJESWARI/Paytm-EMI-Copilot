@@ -12,7 +12,7 @@
           "customer sessions"
         ],
         "summary": "Start a customer session from the shop's QR",
-        "description": "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012). Money is integer paise, shares are integer basis points, errors are application/problem+json. Trades the QR token for a session token, sent as X-Customer-Session-Token on every later call. Sample tokens: stub-qr-4821 (the design's customer) and stub-qr-4822 (the second, Risky example). Scanning a sample QR again restarts its sample session; the earlier token stops working.",
+        "description": "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012). Money is integer paise, shares are integer basis points, errors are application/problem+json. Trades the QR token for a session token, sent as X-Customer-Session-Token on every later call. Sample tokens: stub-qr-4821 (the design's customer) and stub-qr-4822 (the second, Risky example). Scanning a sample QR again issues a new token and the earlier one stops working; the customer's progress and any consent are kept. Location points at the session.",
         "operationId": "start_customer_session_api_v1_customer_sessions_post",
         "requestBody": {
           "content": {
@@ -27,6 +27,14 @@
         "responses": {
           "201": {
             "description": "The session for C1: shop, item and price.",
+            "headers": {
+              "Location": {
+                "description": "The URL of this customer session.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -80,6 +88,161 @@
                       "status": 401,
                       "detail": "This QR code is not valid; ask the shop for a new QR.",
                       "code": "CUSTOMER_QR_TOKEN_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer-sessions/{customerSessionId}": {
+      "get": {
+        "tags": [
+          "customer sessions"
+        ],
+        "summary": "Get the customer session and the customer's progress",
+        "description": "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012). Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. The C1 facts (shop, item, price, session code, expiry) and the customer's own progress: whether the budget is confirmed, the comfort check answer (null before answering) and whether consent was given. The token is never returned. A token used with another session's id answers 404.",
+        "operationId": "get_customer_session_api_v1_customer_sessions__customerSessionId__get",
+        "security": [
+          {
+            "CustomerSessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customerSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The customerSessionId returned when the QR was scanned.",
+              "examples": [
+                "stub-customer-session-4821"
+              ],
+              "title": "Customersessionid"
+            },
+            "description": "The customerSessionId returned when the QR was scanned."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The session summary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerSessionSummaryResponse"
+                },
+                "example": {
+                  "customerSessionId": "stub-customer-session-4821",
+                  "sessionCode": "4821",
+                  "shopName": "Ravi Electronics",
+                  "productName": "Example phone, 128 GB",
+                  "priceInPaise": 2200000,
+                  "expiresAt": "2026-11-15T10:00:00Z",
+                  "hasConfirmedBudget": true,
+                  "comfortCheckStatus": "COMPLETED",
+                  "hasConsented": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The session token is missing, opens no session, or the session has ended.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_TOKEN_INVALID": {
+                    "summary": "Customer session not valid",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-token-invalid",
+                      "title": "Customer session not valid",
+                      "status": 401,
+                      "detail": "This session link is not valid; ask the shop for a new QR.",
+                      "code": "CUSTOMER_SESSION_TOKEN_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_NOT_FOUND": {
+                    "summary": "Customer session not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-not-found",
+                      "title": "Customer session not found",
+                      "status": 404,
+                      "detail": "No customer session has this id.",
+                      "code": "CUSTOMER_SESSION_NOT_FOUND",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
                   }
@@ -226,7 +389,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -249,7 +412,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -409,7 +572,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -432,7 +595,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -655,7 +818,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -678,7 +841,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -987,7 +1150,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1010,7 +1173,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id. The chosen offer is not quoted for the session's item.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1216,7 +1379,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1239,7 +1402,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1439,7 +1602,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1462,7 +1625,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id. The chosen offer is not quoted for the session's item.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1762,7 +1925,7 @@
             }
           },
           "401": {
-            "description": "The session token is missing, does not match the session, or the session has ended.",
+            "description": "The session token is missing, opens no session, or the session has ended.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1785,7 +1948,7 @@
             }
           },
           "404": {
-            "description": "No customer session has this id.",
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -2628,6 +2791,93 @@
         ],
         "title": "CustomerSessionResponse",
         "description": "The session opened by the QR: send sessionToken as X-Customer-Session-Token from now on."
+      },
+      "CustomerSessionSummaryResponse": {
+        "properties": {
+          "customerSessionId": {
+            "type": "string",
+            "title": "Customersessionid",
+            "examples": [
+              "stub-customer-session-4821"
+            ]
+          },
+          "sessionCode": {
+            "type": "string",
+            "title": "Sessioncode",
+            "examples": [
+              "4821"
+            ]
+          },
+          "shopName": {
+            "type": "string",
+            "title": "Shopname",
+            "examples": [
+              "Ravi Electronics"
+            ]
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiresat",
+            "examples": [
+              "2026-11-15T10:00:00Z"
+            ]
+          },
+          "hasConfirmedBudget": {
+            "type": "boolean",
+            "title": "Hasconfirmedbudget",
+            "examples": [
+              true
+            ]
+          },
+          "comfortCheckStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComfortCheckStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasConsented": {
+            "type": "boolean",
+            "title": "Hasconsented",
+            "examples": [
+              false
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "customerSessionId",
+          "sessionCode",
+          "shopName",
+          "productName",
+          "priceInPaise",
+          "expiresAt",
+          "hasConfirmedBudget",
+          "comfortCheckStatus",
+          "hasConsented"
+        ],
+        "title": "CustomerSessionSummaryResponse",
+        "description": "The session as C1 shows it and the customer's own progress; the token is never echoed.\n\ncomfortCheckStatus is null until the customer answers the comfort check."
       },
       "EmiType": {
         "type": "string",

@@ -318,3 +318,17 @@ def test_give_consent_to_the_item_by_its_explicit_product_id_is_accepted(
         kit, credentials, build_command(product_id="stub-product-phone-128gb")
     ).consented_plan
     assert consented_plan.product_name == "Example phone, 128 GB"
+
+
+def test_rescan_keeps_consent_and_the_old_key_replays_the_original(kit: CustomerFlowKit) -> None:
+    """Consent is evidence: a re-scan keeps it, and a replay under the new token returns it."""
+    first_credentials = prepare_for_consent(kit)
+    first_consent = give_consent(kit, first_credentials, build_command())
+    second_credentials = kit.start_standard_session()
+    replayed_consent = give_consent(kit, second_credentials, build_command())
+    assert replayed_consent.consent_id == first_consent.consent_id
+    assert kit.services.consent_service.get_receipt(second_credentials).reference == (
+        first_consent.reference
+    )
+    with pytest.raises(ConsentAlreadyGivenError):
+        give_consent(kit, second_credentials, build_command(SECOND_KEY))

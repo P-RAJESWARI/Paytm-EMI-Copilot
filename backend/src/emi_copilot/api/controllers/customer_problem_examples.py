@@ -25,14 +25,14 @@ CUSTOMER_SESSION_TOKEN_INVALID_PROBLEM = ProblemExample(
     "CUSTOMER_SESSION_TOKEN_INVALID",
     "Customer session not valid",
     "This session link is not valid; ask the shop for a new QR.",
-    "The session token is missing, does not match the session, or the session has ended.",
+    "The session token is missing, opens no session, or the session has ended.",
 )
 CUSTOMER_SESSION_NOT_FOUND_PROBLEM = ProblemExample(
     404,
     "CUSTOMER_SESSION_NOT_FOUND",
     "Customer session not found",
     "No customer session has this id.",
-    "No customer session has this id.",
+    "The token is valid but belongs to another session id, whether that id exists or not.",
 )
 BUDGET_NOT_CONFIRMED_PROBLEM = ProblemExample(
     409,

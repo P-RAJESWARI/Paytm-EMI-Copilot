@@ -87,7 +87,7 @@ def test_every_customer_operation_is_labelled_stub_and_documents_problems(
 ) -> None:
     """Each operation starts with the STUB note and documents application/problem+json errors."""
     operations = list_operations(customer_openapi_document)
-    assert len(operations) == 8
+    assert len(operations) == 9
     for operation_id, operation in operations:
         assert operation["summary"], operation_id
         assert operation["description"].startswith(STUB_DESCRIPTION_START), operation_id
