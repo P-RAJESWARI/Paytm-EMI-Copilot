@@ -32,6 +32,8 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | SessionCodesExhaustedError              | 409    | every session code is on an open sale     |
 | ChosenPlanNoLongerOfferedError          | 409    | the agreed plan is no longer quoted as is |
 | PaymentLinkAlreadyActiveError           | 409    | the sale's latest link may still be paid  |
+| InvalidReportingPeriodError             | 422    | not a Monday, or a week still to come     |
+| InvalidReportDataError                  | 422    | a report figure would be inconsistent     |
 | InvalidSaleDataError                    | 422    | a sale record would be inconsistent       |
 | every other DomainError                 | 422    | a business rule refused the request       |
 | any unexpected exception                | 500    | unexpected_error_middleware.py            |
@@ -140,6 +142,8 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.PaymentLinkAlreadyActiveError: ProblemMapping(
                 409, "A payment link is still active"
             ),
+            errors.InvalidReportingPeriodError: ProblemMapping(422, "Invalid reporting period"),
+            errors.InvalidReportDataError: ProblemMapping(422, "Invalid report data"),
         }
     )
 )

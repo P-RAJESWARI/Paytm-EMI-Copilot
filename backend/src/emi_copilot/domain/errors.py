@@ -329,3 +329,18 @@ class PaymentLinkAlreadyActiveError(DomainError):
     """
 
     code: ClassVar[str] = "PAYMENT_LINK_ALREADY_ACTIVE"
+
+
+class InvalidReportingPeriodError(DomainError):
+    """Raised when a report period cannot be used, such as a week that does not start on Monday.
+
+    A week later than the current one is refused too: its message cannot be read or sent yet.
+    """
+
+    code: ClassVar[str] = "INVALID_REPORTING_PERIOD"
+
+
+class InvalidReportDataError(DomainError):
+    """Raised when a report figure, settlement batch or weekly message would be inconsistent."""
+
+    code: ClassVar[str] = "INVALID_REPORT_DATA"
