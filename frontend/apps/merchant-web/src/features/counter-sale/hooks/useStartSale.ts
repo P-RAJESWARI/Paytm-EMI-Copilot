@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { COUNTER_SALES_QUERY_KEY } from '../../../shared/api/saleQueryKeys';
-import { useIdempotencyKeyPerIntent } from '../../../shared/api/useIdempotencyKeyPerIntent';
+import {
+  useIdempotencyKeyPerIntent,
+  type IdempotencyKeyPerIntent,
+} from '../../../shared/api/useIdempotencyKeyPerIntent';
 import { useMerchantApi } from '../../../shared/api/useMerchantApi';
 import {
   buildCustomerQrQueryKey,
@@ -26,13 +29,11 @@ function storeStartedSale(queryClient: QueryClient, saleDetail: SaleDetail): voi
   void queryClient.invalidateQueries({ queryKey: COUNTER_SALES_QUERY_KEY });
 }
 
-// Starts a sale for a product. A retry of the same product re-sends the key only when the last
-// answer was lost, so a lost answer never creates a second sale; a definite answer retires the key.
-export function useStartSale() {
+// The "start a sale" request: it stores the started sale and settles the Idempotency-Key.
+function useStartSaleMutation(idempotencyKeys: IdempotencyKeyPerIntent) {
   const { apiClient } = useMerchantApi();
   const queryClient = useQueryClient();
-  const idempotencyKeys = useIdempotencyKeyPerIntent();
-  const startSaleMutation = useMutation({
+  return useMutation({
     mutationFn: (intent: StartSaleIntent) =>
       startSale(apiClient, intent.productId, intent.idempotencyKey),
     onSuccess: (saleDetail: SaleDetail) => {
@@ -42,6 +43,13 @@ export function useStartSale() {
       idempotencyKeys.settleIdempotencyKey(intent.idempotencyKey, error);
     },
   });
+}
+
+// Starts a sale for a product. A retry of the same product re-sends the key only when the last
+// answer was lost, so a lost answer never creates a second sale; a definite answer retires the key.
+export function useStartSale() {
+  const idempotencyKeys = useIdempotencyKeyPerIntent();
+  const startSaleMutation = useStartSaleMutation(idempotencyKeys);
 
   // Starts (or retries) the sale for one product and calls onStarted with the new sale's id.
   function startSaleForProduct(productId: string, onStarted: (saleId: string) => void) {
