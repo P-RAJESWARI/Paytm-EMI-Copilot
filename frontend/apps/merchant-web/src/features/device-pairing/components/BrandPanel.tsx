@@ -1,9 +1,11 @@
 import { useLanguagePreference, type SupportedLanguage } from '@emi-copilot/shared-i18n';
-import { Card, LanguageToggle } from '@emi-copilot/ui-kit';
+import { LanguageToggle } from '@emi-copilot/ui-kit';
 import { useTranslation } from 'react-i18next';
 
-// The merchant shell until step 2.6: the brand panel copy and the shop-language toggle.
-export function AppShellPlaceholderPage() {
+import { BrandMark } from '../../../shared/components/BrandMark';
+
+// The navy M1 panel: product name, tagline and the shop-language toggle (before pairing too).
+export function BrandPanel() {
   const { t } = useTranslation();
   const { selectedLanguage, selectLanguage } = useLanguagePreference();
   const languageOptions: { language: SupportedLanguage; label: string }[] = [
@@ -11,11 +13,16 @@ export function AppShellPlaceholderPage() {
     { language: 'ta', label: t('language.tamil') },
   ];
   return (
-    <main className="flex min-h-screen items-center justify-center bg-light-blue p-8">
-      <Card surface="navy" padding="roomy" className="flex max-w-xl flex-col gap-4">
-        <h1 className="text-heading">{t('common.appName')}</h1>
-        <p className="text-title">{t('brandPanel.tagline')}</p>
+    <section className="flex shrink-0 flex-col justify-between gap-6 bg-navy p-6 text-white md:w-105 md:p-12">
+      <p className="flex items-center gap-3 text-title">
+        <BrandMark size={36} />
+        {t('common.appName')}
+      </p>
+      <div className="flex flex-col gap-4">
+        <p className="text-heading">{t('brandPanel.tagline')}</p>
         <p className="text-body text-border-strong">{t('brandPanel.description')}</p>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-label font-normal text-border-strong">{t('brandPanel.audience')}</p>
         <LanguageToggle
           accessibleLabel={t('language.groupLabel')}
@@ -24,7 +31,7 @@ export function AppShellPlaceholderPage() {
           onSelectLanguage={selectLanguage}
           surface="dark"
         />
-      </Card>
-    </main>
+      </div>
+    </section>
   );
 }
