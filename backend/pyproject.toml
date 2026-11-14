@@ -84,6 +84,10 @@ ignore = [
     "S101",    # pytest uses bare assert
 ]
 
+[tool.ruff.lint.isort]
+# scripts/ is a package so tests can import the seed helpers; it is our code, not a library.
+known-first-party = ["emi_copilot", "scripts", "tests"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
