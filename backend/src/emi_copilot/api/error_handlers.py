@@ -27,6 +27,10 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | RetryLaterError (base)                  | 429    | any other refusal that ends by itself     |
 | ProductNotFoundError                    | 404    | not in the merchant's catalogue (hidden)  |
 | InvalidMerchantDataError                | 422    | a merchant record would be incomplete     |
+| SaleNotFoundError                       | 404    | not the merchant's sale (hidden)          |
+| IllegalSaleTransitionError              | 409    | SALE_STATE_CONFLICT: not in this status   |
+| SessionCodesExhaustedError              | 409    | every session code is on an open sale     |
+| InvalidSaleDataError                    | 422    | a sale record would be inconsistent       |
 | every other DomainError                 | 422    | a business rule refused the request       |
 | any unexpected exception                | 500    | unexpected_error_middleware.py            |
 
@@ -122,6 +126,12 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
                 401, "Merchant sign-in required"
             ),
             errors.ProductNotFoundError: ProblemMapping(404, "Product not found"),
+            errors.InvalidSaleDataError: ProblemMapping(422, "Invalid sale data"),
+            errors.SaleNotFoundError: ProblemMapping(404, "Sale not found"),
+            errors.IllegalSaleTransitionError: ProblemMapping(
+                409, "Not possible in the sale's current status"
+            ),
+            errors.SessionCodesExhaustedError: ProblemMapping(409, "No free session code"),
         }
     )
 )

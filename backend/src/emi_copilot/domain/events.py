@@ -12,6 +12,8 @@ from enum import StrEnum
 from emi_copilot.domain.errors import PaymentLinkFailureCode
 from emi_copilot.domain.payments.gateway_payment_status import GatewayPaymentStatus
 from emi_copilot.domain.payments.payment_attempt_status import PaymentAttemptStatus
+from emi_copilot.domain.sales.sale_state_machine import SalePaymentOutcome
+from emi_copilot.domain.sales.sale_status import SaleStatus
 
 
 class StatusReportSource(StrEnum):
@@ -146,3 +148,43 @@ class OfferQuoteMismatch(DomainEvent):
     quoted_monthly_installment_in_paise: int
     schedule_regular_installment_in_paise: int
     quoted_extra_in_total_in_paise: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SaleStarted(DomainEvent):
+    """A merchant started a sale of one product at its counter price; it is now CHOOSING."""
+
+    sale_id: str
+    merchant_id: str
+    product_id: str
+    price_in_paise: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SaleStatusChanged(DomainEvent):
+    """A sale moved to a new status; occurred_at is its new status_changed_at.
+
+    chosen_offer_id is set once the customer has agreed to a plan; payment_attempt_id is set
+    when a gateway payment report caused the move.
+    """
+
+    sale_id: str
+    merchant_id: str
+    previous_status: SaleStatus
+    new_status: SaleStatus
+    chosen_offer_id: str | None
+    payment_attempt_id: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SalePaymentOutcomeIgnored(DomainEvent):
+    """A payment report reached a sale that was not awaiting payment (CHOOSING or EXPIRED).
+
+    Nothing changed; the event is the evidence that a payment arrived where none was expected.
+    """
+
+    sale_id: str
+    merchant_id: str
+    sale_status: SaleStatus
+    payment_outcome: SalePaymentOutcome
+    payment_attempt_id: str

@@ -278,3 +278,33 @@ class ProductNotFoundError(DomainError):
     """
 
     code: ClassVar[str] = "PRODUCT_NOT_FOUND"
+
+
+class InvalidSaleDataError(DomainError):
+    """Raised when a sale, its chosen plan, session code or funnel event would be inconsistent."""
+
+    code: ClassVar[str] = "INVALID_SALE_DATA"
+
+
+class SaleNotFoundError(DomainError):
+    """Raised when a sale id is not one of the signed-in merchant's sales.
+
+    Another merchant's sale raises this too, so its existence stays hidden (404).
+    """
+
+    code: ClassVar[str] = "SALE_NOT_FOUND"
+
+
+class IllegalSaleTransitionError(DomainError):
+    """Raised when a command is not allowed in the sale's current status (SaleStateMachine).
+
+    Examples: agreeing a plan twice, or issuing a new QR code once the customer has agreed.
+    """
+
+    code: ClassVar[str] = "SALE_STATE_CONFLICT"
+
+
+class SessionCodesExhaustedError(DomainError):
+    """Raised when every 4-digit session code is already shown on one of the shop's open sales."""
+
+    code: ClassVar[str] = "SESSION_CODES_EXHAUSTED"
