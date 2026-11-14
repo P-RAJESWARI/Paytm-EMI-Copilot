@@ -1,4 +1,4 @@
-"""AuditSubscriber: writes one append-only audit row for every payment domain event."""
+"""AuditSubscriber: writes one append-only audit row for every payment and sale domain event."""
 
 import dataclasses
 from collections.abc import Callable, Mapping
@@ -15,6 +15,9 @@ from emi_copilot.domain.events import (
     PaymentLinkCreationFailed,
     PaymentLinkOutcomeUnknown,
     PaymentStatusChanged,
+    SalePaymentOutcomeIgnored,
+    SaleStarted,
+    SaleStatusChanged,
     WebhookProcessed,
     WebhookRejected,
 )
@@ -26,6 +29,7 @@ PAYMENT_ATTEMPT_SUBJECT_TYPE = "payment_attempt"
 WEBHOOK_DELIVERY_SUBJECT_TYPE = "webhook_delivery"
 PAYMENT_ORDER_SUBJECT_TYPE = "payment_order"
 EMI_OFFER_SUBJECT_TYPE = "emi_offer"
+SALE_SUBJECT_TYPE = "sale"
 _OCCURRED_AT_FIELD = "occurred_at"
 
 
@@ -67,6 +71,13 @@ AUDIT_MAPPINGS_BY_EVENT_TYPE: Mapping[type[DomainEvent], AuditMapping] = Mapping
         OfferQuoteMismatch: AuditMapping(
             AuditEventType.OFFER_QUOTE_MISMATCH, EMI_OFFER_SUBJECT_TYPE, "offer_id"
         ),
+        SaleStarted: AuditMapping(AuditEventType.SALE_STARTED, SALE_SUBJECT_TYPE, "sale_id"),
+        SaleStatusChanged: AuditMapping(
+            AuditEventType.SALE_STATUS_CHANGED, SALE_SUBJECT_TYPE, "sale_id"
+        ),
+        SalePaymentOutcomeIgnored: AuditMapping(
+            AuditEventType.SALE_PAYMENT_OUTCOME_IGNORED, SALE_SUBJECT_TYPE, "sale_id"
+        ),
     }
 )
 
@@ -91,7 +102,7 @@ def build_audit_details(event: DomainEvent, subject_id_field: str) -> dict[str, 
 
 
 class AuditSubscriber:
-    """Turns each payment domain event into an AuditEvent in the publisher's unit of work.
+    """Turns each payment and sale domain event into an AuditEvent in the publisher's unit of work.
 
     The row commits with the business write or not at all (security-and-compliance.md section
     9). The correlation id is the current request's, when there is one.

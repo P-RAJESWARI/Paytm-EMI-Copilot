@@ -25,6 +25,8 @@ from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.core.pin_hasher import ScryptPinHasher
 from emi_copilot.events.audit_subscriber import AuditSubscriber
 from emi_copilot.events.event_bus import DomainEventBus
+from emi_copilot.events.funnel_event_recorder import FunnelEventRecorder
+from emi_copilot.events.sale_payment_outcome_subscriber import SalePaymentOutcomeSubscriber
 from emi_copilot.repositories.database import create_database_engine, create_session_factory
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
@@ -55,14 +57,22 @@ class ApplicationComponents:
     pairing_rate_limiter: FixedWindowRateLimiter
 
 
+def build_event_bus(id_generator: IdGenerator) -> DomainEventBus:
+    """Builds the one event bus with audit first, then the funnel and the sale payment rules."""
+    event_bus = DomainEventBus()
+    AuditSubscriber(id_generator).subscribe_to(event_bus)
+    FunnelEventRecorder(id_generator).subscribe_to(event_bus)
+    SalePaymentOutcomeSubscriber(event_bus).subscribe()
+    return event_bus
+
+
 def build_application_components(
     settings: ApplicationSettings, id_generator: IdGenerator
 ) -> ApplicationComponents:
     """Builds the components; paytm mode without credentials raises here, failing startup."""
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
-    event_bus = DomainEventBus()
-    AuditSubscriber(id_generator).subscribe_to(event_bus)
+    event_bus = build_event_bus(id_generator)
     database_engine = create_database_engine(settings)
     session_factory = create_session_factory(database_engine)
     return ApplicationComponents(

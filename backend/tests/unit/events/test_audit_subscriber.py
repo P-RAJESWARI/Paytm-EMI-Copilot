@@ -56,7 +56,7 @@ def _publish_through_audit(
 def test_audit_subscriber_writes_one_row_of_the_matching_type_per_event(
     unit_of_work_factory: FakeUnitOfWorkFactory,
 ) -> None:
-    """All seven event types are audited, each as its own AuditEventType."""
+    """Every event type, payment and sale, is audited as its own AuditEventType."""
     audit_events = _publish_through_audit(build_every_domain_event(), unit_of_work_factory)
     assert [audit_event.event_type for audit_event in audit_events] == list(AuditEventType)
     assert len(AUDIT_MAPPINGS_BY_EVENT_TYPE) == len(AuditEventType)
@@ -94,6 +94,9 @@ def test_audit_subscriber_maps_subject_moment_correlation_and_details(
         (4, "webhook_delivery", "01JCSAMPLEDELIVERY00000001"),
         (5, "payment_order", "ORDER-UNKNOWN-0001"),
         (6, "emi_offer", "offer-plan-b"),
+        (7, "sale", "01JCSALE000000000000000001"),
+        (8, "sale", "01JCSALE000000000000000001"),
+        (9, "sale", "01JCSALE000000000000000001"),
     ],
 )
 def test_audit_subscriber_uses_the_subject_that_identifies_each_non_attempt_event(
@@ -102,7 +105,7 @@ def test_audit_subscriber_uses_the_subject_that_identifies_each_non_attempt_even
     expected_subject_type: str,
     expected_subject_id: str,
 ) -> None:
-    """Rejected webhooks, unknown orders and offers are audited under their own subjects."""
+    """Rejected webhooks, unknown orders, offers and sales are audited under their own subjects."""
     event = build_every_domain_event()[event_index]
     (audit_event,) = _publish_through_audit([event], unit_of_work_factory)
     assert (audit_event.subject_type, audit_event.subject_id) == (

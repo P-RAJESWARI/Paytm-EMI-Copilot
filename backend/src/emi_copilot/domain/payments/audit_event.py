@@ -1,4 +1,4 @@
-"""AuditEvent: one append-only evidence record of something that happened on the payment path."""
+"""AuditEvent: one append-only evidence record of something on the payment or sale path."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -27,6 +27,9 @@ class AuditEventType(StrEnum):
     WEBHOOK_REJECTED = "WEBHOOK_REJECTED"
     WEBHOOK_PROCESSED = "WEBHOOK_PROCESSED"
     OFFER_QUOTE_MISMATCH = "OFFER_QUOTE_MISMATCH"
+    SALE_STARTED = "SALE_STARTED"
+    SALE_STATUS_CHANGED = "SALE_STATUS_CHANGED"
+    SALE_PAYMENT_OUTCOME_IGNORED = "SALE_PAYMENT_OUTCOME_IGNORED"
 
 
 def _freeze_details(details: object) -> Mapping[str, AuditDetailValue]:

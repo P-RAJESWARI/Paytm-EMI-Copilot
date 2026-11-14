@@ -82,4 +82,4 @@ def test_audit_event_with_invalid_field_raises_invalid_audit_event_error(
 def test_audit_event_type_values_are_stable_stored_words() -> None:
     """Event types are stored by value and checked by the database, so values equal names."""
     assert all(event_type.value == event_type.name for event_type in AuditEventType)
-    assert len(AuditEventType) == 7
+    assert len(AuditEventType) == 10

@@ -7,6 +7,8 @@ import pytest
 from emi_copilot.domain.payments import AuditEvent, AuditEventType, PaymentAttempt
 from emi_copilot.events.audit_subscriber import AuditSubscriber
 from emi_copilot.events.event_bus import DomainEventBus
+from emi_copilot.events.funnel_event_recorder import FunnelEventRecorder
+from emi_copilot.events.sale_payment_outcome_subscriber import SalePaymentOutcomeSubscriber
 from tests.fakes.fake_payment_gateway import FakePaymentGateway
 from tests.fakes.fake_unit_of_work import FakeUnitOfWorkFactory, InMemoryDatabase
 from tests.fakes.sequential_id_generator import SequentialIdGenerator
@@ -45,11 +47,13 @@ class ServiceTestKit:
 
 @pytest.fixture
 def kit() -> ServiceTestKit:
-    """Wires fresh fakes, with the audit subscriber on the bus as the composition root will."""
+    """Wires fresh fakes, with the subscribers on the bus in the composition root's order."""
     clock = FixedClock(CREATED_AT)
     database = InMemoryDatabase()
     event_bus = DomainEventBus()
     AuditSubscriber(SequentialIdGenerator("01JCAUDITID"), lambda: None).subscribe_to(event_bus)
+    FunnelEventRecorder(SequentialIdGenerator("01JCFUNNELID")).subscribe_to(event_bus)
+    SalePaymentOutcomeSubscriber(event_bus).subscribe()
     return ServiceTestKit(
         clock=clock,
         id_generator=SequentialIdGenerator(),
