@@ -14,7 +14,6 @@ from emi_copilot.api.controllers.sale_documentation import SALE_NOT_FOUND_PROBLE
 from emi_copilot.api.controllers.sale_handoff_documentation import (
     CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM,
     PAID_SALE_PAYMENT_STATUS_EXAMPLE,
-    RATE_LIMITED_PROBLEM,
     SALE_HANDOFF_EXAMPLE,
     SALE_HAS_NO_AGREED_PLAN_PROBLEM,
     SALE_PAYMENT_LINK_EXAMPLE,
@@ -26,6 +25,7 @@ from emi_copilot.api.openapi_documentation import (
     GATEWAY_TIMEOUT_PROBLEM,
     MERCHANT_AUTHENTICATION_PROBLEM,
     MERCHANT_BEARER_NOTE,
+    MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
     REQUEST_VALIDATION_PROBLEM,
     describe_problem_responses,
 )
@@ -113,7 +113,7 @@ def get_sale_handoff(
             SALE_TAKES_NO_NEW_LINK_PROBLEM,
             CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM,
             *PAYMENT_LINK_PROBLEMS[1:],
-            RATE_LIMITED_PROBLEM,
+            MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
             *GATEWAY_FAILURE_PROBLEMS,
             GATEWAY_TIMEOUT_PROBLEM,
         ),
@@ -163,7 +163,7 @@ def create_sale_payment_link(  # noqa: PLR0913 - mostly Annotated request parame
         **describe_problem_responses(
             *SALE_HANDOFF_PROBLEMS,
             SALE_HAS_NO_AGREED_PLAN_PROBLEM,
-            RATE_LIMITED_PROBLEM,
+            MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
             *GATEWAY_FAILURE_PROBLEMS,
             GATEWAY_TIMEOUT_PROBLEM,
         ),

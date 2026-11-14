@@ -1,6 +1,7 @@
 """POST /api/v1/webhooks/paytm: payment notifications, verified before any field is read.
 
 Order of work, and why:
+0. Count the request against the per-client webhook limit (429), before anything is read.
 1. Refuse any media type but application/x-www-form-urlencoded (415; ADR 0002 [Verify]).
 2. Refuse a declared or actual body above 16 KiB (413) while streaming, so a large post cannot
    exhaust memory; nothing is buffered past the limit.
@@ -14,7 +15,7 @@ The body is never logged: it holds the signature and may hold personal data.
 
 from urllib.parse import parse_qsl
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from emi_copilot.api.dependencies import PaymentStatusServiceDependency
@@ -24,6 +25,7 @@ from emi_copilot.api.openapi_documentation import (
     ProblemExample,
     describe_problem_responses,
 )
+from emi_copilot.api.rate_limiting import enforce_payment_webhook_rate_limit
 from emi_copilot.dtos.webhook_notification_dtos import build_unverified_notification
 
 paytm_webhook_router = APIRouter(tags=["webhooks"])
@@ -46,6 +48,13 @@ WEBHOOK_PROBLEMS = (
         "Request body too large",
         "The webhook body exceeds 16384 bytes.",
         "The body is larger than 16 KiB.",
+    ),
+    ProblemExample(
+        429,
+        "RATE_LIMITED",
+        "Too many requests",
+        "Too many webhook requests from this client; try again after Retry-After.",
+        "The client sent too many notifications in this minute (a generous limit).",
     ),
     ProblemExample(
         415,
@@ -107,6 +116,7 @@ def parse_raw_form_fields(body: bytes) -> dict[str, str]:
 @paytm_webhook_router.post(
     "/webhooks/paytm",
     status_code=202,
+    dependencies=[Depends(enforce_payment_webhook_rate_limit)],
     summary="Receive a payment notification from the gateway",
     description=(
         "Called by the payment gateway, not by our apps. The body is form-encoded key/value "
@@ -114,7 +124,7 @@ def parse_raw_form_fields(body: bytes) -> dict[str, str]:
         "field before any field is read; a mismatch answers 401 and is audited. A verified "
         "notification answers 202 with no body, also when it repeats an earlier one (no extra "
         "effect) or names an order that is not ours. Authenticated by the signature only; no "
-        "credentials (ADR 0009)."
+        "credentials (ADR 0009). A generous per-client limit applies (429 with Retry-After)."
     ),
     response_class=Response,
     response_description="Verified and applied; no body.",

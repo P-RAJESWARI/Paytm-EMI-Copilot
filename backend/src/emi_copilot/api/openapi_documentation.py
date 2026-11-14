@@ -17,8 +17,13 @@ from emi_copilot.dtos.problem_details_dto import (
 JSON_MEDIA_TYPE = "application/json"
 EXAMPLE_CORRELATION_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
 UNAUTHENTICATED_NOTE = (
-    "Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 "
-    "(ADR 0009). Money is integer paise; errors are application/problem+json."
+    "Layer 1 gateway endpoint: unauthenticated (ADR 0009); it reads public offer terms only. "
+    "Money is integer paise; errors are application/problem+json."
+)
+PAYMENT_MERCHANT_BEARER_NOTE = (
+    "Layer 1 gateway endpoint that needs the merchant bearer token since Layer 2 (plan Q16) and "
+    "is limited per shop (429 with Retry-After). Money is integer paise; errors are "
+    "application/problem+json."
 )
 MERCHANT_BEARER_NOTE = (
     "Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. "
@@ -187,6 +192,13 @@ GATEWAY_FAILURE_PROBLEMS = (
         "The gateway quoted two plans with the same id.",
         "",
     ),
+)
+MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM = ProblemExample(
+    429,
+    "RATE_LIMITED",
+    "Too many requests",
+    "Too many payment requests from this shop; try again after Retry-After.",
+    "The shop made too many payment link or status calls in this minute.",
 )
 MERCHANT_AUTHENTICATION_PROBLEM = ProblemExample(
     401,

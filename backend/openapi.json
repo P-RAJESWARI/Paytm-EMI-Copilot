@@ -57,7 +57,7 @@
           "offers"
         ],
         "summary": "List the EMI offers for an item",
-        "description": "Asks the payment gateway for every EMI plan on one item at one price and returns them in the gateway's order; no plan is hidden or ranked. monthlyInstallmentInPaise is the lender's quoted figure; the last installment, extra in total and total payable come from our exact schedule, which adds up to the paisa (ADR 0001). Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "description": "Asks the payment gateway for every EMI plan on one item at one price and returns them in the gateway's order; no plan is hidden or ranked. monthlyInstallmentInPaise is the lender's quoted figure; the last installment, extra in total and total payable come from our exact schedule, which adds up to the paisa (ADR 0001). Layer 1 gateway endpoint: unauthenticated (ADR 0009); it reads public offer terms only. Money is integer paise; errors are application/problem+json.",
         "operationId": "list_offers_api_v1_offers_get",
         "parameters": [
           {
@@ -294,8 +294,13 @@
           "payment links"
         ],
         "summary": "Create a payment link for the chosen plan",
-        "description": "Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a payment link exactly once per Idempotency-Key; the call is never retried. The same key and body return the original 201 response. A gateway timeout answers 504 and the key then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). Location points at the payment's status. Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "description": "Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a payment link exactly once per Idempotency-Key; the call is never retried. The same key and body return the original 201 response. A gateway timeout answers 504 and the key then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). Location points at the payment's status, which answers only for a payment of one of the shop's sales: for a counter sale use POST /api/v1/sales/{saleId}/payment-links. Layer 1 gateway endpoint that needs the merchant bearer token since Layer 2 (plan Q16) and is limited per shop (429 with Retry-After). Money is integer paise; errors are application/problem+json.",
         "operationId": "create_payment_link_api_v1_payment_links_post",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -385,6 +390,29 @@
                       "status": 400,
                       "detail": "The body is not valid JSON.",
                       "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
                   }
@@ -503,6 +531,38 @@
               }
             }
           },
+          "429": {
+            "description": "The shop made too many payment link or status calls in this minute.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many payment requests from this shop; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
           "500": {
             "description": "An unexpected failure; the body never holds a stack trace.",
             "content": {
@@ -603,8 +663,13 @@
           "payments"
         ],
         "summary": "Get a payment's status",
-        "description": "Asks the gateway about the order server-side, applies the answer and returns the public status: CREATING_LINK, LINK_FAILED, OUTCOME_UNKNOWN, AWAITING_PAYMENT, PAYMENT_PENDING, PAID or PAYMENT_FAILED. A client's word is never taken as a status. amountPaidInPaise is set only when paid. Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 (ADR 0009). Money is integer paise; errors are application/problem+json.",
+        "description": "Asks the gateway about the order server-side, applies the answer and returns the public status: CREATING_LINK, LINK_FAILED, OUTCOME_UNKNOWN, AWAITING_PAYMENT, PAYMENT_PENDING, PAID or PAYMENT_FAILED. A client's word is never taken as a status. amountPaidInPaise is set only when paid. Only a payment of one of the signed-in shop's sales is answered; any other order id is 404. Layer 1 gateway endpoint that needs the merchant bearer token since Layer 2 (plan Q16) and is limited per shop (429 with Retry-After). Money is integer paise; errors are application/problem+json.",
         "operationId": "get_payment_status_api_v1_payments__orderId__status_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
         "parameters": [
           {
             "name": "orderId",
@@ -640,8 +705,31 @@
               }
             }
           },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "No payment of ours has this order id.",
+            "description": "No payment of one of the shop's sales has this order id (another shop's, and a payment made for no sale, look the same).",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -688,6 +776,38 @@
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The shop made too many payment link or status calls in this minute.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many payment requests from this shop; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
                 }
               }
             }
@@ -792,7 +912,7 @@
           "webhooks"
         ],
         "summary": "Receive a payment notification from the gateway",
-        "description": "Called by the payment gateway, not by our apps. The body is form-encoded key/value text [Verify] of at most 16 KiB. Its signature (CHECKSUMHASH) is verified over every field before any field is read; a mismatch answers 401 and is audited. A verified notification answers 202 with no body, also when it repeats an earlier one (no extra effect) or names an order that is not ours. Authenticated by the signature only; no credentials (ADR 0009).",
+        "description": "Called by the payment gateway, not by our apps. The body is form-encoded key/value text [Verify] of at most 16 KiB. Its signature (CHECKSUMHASH) is verified over every field before any field is read; a mismatch answers 401 and is audited. A verified notification answers 202 with no body, also when it repeats an earlier one (no extra effect) or names an order that is not ours. Authenticated by the signature only; no credentials (ADR 0009). A generous per-client limit applies (429 with Retry-After).",
         "operationId": "receive_paytm_webhook_api_v1_webhooks_paytm_post",
         "requestBody": {
           "content": {
@@ -898,6 +1018,38 @@
                       "status": 415,
                       "detail": "The webhook body must be application/x-www-form-urlencoded.",
                       "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The client sent too many notifications in this minute (a generous limit).",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many webhook requests from this client; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
                   }

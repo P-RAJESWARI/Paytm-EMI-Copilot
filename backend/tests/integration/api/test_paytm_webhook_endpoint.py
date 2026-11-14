@@ -3,16 +3,27 @@
 from collections.abc import Iterator
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
 from emi_copilot.adapters.payment_gateway.mock_webhook_signature import MOCK_SIGNATURE_FIELD
+from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import AuditEventType, GatewayPaymentStatus, PaymentAttemptStatus
-from tests.integration.api.api_harness import SAMPLE_ITEM_QUERY, ApiHarness
+from tests.fixed_clock import FixedClock
+from tests.integration.api.api_harness import SAMPLE_ITEM_QUERY, ApiHarness, open_api_harness
+from tests.integration.api.merchant_api_helpers import sign_in_as_a_shop
 
 pytestmark = pytest.mark.integration
 
 WEBHOOK_PATH = "/api/v1/webhooks/paytm"
+
+
+@pytest.fixture
+def mock_api(mock_api: ApiHarness) -> ApiHarness:
+    """The Mock-gateway application, signed in as a paired shop to create the links."""
+    sign_in_as_a_shop(mock_api)
+    return mock_api
 
 
 def _create_payment_link(mock_api: ApiHarness) -> str:
@@ -155,3 +166,29 @@ def test_post_empty_webhook_returns_401_and_audits_rejection(mock_api: ApiHarnes
     )
     assert response.status_code == 401
     assert len(mock_api.read_audit_events(AuditEventType.WEBHOOK_REJECTED)) == 1
+
+
+@pytest.fixture
+def webhook_limited_api(
+    session_factory: sessionmaker[Session],
+    fixed_clock: FixedClock,
+    mock_gateway: MockPaymentGatewayAdapter,
+) -> Iterator[ApiHarness]:
+    """Runs the application with two webhooks a minute per client address."""
+    settings = ApplicationSettings(payment_webhook_rate_limit_max_requests=2)
+    with open_api_harness(session_factory, fixed_clock, mock_gateway, settings) as harness:
+        yield harness
+
+
+def test_post_webhooks_over_the_client_limit_return_429_before_the_body_is_read(
+    webhook_limited_api: ApiHarness,
+) -> None:
+    """A flood is refused before any signature work; nothing is audited for the refused ones."""
+    unsigned_fields = {"orderId": "ORDER-UNSIGNED-0001"}
+    responses = [
+        webhook_limited_api.client.post(WEBHOOK_PATH, data=unsigned_fields) for _ in range(3)
+    ]
+    assert [response.status_code for response in responses] == [401, 401, 429]
+    assert responses[2].json()["code"] == "RATE_LIMITED"
+    assert int(responses[2].headers["Retry-After"]) >= 1
+    assert len(webhook_limited_api.read_audit_events(AuditEventType.WEBHOOK_REJECTED)) == 2

@@ -76,3 +76,11 @@ def pair_and_get_bearer_headers(harness: ApiHarness, shop: StoredShop) -> dict[s
     response = harness.client.post(PAIRING_PATH, json={"shopId": shop.shop_code, "pin": shop.pin})
     assert response.status_code == 201, response.text
     return {"Authorization": f"Bearer {response.json()['accessToken']}"}
+
+
+def sign_in_as_a_shop(harness: ApiHarness) -> dict[str, str]:
+    """Stores and pairs a shop and sends its bearer token on every later request of the client."""
+    shop = store_shop(harness, "01JCMERCHANTLAYERONE000001", "SHOP-LAYER-ONE")
+    bearer_headers = pair_and_get_bearer_headers(harness, shop)
+    harness.client.headers.update(bearer_headers)
+    return bearer_headers

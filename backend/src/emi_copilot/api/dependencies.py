@@ -63,6 +63,7 @@ class ApplicationComponents:
     pin_hasher: ScryptPinHasher
     pairing_rate_limiter: FixedWindowRateLimiter
     merchant_payment_rate_limiter: FixedWindowRateLimiter
+    payment_webhook_rate_limiter: FixedWindowRateLimiter
     customer_qr_signing_key: bytes = field(repr=False)
     session_code_generator: SessionCodeGenerator
     sale_status_broadcaster: SaleStatusBroadcaster
@@ -111,6 +112,7 @@ def build_application_components(
         pin_hasher=ScryptPinHasher(),
         pairing_rate_limiter=build_pairing_rate_limiter(settings, clock),
         merchant_payment_rate_limiter=build_merchant_payment_rate_limiter(settings, clock),
+        payment_webhook_rate_limiter=build_payment_webhook_rate_limiter(settings, clock),
         customer_qr_signing_key=customer_qr_signing_key,
         session_code_generator=RandomSessionCodeGenerator(),
         sale_status_broadcaster=sale_status_broadcaster,
@@ -136,6 +138,17 @@ def build_merchant_payment_rate_limiter(
         clock,
         settings.merchant_payment_rate_limit_max_requests,
         timedelta(seconds=settings.merchant_payment_rate_limit_window_in_seconds),
+    )
+
+
+def build_payment_webhook_rate_limiter(
+    settings: ApplicationSettings, clock: Clock
+) -> FixedWindowRateLimiter:
+    """Builds the per-client limiter for gateway webhooks from the settings."""
+    return FixedWindowRateLimiter(
+        clock,
+        settings.payment_webhook_rate_limit_max_requests,
+        timedelta(seconds=settings.payment_webhook_rate_limit_window_in_seconds),
     )
 
 
@@ -208,6 +221,13 @@ def provide_merchant_payment_rate_limiter(
     return components.merchant_payment_rate_limiter
 
 
+def provide_payment_webhook_rate_limiter(
+    components: ComponentsDependency,
+) -> FixedWindowRateLimiter:
+    """Gives the one per-client limiter of gateway webhooks."""
+    return components.payment_webhook_rate_limiter
+
+
 def provide_access_token_lifetime(components: ComponentsDependency) -> timedelta:
     """Gives how long a paired device's bearer token lasts."""
     return timedelta(seconds=components.settings.merchant_access_token_lifetime_in_seconds)
@@ -224,6 +244,9 @@ PairingRateLimiterDependency = Annotated[
 ]
 MerchantPaymentRateLimiterDependency = Annotated[
     FixedWindowRateLimiter, Depends(provide_merchant_payment_rate_limiter)
+]
+PaymentWebhookRateLimiterDependency = Annotated[
+    FixedWindowRateLimiter, Depends(provide_payment_webhook_rate_limiter)
 ]
 AccessTokenLifetimeDependency = Annotated[timedelta, Depends(provide_access_token_lifetime)]
 

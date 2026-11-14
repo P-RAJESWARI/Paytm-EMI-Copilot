@@ -17,6 +17,7 @@ from emi_copilot.api.dependencies import (
     provide_merchant_payment_rate_limiter,
     provide_pairing_rate_limiter,
     provide_payment_gateway,
+    provide_payment_webhook_rate_limiter,
     provide_pin_hasher,
     provide_unit_of_work_factory,
 )
@@ -69,6 +70,10 @@ def test_merchant_providers_give_the_startup_hasher_limiter_and_token_lifetime()
         assert (
             provide_merchant_payment_rate_limiter(components)
             is components.merchant_payment_rate_limiter
+        )
+        assert (
+            provide_payment_webhook_rate_limiter(components)
+            is components.payment_webhook_rate_limiter
         )
         assert provide_access_token_lifetime(components) == timedelta(hours=1)
 

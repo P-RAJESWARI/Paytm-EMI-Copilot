@@ -62,10 +62,3 @@ CHOSEN_PLAN_NO_LONGER_OFFERED_PROBLEM = ProblemExample(
     "The fresh quote differs from the agreed plan in any figure, or the plan is gone; the "
     "customer has to choose again.",
 )
-RATE_LIMITED_PROBLEM = ProblemExample(
-    429,
-    "RATE_LIMITED",
-    "Too many requests",
-    "Too many payment requests from this shop; try again after Retry-After.",
-    "The shop made too many payment link or status calls in this minute.",
-)

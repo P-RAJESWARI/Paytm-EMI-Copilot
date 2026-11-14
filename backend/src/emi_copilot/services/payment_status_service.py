@@ -123,6 +123,24 @@ class PaymentStatusService:
             amount_paid=status_result.amount_paid,
         )
 
+    def get_payment_status_for_merchant(self, merchant_id: str, order_id: str) -> PaymentStatusView:
+        """Checks the order like get_payment_status, only if it pays for one of the shop's sales.
+
+        Another shop's order, and an order made for no sale, are not found (404), so their
+        existence stays hidden and the gateway is never asked about them.
+        """
+        with self._unit_of_work_factory() as unit_of_work:
+            attempt = unit_of_work.payment_attempts.find_by_order_id(order_id)
+            is_shops_attempt = (
+                attempt is not None
+                and attempt.sale_id is not None
+                and unit_of_work.sales.find_by_id_for_merchant(merchant_id, attempt.sale_id)
+                is not None
+            )
+        if not is_shops_attempt:
+            raise PaymentAttemptNotFoundError(f"No payment of this shop has order id {order_id}.")
+        return self.get_payment_status(order_id)
+
     def apply_webhook(self, notification: UnverifiedWebhookNotification) -> WebhookApplication:
         """Verifies a notification, then applies it idempotently; a refusal is audited, re-raised.
 

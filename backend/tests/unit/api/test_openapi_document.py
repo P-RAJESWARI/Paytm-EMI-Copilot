@@ -17,11 +17,10 @@ COMMITTED_OPENAPI_PATH = Path(__file__).resolve().parents[3] / "openapi.json"
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "patch", "head", "options"})
 CARD_LIKE_WORDS = frozenset({"card", "cvv", "expiry", "pan", "bin"})
 CAMEL_CASE_HUMP = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
-# Layer 1 gateway endpoints (ADR 0009) and pairing itself need no merchant bearer token.
+# Offer discovery (ADR 0009), the signed gateway webhook and pairing itself need no merchant
+# bearer token; payment links and payment status do since Layer 2 (plan Q16).
 UNAUTHENTICATED_PATH_PREFIXES = (
     "/api/v1/offers",
-    "/api/v1/payment-links",
-    "/api/v1/payments/",
     "/api/v1/webhooks/",
     "/api/v1/merchants/pairing",
 )
@@ -139,7 +138,7 @@ def test_every_operation_has_summary_description_and_a_problem_response(
 def test_gateway_operations_say_they_are_unauthenticated(
     openapi_document: dict[str, Any],
 ) -> None:
-    """Layer 1 gateway endpoints and pairing state that they need no merchant token (ADR 0009)."""
+    """Offers, the webhook and pairing state that they need no merchant token (ADR 0009)."""
     for operation_id, operation in list_operations(openapi_document):
         if operation_id.split(" ")[1].startswith(UNAUTHENTICATED_PATH_PREFIXES):
             assert "unauthenticated" in operation["description"].lower() or (
@@ -161,6 +160,8 @@ def test_merchant_operations_require_the_merchant_bearer_token(
     assert {operation_id for operation_id, _ in merchant_operations} >= {
         "GET /api/v1/merchants/me",
         "GET /api/v1/products",
+        "POST /api/v1/payment-links",
+        "GET /api/v1/payments/{orderId}/status",
     }
     for operation_id, operation in merchant_operations:
         assert operation["security"] == [{"MerchantBearerToken": []}], operation_id
@@ -189,6 +190,9 @@ def test_every_too_many_requests_answer_documents_retry_after(
         "POST /api/v1/merchants/pairing",
         "POST /api/v1/sales/{saleId}/payment-links",
         "GET /api/v1/sales/{saleId}/payment-status",
+        "POST /api/v1/payment-links",
+        "GET /api/v1/payments/{orderId}/status",
+        "POST /api/v1/webhooks/paytm",
     }
     for _, response in too_many_requests_answers:
         assert response["headers"]["Retry-After"]["schema"] == {"type": "integer", "minimum": 1}

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Header, Request, Response
+from fastapi import APIRouter, Body, Depends, Header, Request, Response
 
 from emi_copilot.api.controllers.payment_status_controller import GET_PAYMENT_STATUS_ROUTE_NAME
 from emi_copilot.api.dependencies import PaymentHandoffServiceDependency
@@ -10,11 +10,14 @@ from emi_copilot.api.openapi_documentation import (
     GATEWAY_FAILURE_PROBLEMS,
     GATEWAY_TIMEOUT_PROBLEM,
     MALFORMED_REQUEST_PROBLEM,
+    MERCHANT_AUTHENTICATION_PROBLEM,
+    MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
+    PAYMENT_MERCHANT_BEARER_NOTE,
     REQUEST_VALIDATION_PROBLEM,
-    UNAUTHENTICATED_NOTE,
     ProblemExample,
     describe_problem_responses,
 )
+from emi_copilot.api.rate_limiting import enforce_merchant_payment_rate_limit
 from emi_copilot.dtos.payment_link_dtos import (
     IDEMPOTENCY_KEY_HEADER_DESCRIPTION,
     IDEMPOTENCY_KEY_PATTERN,
@@ -92,13 +95,16 @@ PAYMENT_LINK_PROBLEMS = (
 @payment_link_router.post(
     "/payment-links",
     status_code=201,
+    dependencies=[Depends(enforce_merchant_payment_rate_limit)],
     summary="Create a payment link for the chosen plan",
     description=(
         "Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a "
         "payment link exactly once per Idempotency-Key; the call is never retried. The same key "
         "and body return the original 201 response. A gateway timeout answers 504 and the key "
         "then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). "
-        "Location points at the payment's status. " + UNAUTHENTICATED_NOTE
+        "Location points at the payment's status, which answers only for a payment of one of "
+        "the shop's sales: for a counter sale use POST /api/v1/sales/{saleId}/payment-links. "
+        + PAYMENT_MERCHANT_BEARER_NOTE
     ),
     response_description="The link was created (or this is the replay of its creation).",
     responses={
@@ -114,7 +120,9 @@ PAYMENT_LINK_PROBLEMS = (
         **describe_problem_responses(
             MALFORMED_REQUEST_PROBLEM,
             REQUEST_VALIDATION_PROBLEM,
+            MERCHANT_AUTHENTICATION_PROBLEM,
             *PAYMENT_LINK_PROBLEMS,
+            MERCHANT_PAYMENT_RATE_LIMITED_PROBLEM,
             *GATEWAY_FAILURE_PROBLEMS,
             GATEWAY_TIMEOUT_PROBLEM,
         ),

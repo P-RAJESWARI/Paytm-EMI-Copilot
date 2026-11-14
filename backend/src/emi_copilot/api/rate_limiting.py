@@ -1,8 +1,9 @@
 """Request rate limits applied as FastAPI dependencies, before the endpoint or its body runs.
 
 Merchant calls are keyed by the signed-in shop, after its token is checked. Unauthenticated
-calls (pairing) are keyed by the connection's peer address. X-Forwarded-For is not trusted, because
-a client could set it freely; behind a proxy, the proxy must be configured to pass the address.
+calls (pairing, gateway webhooks) are keyed by the connection's peer address. X-Forwarded-For
+is not trusted, because a client could set it freely; behind a proxy, the proxy must be
+configured to pass the address.
 """
 
 from fastapi import Request
@@ -10,6 +11,7 @@ from fastapi import Request
 from emi_copilot.api.dependencies import (
     MerchantPaymentRateLimiterDependency,
     PairingRateLimiterDependency,
+    PaymentWebhookRateLimiterDependency,
 )
 from emi_copilot.api.merchant_authentication import CurrentMerchant
 from emi_copilot.domain.errors import RequestRateLimitedError
@@ -44,4 +46,16 @@ def enforce_merchant_payment_rate_limit(
         raise RequestRateLimitedError(
             decision.retry_after_in_seconds,
             "Too many payment requests from this shop; try again after Retry-After.",
+        )
+
+
+def enforce_payment_webhook_rate_limit(
+    request: Request, payment_webhook_rate_limiter: PaymentWebhookRateLimiterDependency
+) -> None:
+    """Counts one webhook for the client, before its body is read; 429 when over the limit."""
+    decision = payment_webhook_rate_limiter.try_acquire(find_client_address(request))
+    if not decision.is_allowed:
+        raise RequestRateLimitedError(
+            decision.retry_after_in_seconds,
+            "Too many webhook requests from this client; try again after Retry-After.",
         )

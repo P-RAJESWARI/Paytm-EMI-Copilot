@@ -70,8 +70,10 @@ make setup          # uv sync + pre-commit install (needs uv and Docker)
 make check          # ruff, mypy --strict, pytest incl. PostgreSQL integration, coverage gates
 make dev            # http://127.0.0.1:8000/health
 curl 'http://127.0.0.1:8000/api/v1/offers?priceInPaise=2200000&productId=P1&brandId=B1&categoryId=C1'
+# Since Layer 2 step 2.3 (plan Q16) payment links and status need a paired shop's bearer token
+# (POST /api/v1/merchants/pairing, after make seed), and a status answers only for a sale's payment.
 curl -X POST http://127.0.0.1:8000/api/v1/payment-links -H 'Idempotency-Key: demo-key-0001' \
-     -H 'Content-Type: application/json' \
+     -H "Authorization: Bearer $MERCHANT_TOKEN" -H 'Content-Type: application/json' \
      -d '{"offerId":"mock-offer-card-6m","priceInPaise":2200000,"productId":"P1","brandId":"B1","categoryId":"C1"}'
 make openapi        # regenerates backend/openapi.json (a test fails if the committed copy drifts)
 ```

@@ -173,6 +173,8 @@ def test_merchant_operations_include_pairing_profile_products_and_sales(
         "GET /api/v1/sales/{saleId}/handoff",
         "POST /api/v1/sales/{saleId}/payment-links",
         "GET /api/v1/sales/{saleId}/payment-status",
+        "POST /api/v1/payment-links",
+        "GET /api/v1/payments/{orderId}/status",
     }
 
 

@@ -7,12 +7,27 @@ from emi_copilot.domain.errors import PaymentGatewayTimeoutError
 from emi_copilot.domain.payments import AuditEventType, PaymentAttemptStatus
 from tests.fakes.fake_payment_gateway import FakePaymentGateway
 from tests.integration.api.api_harness import SAMPLE_ITEM_QUERY, ApiHarness
+from tests.integration.api.merchant_api_helpers import sign_in_as_a_shop
 
 pytestmark = pytest.mark.integration
 
 IDEMPOTENCY_KEY = "idempotency-key-api-0001"
 MOCK_PLAN_B_REQUEST = {**SAMPLE_ITEM_QUERY, "offerId": "mock-offer-card-6m"}
 FAKE_PLAN_B_REQUEST = {**SAMPLE_ITEM_QUERY, "offerId": "offer-plan-b"}
+
+
+@pytest.fixture
+def fake_api(fake_api: ApiHarness) -> ApiHarness:
+    """The fake-gateway application, signed in as a paired shop (plan Q16)."""
+    sign_in_as_a_shop(fake_api)
+    return fake_api
+
+
+@pytest.fixture
+def mock_api(mock_api: ApiHarness) -> ApiHarness:
+    """The Mock-gateway application, signed in as a paired shop (plan Q16)."""
+    sign_in_as_a_shop(mock_api)
+    return mock_api
 
 
 def test_post_payment_link_returns_201_with_location_snapshot_and_audit_row(
@@ -169,3 +184,19 @@ def test_post_payment_link_with_invalid_json_returns_400_malformed_request(
     )
     assert response.status_code == 400
     assert response.json()["code"] == "MALFORMED_REQUEST"
+
+
+def test_post_payment_link_without_a_merchant_token_returns_401_and_calls_nothing(
+    fake_api: ApiHarness, fake_gateway: FakePaymentGateway
+) -> None:
+    """Since Layer 2 only a signed-in shop may hand a plan to the gateway (plan Q16)."""
+    fake_api.client.headers.pop("Authorization")
+    response = fake_api.client.post(
+        "/api/v1/payment-links",
+        json=FAKE_PLAN_B_REQUEST,
+        headers={"Idempotency-Key": IDEMPOTENCY_KEY},
+    )
+    assert response.status_code == 401
+    assert response.json()["code"] == "MERCHANT_AUTHENTICATION_REQUIRED"
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+    assert fake_gateway.discover_offers_calls == []
