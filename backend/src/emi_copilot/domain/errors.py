@@ -345,3 +345,13 @@ class InvalidReportDataError(DomainError):
     """Raised when a report figure, settlement batch or weekly message would be inconsistent."""
 
     code: ClassVar[str] = "INVALID_REPORT_DATA"
+
+
+class InvalidComfortInputError(DomainError):
+    """Raised when a comfort check cannot be worked out from its inputs.
+
+    Examples: a monthly inflow of zero, an amount that is not Money, or comfort thresholds that are
+    not whole basis points in increasing order.
+    """
+
+    code: ClassVar[str] = "INVALID_COMFORT_INPUT"

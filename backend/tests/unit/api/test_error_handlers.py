@@ -64,6 +64,7 @@ def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:
         (errors.InvalidReportingPeriodError, 422),
         (errors.InvalidReportDataError, 422),
         (errors.InvalidSaleDataError, 422),
+        (errors.InvalidComfortInputError, 422),
         (errors.DomainError, 422),
     ],
 )
