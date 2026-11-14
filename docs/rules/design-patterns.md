@@ -14,7 +14,7 @@ Use a pattern only where it solves a real problem in this codebase. Name it once
 | **Value Object** | `Money` (paise via `Money.to_paise()`, ADR 0008), `PlanSnapshot`, `ComfortRatio` | Makes invalid states impossible and keeps rounding in one place | 1 |
 | **DTO** | Everything in `dtos/` | Separates the public API contract from ORM models and domain types | all |
 | **Observer** (event bus) | `DomainEventBus` with subscribers: audit logger, funnel event recorder, metrics, merchant status broadcaster | Reacts to "payment link created", "sale ready to pay" without coupling services together | 1, 2, 3 |
-| **State** | `SaleStateMachine` (`CHOOSING`, `READY_TO_PAY`, `PAID`, `FAILED`, `EXPIRED`) | Legal transitions are explicit and tested; no scattered status checks | 2 |
+| **State** | `SaleStateMachine` (`CHOOSING`, `READY_TO_PAY`, `PAID`, `PAYMENT_NOT_COMPLETED`, `EXPIRED`) | Legal transitions are explicit and tested; no scattered status checks | 2 |
 | **Decorator** | `AuditedExplanationService` wraps the AI explanation service | Adds number audit and template fallback without changing the AI adapter | 4 |
 | **Template fallback (Null Object flavour)** | `TemplateExplanationService` | Always returns a safe explanation when AI is unavailable or fails the audit | 3, 4 |
 | **Circuit Breaker and Retry** (resilience) | `core/resilient_http_client.py` | Stops one slow dependency from starving the rest | 1 |

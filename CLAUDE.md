@@ -19,7 +19,7 @@ This is a hackathon product built to production-quality standards so a mentor ca
 3. **No card data.** Never receive, log, store or accept card number, expiry or CVV anywhere. Payment happens on Paytm after handoff.
 4. **Money is never a float.** Use `Decimal` in domain code and **integer paise** in the database and on the wire.
 5. **Comfort bands are exactly three:** Comfortable, Stretching, Risky. Never "approved", "declined", "eligible for credit" or "rejected". The comfort check is advice, not a credit decision.
-6. **Merchant privacy:** the merchant never sees a customer's income, existing EMIs, comfort ratio or step-by-step progress. Merchant APIs expose only: sale status `CHOOSING` or `READY_TO_PAY`, the chosen plan, totals, and aggregates.
+6. **Merchant privacy:** the merchant never sees a customer's income, existing EMIs, comfort ratio or step-by-step progress. Merchant APIs expose only: sale status (`CHOOSING`, `READY_TO_PAY`, or the merchant-side outcomes `PAID`, `PAYMENT_NOT_COMPLETED`, `EXPIRED`), the chosen plan, totals, and aggregates (counts from 1 to 4 are suppressed). No "scanned" or other per-step signal while the customer is choosing.
 7. **Plain wording on customer screens.** Say "extra you pay", not "interest rate". Show "Each month ₹X for N months" beside "Extra in total ₹Y on top of the price" at the same size. No "best for you", no urgency language.
 8. **Consent is evidence.** Consent records are append-only, hash-chained and store the exact plan snapshot shown.
 9. **Human gates stay human:** customer confirms the budget, consents to the comfort check, selects the plan and gives OTP consent; the merchant performs the payment step on Paytm.
@@ -129,7 +129,7 @@ The **main Claude Code session is the orchestrator**. Subagents cannot spawn oth
 | Layer | Scope | Branch | Status |
 |---|---|---|---|
 | 1 | Foundation + Payment gateway integration | `layer/1-payment-gateway` | Done; MR ready for owner review (see `docs/handoff/LAYER-1-HANDOFF.md`) |
-| 2 | Merchant UI + merchant backend slice | `layer/2-merchant-ui` | Not started |
+| 2 | Merchant UI + merchant backend slice | `layer/2-merchant-ui` | In progress |
 | 3 | Customer UI + customer backend slice | `layer/3-customer-ui` | Not started |
 | 4 | Sarvam AI integration | `layer/4-sarvam-ai` | Not started |
 

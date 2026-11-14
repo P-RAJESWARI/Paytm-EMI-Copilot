@@ -30,6 +30,7 @@ Tokens (merchant, customer session, QR), OTPs, full phone numbers, signatures an
 - Merchant: device pairing by PIN issues a short-lived bearer token; PIN attempts are rate limited and lock after repeated failures.
 - Customer: QR carries a signed, expiring, single-use token exchanged for a session token bound to **one sale**. Expired or reused tokens return 401 with a calm "ask the shop for a new QR" code.
 - Authorisation: a merchant can only access their own sales and reports (enforced in the service layer and tested).
+- Merchant visibility: sale status is limited to `CHOOSING`, `READY_TO_PAY`, `PAID`, `PAYMENT_NOT_COMPLETED` and `EXPIRED`. Report aggregates suppress any count from 1 to 4 (shown as "fewer than 5"), and budget buckets are hidden when fewer than 5 customers told a budget, so a quiet day cannot reveal one customer. An exact-schema test enforces both.
 - Rate limits on token exchange, OTP request, OTP verify and consent endpoints.
 
 ## 5. Secrets and dependencies

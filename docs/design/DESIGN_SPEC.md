@@ -85,7 +85,7 @@ Happy path: C1, C2, C3, C4, C6, C7, C9, C10. C5 opens from C4 details; C8 is opt
 | M5 | Sales report | Range (Today, This week, This month), weekly message with EN / தமிழ் toggle and sent state, funnel with biggest drop, expandable cards: **Missed sales** (insight, suggested action, share with brand rep, budget buckets), **Money due from brands** (batches, estimated dates, status), "What you can do to sell more" | loaded, empty ("No EMI sales this week yet" with New EMI sale) |
 | M8 | Weekly message (phone) | The AI-written message in the shop's language | default |
 
-The merchant sees only `CHOOSING` or `READY_TO_PAY` per customer, the chosen plan and totals. Never income, EMIs, ratios or step-by-step progress.
+The merchant sees only `CHOOSING` or `READY_TO_PAY` per customer while the customer decides, then the merchant-side outcome `PAID`, `PAYMENT_NOT_COMPLETED` or `EXPIRED`; plus the chosen plan and totals. Never income, EMIs, ratios or step-by-step progress (the M3 "Not scanned yet" state is not built). Report counts from 1 to 4 show as "fewer than 5".
 
 ## 7. Behaviours implied by the mockups that the code must honour
 

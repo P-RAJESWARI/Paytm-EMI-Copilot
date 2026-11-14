@@ -70,9 +70,9 @@ The API contract is defined by Pydantic DTOs and published as OpenAPI. The front
 | Layer | Group | Examples |
 |---|---|---|
 | 1 | Gateway | `GET /offers`, `POST /payment-links`, `GET /payments/{orderId}/status`, `POST /webhooks/paytm` |
-| 2 | Merchant | `POST /merchants/pairing`, `GET /products`, `POST /sales`, `GET /sales`, `GET /reports/funnel`, `GET /reports/missed-sales`, `GET /reports/money-due` |
+| 2 | Merchant | `POST /merchants/pairing`, `GET /products`, `POST /sales`, `GET /sales`, `GET /reports/funnel`, `GET /reports/missed-sales`, `GET /reports/money-due`, `GET /reports/weekly-message` (template text) |
 | 3 | Customer | `POST /customer-sessions`, `PUT /customer-sessions/{id}/budget`, `POST .../comfort-check`, `GET .../plans`, `POST .../alternatives`, `POST .../consent`, `GET .../receipt` |
-| 4 | AI | `POST .../explanation`, `POST .../speech/transcriptions`, `POST .../speech/synthesis`, `POST .../teach-back`, `GET /reports/weekly-message` |
+| 4 | AI | `POST .../explanation`, `POST .../speech/transcriptions`, `POST .../speech/synthesis`, `POST .../teach-back`, AI-written weekly message behind the Layer 2 endpoint |
 
 ## 8. Webhooks
 
