@@ -67,3 +67,23 @@ export function buildTestSaleDetail(
     ...overrides,
   };
 }
+
+// Builds M4's hand-off for a sale that agreed to plan A, waiting for payment with no link yet.
+export function buildTestSaleHandoff(
+  overrides: Partial<ApiSchemas['SaleHandoffResponse']> = {},
+): ApiSchemas['SaleHandoffResponse'] {
+  return {
+    paymentStatus: 'WAITING',
+    paymentConfirmedAt: null,
+    sale: buildTestSaleSummary({ status: 'READY_TO_PAY', chosenPlan: TEST_NO_COST_PLAN }),
+    edcInstructions: {
+      emiProgramme: 'BRAND_EMI',
+      productName: 'Example phone, 128 GB',
+      tenureInMonths: 6,
+      isNoExtraCost: true,
+      amountInPaise: 2200000,
+    },
+    latestPaymentLink: null,
+    ...overrides,
+  };
+}

@@ -3,6 +3,7 @@ import { Navigate, type RouteObject } from 'react-router';
 import { NewEmiSalePage } from '../pages/NewEmiSalePage';
 import { PairingPage } from '../pages/PairingPage';
 import { ShowQrPage } from '../pages/ShowQrPage';
+import { TakePaymentPage } from '../pages/TakePaymentPage';
 import { MERCHANT_PATHS } from './merchantPaths';
 import { RequireMerchantSession } from './RequireMerchantSession';
 import { MerchantAppShell } from './shell/MerchantAppShell';
@@ -18,6 +19,7 @@ export const MERCHANT_ROUTES: RouteObject[] = [
         children: [
           { path: MERCHANT_PATHS.newEmiSale, element: <NewEmiSalePage /> },
           { path: MERCHANT_PATHS.showQrPattern, element: <ShowQrPage /> },
+          { path: MERCHANT_PATHS.takePaymentPattern, element: <TakePaymentPage /> },
           { path: MERCHANT_PATHS.salesReport, element: null },
         ],
       },
