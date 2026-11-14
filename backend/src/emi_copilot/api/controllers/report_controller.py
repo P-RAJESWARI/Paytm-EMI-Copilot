@@ -61,7 +61,10 @@ GATEWAY_BACKED_REPORT_PROBLEMS = (
         "M5 funnel: the sales started in the period (a cohort), counted by every stage each "
         "reached: STARTED, BUDGET_TOLD, PLANS_VIEWED, AGREED, PAID. biggestDrop is the largest "
         "fall between adjacent stages (afterStage is the earlier one; ties go to the earliest), "
-        "null when no stage falls. " + SUPPRESSION_NOTE + MERCHANT_BEARER_NOTE
+        "null when no stage falls; it is suppressed when it sits beside a suppressed stage, so "
+        "the hidden count cannot be worked out by subtraction. "
+        + SUPPRESSION_NOTE
+        + MERCHANT_BEARER_NOTE
     ),
     response_description="The funnel.",
     responses={

@@ -114,3 +114,25 @@ def test_a_shown_count_after_a_suppressed_stage_keeps_its_number() -> None:
         6,
         0,
     ]
+
+
+def test_a_drop_beside_a_suppressed_stage_is_suppressed_so_it_cannot_be_subtracted() -> None:
+    """20 started and 3 told a budget: showing a drop of 17 would reveal the hidden 3."""
+    report = FunnelReport.from_stage_counts(
+        {FunnelStage.STARTED: 20, FunnelStage.BUDGET_TOLD: 3}, SmallCountSuppressionPolicy()
+    )
+    assert report.count_for(FunnelStage.BUDGET_TOLD) == ReportedCount(None, is_suppressed=True)
+    assert report.biggest_drop is not None
+    assert report.biggest_drop.after_stage is FunnelStage.STARTED
+    assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)
+
+
+def test_a_drop_whose_earlier_stage_is_suppressed_is_suppressed() -> None:
+    """A later stage of 0 after a hidden 4 is itself hidden, and so is the drop between them."""
+    report = FunnelReport.from_stage_counts(
+        {FunnelStage.STARTED: 9, FunnelStage.BUDGET_TOLD: 9, FunnelStage.PLANS_VIEWED: 4},
+        SmallCountSuppressionPolicy(),
+    )
+    assert report.biggest_drop is not None
+    assert report.biggest_drop.after_stage is FunnelStage.BUDGET_TOLD
+    assert report.biggest_drop.count == ReportedCount(None, is_suppressed=True)

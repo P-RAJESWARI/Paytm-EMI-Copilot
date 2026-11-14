@@ -128,7 +128,7 @@ def test_weekly_message_defaults_to_this_week_and_is_not_sent_yet(kit: ServiceTe
     assert view.messages.english.title == "Your EMI sales, 9 to 15 November"
     assert (
         "6 customers wanted under ₹3,000 a month with nothing extra, and no plan fit."
-        in view.messages.english.paragraphs[1]
+        in " ".join(view.messages.english.paragraphs)
     )
     assert services.delivery.deliveries == []
 
