@@ -219,3 +219,62 @@ class PaymentLinkCreationInProgressError(DomainError):
     """
 
     code: ClassVar[str] = "PAYMENT_LINK_CREATION_IN_PROGRESS"
+
+
+class InvalidMerchantDataError(DomainError):
+    """Raised when a merchant, device pairing or catalogue product would be built incomplete."""
+
+    code: ClassVar[str] = "INVALID_MERCHANT_DATA"
+
+
+class InvalidPairingCredentialsError(DomainError):
+    """Raised when a shop id and PIN do not pair a device.
+
+    An unknown shop and a wrong PIN raise this same error with the same detail, so a caller
+    cannot learn which shop ids exist.
+    """
+
+    code: ClassVar[str] = "INVALID_PAIRING_CREDENTIALS"
+
+
+class RetryLaterError(DomainError):
+    """Base class for a refusal that ends by itself; it says how many seconds to wait."""
+
+    code: ClassVar[str] = "RETRY_LATER"
+
+    def __init__(self, retry_after_in_seconds: int, detail: str) -> None:
+        """Stores the whole seconds to wait, at least one, with an English explanation."""
+        if isinstance(retry_after_in_seconds, bool) or retry_after_in_seconds < 1:
+            raise ValueError("A retry delay is a whole number of seconds, at least one.")
+        super().__init__(detail)
+        self.retry_after_in_seconds = retry_after_in_seconds
+
+
+class PairingTemporarilyLockedError(RetryLaterError):
+    """Raised while a shop is locked after repeated wrong PINs; even the right PIN is refused."""
+
+    code: ClassVar[str] = "PAIRING_TEMPORARILY_LOCKED"
+
+
+class RequestRateLimitedError(RetryLaterError):
+    """Raised when one client has sent too many requests of one kind in the current window."""
+
+    code: ClassVar[str] = "RATE_LIMITED"
+
+
+class MerchantAuthenticationRequiredError(DomainError):
+    """Raised when a merchant endpoint gets a missing, unknown, expired or revoked bearer token.
+
+    The reasons are not told apart, so a probe learns nothing from the answer.
+    """
+
+    code: ClassVar[str] = "MERCHANT_AUTHENTICATION_REQUIRED"
+
+
+class ProductNotFoundError(DomainError):
+    """Raised when a product id is not in the signed-in merchant's catalogue.
+
+    Another merchant's product raises this too, so its existence stays hidden (404).
+    """
+
+    code: ClassVar[str] = "PRODUCT_NOT_FOUND"

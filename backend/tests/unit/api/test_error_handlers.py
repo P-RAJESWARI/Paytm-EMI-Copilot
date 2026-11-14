@@ -49,6 +49,13 @@ def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:
         (errors.InvalidPaymentGatewayValueError, 502),
         (errors.PaymentGatewayError, 502),
         (errors.InvalidMoneyAmountError, 422),
+        (errors.InvalidPairingCredentialsError, 401),
+        (errors.MerchantAuthenticationRequiredError, 401),
+        (errors.PairingTemporarilyLockedError, 429),
+        (errors.RequestRateLimitedError, 429),
+        (errors.RetryLaterError, 429),
+        (errors.ProductNotFoundError, 404),
+        (errors.InvalidMerchantDataError, 422),
         (errors.DomainError, 422),
     ],
 )

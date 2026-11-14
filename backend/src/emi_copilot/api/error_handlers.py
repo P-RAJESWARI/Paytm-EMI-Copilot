@@ -20,6 +20,13 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | PaymentGatewayRequestRejectedError      | 502    | the gateway refused the call              |
 | InvalidPaymentGatewayValueError         | 502    | the gateway's answer was unusable         |
 | PaymentGatewayError (base)              | 502    | any other gateway failure                 |
+| InvalidPairingCredentialsError          | 401    | unknown shop or wrong PIN (one answer)    |
+| MerchantAuthenticationRequiredError     | 401    | missing, unknown, expired, revoked token  |
+| PairingTemporarilyLockedError           | 429    | repeated wrong PINs; Retry-After is set   |
+| RequestRateLimitedError                 | 429    | too many requests; Retry-After is set     |
+| RetryLaterError (base)                  | 429    | any other refusal that ends by itself     |
+| ProductNotFoundError                    | 404    | not in the merchant's catalogue (hidden)  |
+| InvalidMerchantDataError                | 422    | a merchant record would be incomplete     |
 | every other DomainError                 | 422    | a business rule refused the request       |
 | any unexpected exception                | 500    | unexpected_error_middleware.py            |
 
@@ -104,6 +111,17 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.PaymentLinkCreationInProgressError: ProblemMapping(
                 409, "Payment link creation in progress"
             ),
+            errors.InvalidMerchantDataError: ProblemMapping(422, "Invalid merchant data"),
+            errors.InvalidPairingCredentialsError: ProblemMapping(
+                401, "Shop id or PIN not recognised"
+            ),
+            errors.RetryLaterError: ProblemMapping(429, "Try again later"),
+            errors.PairingTemporarilyLockedError: ProblemMapping(429, "Pairing temporarily locked"),
+            errors.RequestRateLimitedError: ProblemMapping(429, "Too many requests"),
+            errors.MerchantAuthenticationRequiredError: ProblemMapping(
+                401, "Merchant sign-in required"
+            ),
+            errors.ProductNotFoundError: ProblemMapping(404, "Product not found"),
         }
     )
 )
