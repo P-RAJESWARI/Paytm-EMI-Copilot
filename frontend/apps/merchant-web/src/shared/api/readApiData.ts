@@ -22,8 +22,8 @@ function readRetryAfterInSeconds(response: Response): number | undefined {
   return Number(headerValue.trim());
 }
 
-// Awaits a generated client call and gives its body, or throws a MerchantApiError carrying the
-// problem code; a request that never reached the server becomes NETWORK_UNAVAILABLE.
+// Awaits a generated client call and gives its body, or throws a MerchantApiError with the problem
+// code and whether a problem body came; no answer at all becomes NETWORK_UNAVAILABLE.
 export async function readApiData<Data>(apiCall: Promise<ApiCallResult<Data>>): Promise<Data> {
   let result: ApiCallResult<Data>;
   try {
@@ -34,10 +34,12 @@ export async function readApiData<Data>(apiCall: Promise<ApiCallResult<Data>>): 
   }
   const { data, error, response } = result;
   if (!response.ok) {
+    const problemCode = readProblemCode(error);
     throw new MerchantApiError(
       response.status,
-      readProblemCode(error) ?? FALLBACK_PROBLEM_CODE,
+      problemCode ?? FALLBACK_PROBLEM_CODE,
       readRetryAfterInSeconds(response),
+      problemCode !== undefined,
     );
   }
   if (data === undefined) throw new MerchantApiError(response.status, UNEXPECTED_RESPONSE_CODE);

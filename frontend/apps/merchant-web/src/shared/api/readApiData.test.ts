@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { MerchantApiError, readMerchantApiErrorCode } from './merchantApiError';
+import {
+  isRequestOutcomeUnknown,
+  MerchantApiError,
+  readMerchantApiErrorCode,
+} from './merchantApiError';
 import { readApiData } from './readApiData';
 
 // Builds a generated-client style result around a Response.
@@ -29,6 +33,7 @@ describe('readApiData', () => {
       status: 429,
       code: 'PAIRING_TEMPORARILY_LOCKED',
       retryAfterInSeconds: 840,
+      hasProblemBody: true,
     });
   });
 
@@ -41,6 +46,7 @@ describe('readApiData', () => {
     await expect(readApiData(apiResult(response, undefined, ''))).rejects.toMatchObject({
       code: 'UNEXPECTED_ERROR',
       retryAfterInSeconds: undefined,
+      hasProblemBody: false,
     });
   });
 
@@ -72,5 +78,23 @@ describe('readApiData', () => {
       'SALE_NOT_FOUND',
     );
     expect(readMerchantApiErrorCode(new Error('other'))).toBeUndefined();
+  });
+});
+
+describe('isRequestOutcomeUnknown', () => {
+  it('is unknown when no answer came, a success was unreadable or a 5xx had no problem body', () => {
+    expect(isRequestOutcomeUnknown(new MerchantApiError(0, 'NETWORK_UNAVAILABLE'))).toBe(true);
+    expect(isRequestOutcomeUnknown(new MerchantApiError(201, 'UNEXPECTED_RESPONSE'))).toBe(true);
+    expect(isRequestOutcomeUnknown(new MerchantApiError(502, 'UNEXPECTED_ERROR'))).toBe(true);
+    expect(isRequestOutcomeUnknown(new DOMException('Aborted', 'AbortError'))).toBe(true);
+  });
+
+  it('is definite for any problem+json answer, a 5xx included, and for a body-less 4xx', () => {
+    const gatewayTimeout = new MerchantApiError(504, 'PAYMENT_GATEWAY_TIMEOUT', undefined, true);
+    const linkFailed = new MerchantApiError(422, 'PAYMENT_LINK_CREATION_FAILED', undefined, true);
+
+    expect(isRequestOutcomeUnknown(gatewayTimeout)).toBe(false);
+    expect(isRequestOutcomeUnknown(linkFailed)).toBe(false);
+    expect(isRequestOutcomeUnknown(new MerchantApiError(413, 'UNEXPECTED_ERROR'))).toBe(false);
   });
 });

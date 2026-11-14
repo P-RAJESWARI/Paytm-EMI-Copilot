@@ -6,7 +6,13 @@ import { expectNoAccessibilityViolations } from '@test-support/accessibility';
 
 import { createControllableEventStream } from '../testing/controllableEventStream';
 import { TEST_PRODUCTS } from '../testing/counterSaleTestData';
-import { jsonResponse, problemResponse, type FakeRoutes } from '../testing/fakeMerchantBackend';
+import {
+  bodylessErrorResponse,
+  jsonResponse,
+  networkFailure,
+  problemResponse,
+  type FakeRoutes,
+} from '../testing/fakeMerchantBackend';
 import {
   buildTestSaleDetail,
   buildTestSaleSummary,
@@ -130,12 +136,12 @@ describe('M2 new EMI sale', () => {
     expect(await screen.findByRole('radio', { name: /Example phone, 128 GB/ })).toBeTruthy();
   });
 
-  it('starts the sale with one Idempotency-Key per intent, re-sent on retry, and keeps the QR in memory', async () => {
+  it('starts the sale with one Idempotency-Key per intent, re-sent after a lost answer, and keeps the QR in memory', async () => {
     let startAttemptCount = 0;
     const { fakeBackend, queryClient } = renderNewEmiSale({
       'POST /api/v1/sales': () => {
         startAttemptCount += 1;
-        if (startAttemptCount === 1) return problemResponse(500, 'INTERNAL_SERVER_ERROR');
+        if (startAttemptCount === 1) return bodylessErrorResponse(502);
         return jsonResponse(
           buildTestSaleDetail({
             saleId: 'sale-new',
@@ -173,6 +179,34 @@ describe('M2 new EMI sale', () => {
     expect(
       queryClient.getQueryData<{ qr: unknown }>(['sale', 'sale-new', 'detail'])?.qr,
     ).toBeNull();
+  });
+
+  it('starts a new Idempotency-Key after a definite problem answer for the same product', async () => {
+    let startAttemptCount = 0;
+    const { fakeBackend } = renderNewEmiSale({
+      'POST /api/v1/sales': () => {
+        startAttemptCount += 1;
+        return startAttemptCount === 1
+          ? problemResponse(500, 'INTERNAL_SERVER_ERROR')
+          : networkFailure();
+      },
+    });
+    await userEvent.click(await screen.findByRole('radio', { name: /Example phone, 128 GB/ }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show QR to customer' }));
+    expect(await screen.findByText('Something did not load. Please try again.')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show QR to customer' }));
+    expect(await screen.findByText(/Could not reach the server/)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show QR to customer' }));
+
+    await waitFor(() => {
+      expect(startAttemptCount).toBe(3);
+    });
+    const idempotencyKeys = fakeBackend.recordedRequests
+      .filter((request) => request.method === 'POST' && request.path === '/api/v1/sales')
+      .map((request) => request.headers.get('Idempotency-Key'));
+    expect(idempotencyKeys[1]).not.toBe(idempotencyKeys[0]);
+    expect(idempotencyKeys[2]).toBe(idempotencyKeys[1]);
   });
 
   it('explains calmly when every session code is in use', async () => {

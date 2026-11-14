@@ -55,6 +55,19 @@ export function problemResponse(
   });
 }
 
+// Answers with a server error and no problem body, as a proxy or a crashed server might.
+export function bodylessErrorResponse(status: number): Response {
+  return new Response('<html>Bad gateway</html>', {
+    status,
+    headers: { 'Content-Type': 'text/html' },
+  });
+}
+
+// Fails the request the way fetch does when the shop's internet drops.
+export function networkFailure(): Promise<Response> {
+  return Promise.reject(new TypeError('Failed to fetch'));
+}
+
 // Turns "/api/v1/sales/{saleId}" into a matcher that captures saleId.
 function matchPath(pattern: string, path: string): Record<string, string> | undefined {
   const patternParts = pattern.split('/');

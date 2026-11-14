@@ -6,7 +6,9 @@ import { expectNoAccessibilityViolations } from '@test-support/accessibility';
 
 import { createControllableEventStream } from '../testing/controllableEventStream';
 import {
+  bodylessErrorResponse,
   jsonResponse,
+  networkFailure,
   problemResponse,
   type FakeRoutes,
   type RecordedRequest,
@@ -186,31 +188,72 @@ describe('M4 take payment', () => {
     expect(await screen.findByText(/Copying is not available on this device/)).toBeTruthy();
   });
 
-  it('re-sends the same Idempotency-Key after a timeout, so no second link is made', async () => {
-    let attemptCount = 0;
-    const linkState = handoffWithLinkAfterCreation();
-    const { fakeBackend } = renderTakePayment({
-      'GET /api/v1/sales/{saleId}/handoff': linkState.handoffRoute,
-      'POST /api/v1/sales/{saleId}/payment-links': () => {
-        attemptCount += 1;
-        if (attemptCount === 1) return problemResponse(504, 'PAYMENT_GATEWAY_TIMEOUT');
-        linkState.markLinkCreated();
-        return jsonResponse(CREATED_LINK, 201);
-      },
-    });
+  it.each([
+    [
+      'a lost answer',
+      networkFailure,
+      "Could not reach the server. Check the shop's internet connection and try again.",
+    ],
+    [
+      'a server error with no problem body',
+      () => bodylessErrorResponse(502),
+      'Something did not load. Please try again.',
+    ],
+  ])(
+    're-sends the same Idempotency-Key after %s, so no second link is made',
+    async (_case, firstAnswer, message) => {
+      let attemptCount = 0;
+      const linkState = handoffWithLinkAfterCreation();
+      const { fakeBackend } = renderTakePayment({
+        'GET /api/v1/sales/{saleId}/handoff': linkState.handoffRoute,
+        'POST /api/v1/sales/{saleId}/payment-links': () => {
+          attemptCount += 1;
+          if (attemptCount === 1) return firstAnswer();
+          linkState.markLinkCreated();
+          return jsonResponse(CREATED_LINK, 201);
+        },
+      });
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Send payment link' }));
-    expect(
-      await screen.findByText(
-        'The payment service did not answer in time. Try again; it will not make a second link.',
-      ),
-    ).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Send payment link' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Send payment link' }));
+      expect(await screen.findByText(message)).toBeTruthy();
+      await userEvent.click(screen.getByRole('button', { name: 'Send payment link' }));
 
-    expect(await screen.findByRole('img', { name: 'Payment link QR code' })).toBeTruthy();
-    const [firstKey, secondKey] = linkRequestKeys(fakeBackend.recordedRequests);
-    expect(secondKey).toBe(firstKey);
-  });
+      expect(await screen.findByRole('img', { name: 'Payment link QR code' })).toBeTruthy();
+      const [firstKey, secondKey] = linkRequestKeys(fakeBackend.recordedRequests);
+      expect(secondKey).toBe(firstKey);
+    },
+  );
+
+  it.each([
+    [504, 'PAYMENT_GATEWAY_TIMEOUT'],
+    [422, 'PAYMENT_LINK_CREATION_FAILED'],
+    [409, 'PAYMENT_LINK_OUTCOME_UNKNOWN'],
+    [409, 'PAYMENT_LINK_ALREADY_ACTIVE'],
+  ])(
+    'starts a new Idempotency-Key after a %i %s answer, so the next try is not a replay',
+    async (status, problemCode) => {
+      let attemptCount = 0;
+      const linkState = handoffWithLinkAfterCreation();
+      const { fakeBackend } = renderTakePayment({
+        'GET /api/v1/sales/{saleId}/handoff': linkState.handoffRoute,
+        'POST /api/v1/sales/{saleId}/payment-links': () => {
+          attemptCount += 1;
+          if (attemptCount === 1) return problemResponse(status, problemCode);
+          linkState.markLinkCreated();
+          return jsonResponse(CREATED_LINK, 201);
+        },
+      });
+
+      await userEvent.click(await screen.findByRole('button', { name: 'Send payment link' }));
+      expect(await screen.findByRole('alert')).toBeTruthy();
+      await userEvent.click(screen.getByRole('button', { name: 'Send payment link' }));
+
+      expect(await screen.findByRole('img', { name: 'Payment link QR code' })).toBeTruthy();
+      const [firstKey, secondKey] = linkRequestKeys(fakeBackend.recordedRequests);
+      expect(secondKey).toMatch(/^[0-9a-f-]{36}$/);
+      expect(secondKey).not.toBe(firstKey);
+    },
+  );
 
   it.each([
     [

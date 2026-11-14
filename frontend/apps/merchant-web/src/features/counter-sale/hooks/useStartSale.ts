@@ -1,8 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { createIdempotencyKey } from '../../../shared/api/createIdempotencyKey';
 import { COUNTER_SALES_QUERY_KEY } from '../../../shared/api/saleQueryKeys';
+import { useIdempotencyKeyPerIntent } from '../../../shared/api/useIdempotencyKeyPerIntent';
 import { useMerchantApi } from '../../../shared/api/useMerchantApi';
 import {
   buildCustomerQrQueryKey,
@@ -11,45 +10,50 @@ import {
   type SaleDetail,
 } from '../api/counterSaleApi';
 
-/** One "Show QR to customer" intent: the product and the key every retry of it re-sends. */
+/** One "Show QR to customer" request: the product and the Idempotency-Key it is sent with. */
 interface StartSaleIntent {
   productId: string;
   idempotencyKey: string;
 }
 
-// Starts a sale for a product. A retry of the same product after a failure re-sends the same
-// Idempotency-Key, so a lost answer never creates a second sale. The QR code goes into the
-// in-memory cache only (never router state or storage).
+// Puts a started sale in the cache: its QR code in memory only (never router state or storage),
+// the sale without the QR, and a fresh counter list.
+function storeStartedSale(queryClient: QueryClient, saleDetail: SaleDetail): void {
+  if (saleDetail.qr !== null) {
+    queryClient.setQueryData(buildCustomerQrQueryKey(saleDetail.saleId), saleDetail.qr);
+  }
+  queryClient.setQueryData(buildSaleDetailQueryKey(saleDetail.saleId), { ...saleDetail, qr: null });
+  void queryClient.invalidateQueries({ queryKey: COUNTER_SALES_QUERY_KEY });
+}
+
+// Starts a sale for a product. A retry of the same product re-sends the key only when the last
+// answer was lost, so a lost answer never creates a second sale; a definite answer retires the key.
 export function useStartSale() {
   const { apiClient } = useMerchantApi();
   const queryClient = useQueryClient();
-  const pendingIntent = useRef<StartSaleIntent | undefined>(undefined);
+  const idempotencyKeys = useIdempotencyKeyPerIntent();
   const startSaleMutation = useMutation({
     mutationFn: (intent: StartSaleIntent) =>
       startSale(apiClient, intent.productId, intent.idempotencyKey),
     onSuccess: (saleDetail: SaleDetail) => {
-      pendingIntent.current = undefined;
-      if (saleDetail.qr !== null) {
-        queryClient.setQueryData(buildCustomerQrQueryKey(saleDetail.saleId), saleDetail.qr);
-      }
-      queryClient.setQueryData(buildSaleDetailQueryKey(saleDetail.saleId), {
-        ...saleDetail,
-        qr: null,
-      });
-      void queryClient.invalidateQueries({ queryKey: COUNTER_SALES_QUERY_KEY });
+      storeStartedSale(queryClient, saleDetail);
+    },
+    onSettled: (_saleDetail, error, intent) => {
+      idempotencyKeys.settleIdempotencyKey(intent.idempotencyKey, error);
     },
   });
 
   // Starts (or retries) the sale for one product and calls onStarted with the new sale's id.
   function startSaleForProduct(productId: string, onStarted: (saleId: string) => void) {
-    if (pendingIntent.current?.productId !== productId) {
-      pendingIntent.current = { productId, idempotencyKey: createIdempotencyKey() };
-    }
-    startSaleMutation.mutate(pendingIntent.current, {
-      onSuccess: (saleDetail) => {
-        onStarted(saleDetail.saleId);
+    const idempotencyKey = idempotencyKeys.takeIdempotencyKey(productId);
+    startSaleMutation.mutate(
+      { productId, idempotencyKey },
+      {
+        onSuccess: (saleDetail) => {
+          onStarted(saleDetail.saleId);
+        },
       },
-    });
+    );
   }
 
   return {
