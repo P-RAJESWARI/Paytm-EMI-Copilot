@@ -89,6 +89,7 @@ async function readRecordedBody(request: Request): Promise<unknown> {
 export function createFakeMerchantBackend(initialRoutes: FakeRoutes = {}): FakeMerchantBackend {
   let routes: FakeRoutes = { ...initialRoutes };
   const recordedRequests: RecordedRequest[] = [];
+  // Records the request, then answers with the first route whose method and path match.
   async function fetchFunction(request: Request): Promise<Response> {
     const url = new URL(request.url);
     recordedRequests.push({
