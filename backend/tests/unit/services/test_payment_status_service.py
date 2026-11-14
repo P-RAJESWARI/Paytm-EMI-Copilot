@@ -223,3 +223,33 @@ def test_apply_webhook_for_an_unknown_order_is_audited_without_any_state_change(
     )
     assert processed_audit.details["outcome"] == "UNKNOWN_ORDER"
     assert processed_audit.details["amount_paid_in_paise"] == 2_200_000
+
+
+@pytest.mark.parametrize(
+    ("reported_status", "expected_status"),
+    [
+        (GatewayPaymentStatus.PAID, PaymentAttemptStatus.PAID),
+        (GatewayPaymentStatus.PENDING, PaymentAttemptStatus.PAYMENT_PENDING),
+        (GatewayPaymentStatus.FAILED, PaymentAttemptStatus.PAYMENT_FAILED),
+    ],
+)
+def test_apply_webhook_moves_an_attempt_whose_create_outcome_was_never_recorded(
+    kit: ServiceTestKit,
+    reported_status: GatewayPaymentStatus,
+    expected_status: PaymentAttemptStatus,
+) -> None:
+    """A report on an in-progress attempt proves its link exists, so it is applied and audited."""
+    kit.store_attempt(build_payment_attempt(status=PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS))
+    signature = _script_webhook(kit, reported_status)
+    application = _build_service(kit).apply_webhook(build_signed_notification(signature))
+    assert (application.outcome, application.status) == (
+        WebhookOutcome.STATUS_CHANGED,
+        expected_status,
+    )
+    assert kit.only_attempt().status is expected_status
+    assert kit.audit_event_types() == [AuditEventType.PAYMENT_STATUS_CHANGED]
+    details = kit.last_audit_event().details
+    assert (details["previous_status"], details["new_status"]) == (
+        "LINK_CREATION_IN_PROGRESS",
+        expected_status.value,
+    )

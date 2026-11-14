@@ -118,6 +118,11 @@ def _build_command() -> CreatePaymentLinkCommand:
     )
 
 
+def _fail_after_the_audit_row(event: PaymentLinkCreated, unit_of_work: UnitOfWork) -> None:  # noqa: ARG001
+    """Fails after the audit subscriber has written its row, as a database failure would."""
+    raise SubscriberFailureError
+
+
 def test_create_payment_link_stores_the_attempt_and_its_audit_row_together(
     services: DatabaseServices,
 ) -> None:
@@ -137,12 +142,7 @@ def test_create_payment_link_rolls_back_the_outcome_when_a_subscriber_fails(
     services: DatabaseServices,
 ) -> None:
     """A subscriber failure undoes LINK_CREATED and its audit row; the in-progress row stays."""
-
-    def fail(event: PaymentLinkCreated, unit_of_work: UnitOfWork) -> None:  # noqa: ARG001
-        """Fails after the audit subscriber has written its row."""
-        raise SubscriberFailureError
-
-    services.event_bus.subscribe(PaymentLinkCreated, fail)
+    services.event_bus.subscribe(PaymentLinkCreated, _fail_after_the_audit_row)
     with pytest.raises(SubscriberFailureError):
         services.handoff_service.create_payment_link(_build_command())
     stored_attempt = services.read_attempt()
@@ -150,6 +150,35 @@ def test_create_payment_link_rolls_back_the_outcome_when_a_subscriber_fails(
     assert stored_attempt.status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
     assert stored_attempt.payment_link_url is None
     assert services.read_audit_events(stored_attempt.id) == []
+
+
+def test_paid_webhook_after_an_unrecorded_link_moves_the_in_progress_attempt_to_paid(
+    services: DatabaseServices, mock_gateway: MockPaymentGatewayAdapter
+) -> None:
+    """Recording LINK_CREATED fails, yet a later verified PAID webhook is applied and audited."""
+    services.event_bus.subscribe(PaymentLinkCreated, _fail_after_the_audit_row)
+    with pytest.raises(SubscriberFailureError):
+        services.handoff_service.create_payment_link(_build_command())
+    in_progress_attempt = services.read_attempt()
+    assert in_progress_attempt is not None
+    assert in_progress_attempt.status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
+    notification = mock_gateway.build_signed_notification(
+        in_progress_attempt.order_id,
+        GatewayPaymentStatus.PAID,
+        "mock-transaction-0001",
+        in_progress_attempt.amount,
+    )
+    application = services.status_service.apply_webhook(notification)
+    assert (application.outcome, application.status) == (
+        WebhookOutcome.STATUS_CHANGED,
+        PaymentAttemptStatus.PAID,
+    )
+    paid_attempt = services.read_attempt()
+    assert paid_attempt is not None
+    assert paid_attempt.status is PaymentAttemptStatus.PAID
+    audit_events = services.read_audit_events(paid_attempt.id)
+    assert [event.event_type for event in audit_events] == [AuditEventType.PAYMENT_STATUS_CHANGED]
+    assert audit_events[0].details["previous_status"] == "LINK_CREATION_IN_PROGRESS"
 
 
 def test_create_payment_link_failure_code_is_stored_and_replayed(

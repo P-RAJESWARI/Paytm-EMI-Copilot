@@ -14,6 +14,9 @@ Attempt = PaymentAttemptStatus
 Reported = GatewayPaymentStatus
 
 EXPECTED_STATUS_CHANGES = {
+    (Attempt.LINK_CREATION_IN_PROGRESS, Reported.PENDING): Attempt.PAYMENT_PENDING,
+    (Attempt.LINK_CREATION_IN_PROGRESS, Reported.PAID): Attempt.PAID,
+    (Attempt.LINK_CREATION_IN_PROGRESS, Reported.FAILED): Attempt.PAYMENT_FAILED,
     (Attempt.LINK_CREATED, Reported.PENDING): Attempt.PAYMENT_PENDING,
     (Attempt.LINK_CREATED, Reported.PAID): Attempt.PAID,
     (Attempt.LINK_CREATED, Reported.FAILED): Attempt.PAYMENT_FAILED,
@@ -54,12 +57,39 @@ def test_find_status_after_gateway_report_not_found_changes_nothing(
     assert find_status_after_gateway_report(current_status, Reported.NOT_FOUND) is current_status
 
 
-@pytest.mark.parametrize(
-    "current_status", [Attempt.LINK_CREATION_IN_PROGRESS, Attempt.LINK_CREATION_FAILED]
-)
 @pytest.mark.parametrize("reported_status", list(GatewayPaymentStatus))
-def test_find_status_after_gateway_report_ignores_attempts_without_a_handed_out_link(
-    current_status: PaymentAttemptStatus, reported_status: GatewayPaymentStatus
+def test_find_status_after_gateway_report_ignores_an_attempt_whose_link_was_refused(
+    reported_status: GatewayPaymentStatus,
 ) -> None:
-    """No link was given to the customer, and the create call owns an in-progress attempt."""
-    assert find_status_after_gateway_report(current_status, reported_status) is current_status
+    """The gateway refused the create-link call, so no link exists for any report to be about."""
+    assert (
+        find_status_after_gateway_report(Attempt.LINK_CREATION_FAILED, reported_status)
+        is Attempt.LINK_CREATION_FAILED
+    )
+
+
+@pytest.mark.parametrize(
+    "current_status", [Attempt.LINK_CREATION_IN_PROGRESS, Attempt.OUTCOME_UNKNOWN]
+)
+def test_find_status_after_gateway_report_records_money_received_before_the_link_was_known(
+    current_status: PaymentAttemptStatus,
+) -> None:
+    """A PAID report always lands, even when the create-link outcome was never recorded."""
+    assert find_status_after_gateway_report(current_status, Reported.PAID) is Attempt.PAID
+
+
+@pytest.mark.parametrize(
+    ("reported_status", "expected_status"),
+    [
+        (Reported.PENDING, Attempt.PAYMENT_PENDING),
+        (Reported.FAILED, Attempt.PAYMENT_FAILED),
+    ],
+)
+def test_find_status_after_gateway_report_moves_an_in_progress_attempt_whose_link_exists(
+    reported_status: GatewayPaymentStatus, expected_status: PaymentAttemptStatus
+) -> None:
+    """A PENDING or FAILED report proves the link exists, so it moves an in-progress attempt."""
+    assert (
+        find_status_after_gateway_report(Attempt.LINK_CREATION_IN_PROGRESS, reported_status)
+        is expected_status
+    )

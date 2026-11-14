@@ -5,14 +5,18 @@ gateway repeats webhooks. So a report that is not in the table is "no change", n
 raising would only make the gateway resend a webhook that can never apply.
 
 Rules:
-- LINK_CREATED, OUTCOME_UNKNOWN and PAYMENT_PENDING follow the report to PAYMENT_PENDING, PAID
-  or PAYMENT_FAILED (a PENDING report on PAYMENT_PENDING is no change).
+- LINK_CREATION_IN_PROGRESS, LINK_CREATED, OUTCOME_UNKNOWN and PAYMENT_PENDING follow the report
+  to PAYMENT_PENDING, PAID or PAYMENT_FAILED (a PENDING report on PAYMENT_PENDING is no change).
+  Money received is always recorded, whatever we knew about the link before.
+- A report about an in-progress attempt proves the gateway made its link: the create-link call
+  failed after the request left, or recording its outcome failed. A crash between the two
+  create-link transactions can still leave an attempt in progress until a gateway report
+  arrives; when one does, it is now applied and audited.
 - PAID is final: no report ever moves it, so a paid attempt is never downgraded.
-- PAYMENT_FAILED moves only to PAID: a customer may pay on the same link after a failed try,
-  and money received is always recorded. A late PENDING or FAILED report changes nothing.
+- PAYMENT_FAILED moves only to PAID: a customer may pay on the same link after a failed try.
+  A late PENDING or FAILED report changes nothing.
 - NOT_FOUND changes nothing anywhere.
-- LINK_CREATION_IN_PROGRESS and LINK_CREATION_FAILED ignore every report: no link was handed
-  out, and the in-progress attempt belongs to the create-link call until it records its outcome.
+- LINK_CREATION_FAILED ignores every report: the gateway refused the call, so no link exists.
 """
 
 from collections.abc import Mapping
@@ -28,6 +32,15 @@ STATUS_AFTER_GATEWAY_REPORT: Mapping[
     tuple[PaymentAttemptStatus, GatewayPaymentStatus], PaymentAttemptStatus
 ] = MappingProxyType(
     {
+        (
+            _AttemptStatus.LINK_CREATION_IN_PROGRESS,
+            _ReportedStatus.PENDING,
+        ): _AttemptStatus.PAYMENT_PENDING,
+        (_AttemptStatus.LINK_CREATION_IN_PROGRESS, _ReportedStatus.PAID): _AttemptStatus.PAID,
+        (
+            _AttemptStatus.LINK_CREATION_IN_PROGRESS,
+            _ReportedStatus.FAILED,
+        ): _AttemptStatus.PAYMENT_FAILED,
         (_AttemptStatus.LINK_CREATED, _ReportedStatus.PENDING): _AttemptStatus.PAYMENT_PENDING,
         (_AttemptStatus.LINK_CREATED, _ReportedStatus.PAID): _AttemptStatus.PAID,
         (_AttemptStatus.LINK_CREATED, _ReportedStatus.FAILED): _AttemptStatus.PAYMENT_FAILED,

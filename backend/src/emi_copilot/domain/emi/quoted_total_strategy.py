@@ -13,7 +13,9 @@ from emi_copilot.domain.money import Money
 class QuotedTotalStrategy(EmiCalculationStrategy):
     """Charges exactly the lender's quoted extra; used for design plans B and C and gateway offers.
 
-    ADR 0001: no annual rate reproduces the design figures exactly, but a quoted extra does.
+    ADR 0001: lenders quote the extra amount, not a rate, so the schedule charges exactly that.
+    A rate can be reverse-engineered to match (16.9449% a year gives 6 x ₹3,850.00), but it is
+    an artefact of the quoted amount, not a rate any lender publishes.
     """
 
     def __init__(self, quoted_extra_in_total: Money) -> None:

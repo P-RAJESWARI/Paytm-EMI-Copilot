@@ -46,7 +46,11 @@ class DomainEvent:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PaymentLinkCreated(DomainEvent):
-    """The gateway made a payment link for an attempt; the attempt is now LINK_CREATED."""
+    """The gateway made a payment link for an attempt; the attempt is now LINK_CREATED.
+
+    If a gateway report moved the attempt on during the call, it keeps that status and gains
+    only the link details.
+    """
 
     payment_attempt_id: str
     order_id: str
@@ -57,7 +61,10 @@ class PaymentLinkCreated(DomainEvent):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PaymentLinkCreationFailed(DomainEvent):
-    """The create-link call certainly made no link; the attempt is now LINK_CREATION_FAILED."""
+    """The create-link call certainly made no link; the attempt is now LINK_CREATION_FAILED.
+
+    A gateway report that moved the attempt on during the call keeps its status instead.
+    """
 
     payment_attempt_id: str
     order_id: str
@@ -71,7 +78,9 @@ class PaymentLinkCreationFailed(DomainEvent):
 class PaymentLinkOutcomeUnknown(DomainEvent):
     """The create-link call may have made a link; the attempt is now OUTCOME_UNKNOWN (ADR 0005).
 
-    cause_error_code is the code of the domain error that left the outcome unknown.
+    cause_error_code is the code of the domain error that left the outcome unknown, or
+    UNEXPECTED_ERROR for an exception without one. A gateway report that moved the attempt on
+    during the call keeps its status instead.
     """
 
     payment_attempt_id: str

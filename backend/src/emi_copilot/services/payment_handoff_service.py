@@ -1,12 +1,12 @@
 """PaymentHandoffService: creates a payment link at most once per Idempotency-Key (ADR 0005)."""
 
 from dataclasses import replace
-from typing import TypedDict
 
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.core.clock import Clock
 from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.domain.errors import (
+    DomainError,
     IdempotencyKeyReusedError,
     InvalidPaymentGatewayValueError,
     OfferNotFoundError,
@@ -33,10 +33,17 @@ from emi_copilot.domain.payments import (
 )
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
+from emi_copilot.services.create_link_outcome import (
+    describe_create_link_attempt,
+    save_create_link_outcome,
+)
 from emi_copilot.services.payment_handoff_types import (
     CreatePaymentLinkCommand,
     PaymentLinkHandoff,
 )
+
+# Cause code audited when create-link fails with an exception that carries no domain code.
+UNEXPECTED_FAILURE_CAUSE_CODE = "UNEXPECTED_ERROR"
 
 
 def replay_stored_outcome(
@@ -46,7 +53,7 @@ def replay_stored_outcome(
 
     A different body is IDEMPOTENCY_KEY_REUSED. An attempt without a stored link URL raises
     instead of re-sending: in progress, failed (with its code) or outcome unknown, which also
-    covers an attempt a later status report moved on from OUTCOME_UNKNOWN.
+    covers an attempt a later status report moved on from OUTCOME_UNKNOWN or from in progress.
     """
     if stored_attempt.request_fingerprint != request_fingerprint:
         raise IdempotencyKeyReusedError("The Idempotency-Key was used with a different body.")
@@ -72,7 +79,9 @@ class PaymentHandoffService:
     LINK_CREATION_IN_PROGRESS and commits before the call, so a concurrent request with the same
     key hits the unique constraint. The call runs outside any transaction and is never retried.
     The second transaction records the outcome and publishes its event, so the audit row
-    commits with it.
+    commits with it. It locks the row first: a gateway report that arrived during the call is
+    newer evidence (it may be PAID), so the call's outcome never overwrites it. If the second
+    transaction itself fails, the attempt stays in progress until a gateway report moves it.
     """
 
     def __init__(
@@ -172,23 +181,50 @@ class PaymentHandoffService:
         except (PaymentGatewayUnavailableError, PaymentGatewayRequestRejectedError) as failure:
             self._record_creation_failed(attempt, failure)
             raise
+        except Exception as unexpected_error:
+            # Any other failure (a bug or an untranslated library error) may have come after the
+            # request reached the gateway, so the outcome is unknown (ADR 0005). Left in progress,
+            # the key would answer 409 forever. It is recorded, then re-raised, never swallowed.
+            self._record_unexpected_outcome_unknown(attempt, unexpected_error)
+            raise
         return self._record_link_created(attempt, payment_link)
+
+    def _record_unexpected_outcome_unknown(
+        self, attempt: PaymentAttempt, unexpected_error: Exception
+    ) -> None:
+        """Best effort: stores OUTCOME_UNKNOWN for an unexpected create-link failure.
+
+        If recording fails too, the original error is raised with the recording failure as its
+        cause, so neither is lost; the attempt then stays in progress until a gateway report.
+        """
+        cause_error_code = (
+            unexpected_error.code
+            if isinstance(unexpected_error, DomainError)
+            else UNEXPECTED_FAILURE_CAUSE_CODE
+        )
+        try:
+            self._record_outcome_unknown(attempt, cause_error_code)
+        except Exception as recording_error:
+            raise unexpected_error from recording_error
 
     def _record_link_created(
         self, attempt: PaymentAttempt, payment_link: PaymentLink
     ) -> PaymentLinkHandoff:
         """Stores LINK_CREATED with the link and publishes PaymentLinkCreated in one transaction."""
         with self._unit_of_work_factory() as unit_of_work:
-            stored_attempt = unit_of_work.payment_attempts.update(
+            stored_attempt = save_create_link_outcome(
+                unit_of_work,
                 replace(
                     attempt,
                     status=PaymentAttemptStatus.LINK_CREATED,
                     gateway_link_id=payment_link.gateway_link_id,
                     payment_link_url=payment_link.payment_url,
-                )
+                ),
             )
             self._event_bus.publish(
-                PaymentLinkCreated(occurred_at=self._clock.now(), **_describe(attempt)),
+                PaymentLinkCreated(
+                    occurred_at=self._clock.now(), **describe_create_link_attempt(attempt)
+                ),
                 unit_of_work,
             )
         return PaymentLinkHandoff.from_attempt(
@@ -198,14 +234,14 @@ class PaymentHandoffService:
     def _record_outcome_unknown(self, attempt: PaymentAttempt, cause_error_code: str) -> None:
         """Stores OUTCOME_UNKNOWN and publishes PaymentLinkOutcomeUnknown in one transaction."""
         with self._unit_of_work_factory() as unit_of_work:
-            unit_of_work.payment_attempts.update(
-                replace(attempt, status=PaymentAttemptStatus.OUTCOME_UNKNOWN)
+            save_create_link_outcome(
+                unit_of_work, replace(attempt, status=PaymentAttemptStatus.OUTCOME_UNKNOWN)
             )
             self._event_bus.publish(
                 PaymentLinkOutcomeUnknown(
                     occurred_at=self._clock.now(),
                     cause_error_code=cause_error_code,
-                    **_describe(attempt),
+                    **describe_create_link_attempt(attempt),
                 ),
                 unit_of_work,
             )
@@ -218,37 +254,19 @@ class PaymentHandoffService:
         """Stores LINK_CREATION_FAILED with its code and publishes the event in one transaction."""
         failure_code = find_payment_link_failure_code(failure)
         with self._unit_of_work_factory() as unit_of_work:
-            unit_of_work.payment_attempts.update(
+            save_create_link_outcome(
+                unit_of_work,
                 replace(
                     attempt,
                     status=PaymentAttemptStatus.LINK_CREATION_FAILED,
                     failure_code=failure_code,
-                )
+                ),
             )
             self._event_bus.publish(
                 PaymentLinkCreationFailed(
-                    occurred_at=self._clock.now(), failure_code=failure_code, **_describe(attempt)
+                    occurred_at=self._clock.now(),
+                    failure_code=failure_code,
+                    **describe_create_link_attempt(attempt),
                 ),
                 unit_of_work,
             )
-
-
-class _CreateLinkEventFields(TypedDict):
-    """The fields every create-link event shares: ids, the amount in paise and the mode."""
-
-    payment_attempt_id: str
-    order_id: str
-    offer_id: str
-    amount_in_paise: int
-    gateway_mode: str
-
-
-def _describe(attempt: PaymentAttempt) -> _CreateLinkEventFields:
-    """Gives the shared create-link event fields of one attempt."""
-    return {
-        "payment_attempt_id": attempt.id,
-        "order_id": attempt.order_id,
-        "offer_id": attempt.offer_snapshot.offer_id,
-        "amount_in_paise": attempt.amount.to_paise(),
-        "gateway_mode": attempt.gateway_mode,
-    }

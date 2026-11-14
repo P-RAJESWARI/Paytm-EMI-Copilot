@@ -10,6 +10,7 @@ from emi_copilot.domain.errors import (
     InvalidPaymentGatewayValueError,
     OfferNotFoundError,
     PaymentAttemptAlreadyExistsError,
+    PaymentGatewayError,
     PaymentGatewayRejectionReason,
     PaymentGatewayRequestRejectedError,
     PaymentGatewayTimeoutError,
@@ -19,9 +20,14 @@ from emi_copilot.domain.errors import (
     PaymentLinkFailureCode,
     PaymentLinkOutcomeUnknownError,
 )
+from emi_copilot.domain.events import PaymentLinkCreated, PaymentLinkOutcomeUnknown
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import AuditEventType, PaymentAttemptStatus
-from emi_copilot.services.payment_handoff_service import PaymentHandoffService
+from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork
+from emi_copilot.services.payment_handoff_service import (
+    UNEXPECTED_FAILURE_CAUSE_CODE,
+    PaymentHandoffService,
+)
 from emi_copilot.services.payment_handoff_types import CreatePaymentLinkCommand
 from tests.payment_builders import build_payment_attempt, build_standard_offer_snapshot
 from tests.unit.services.conftest import ServiceTestKit
@@ -31,6 +37,19 @@ IDEMPOTENCY_KEY = "idempotency-key-sample-0001"
 EXPECTED_ORDER_ID = "01JCTESTID0000000000000001"
 EXPECTED_CUSTOMER_REFERENCE = "01JCTESTID0000000000000002"
 EXPECTED_ATTEMPT_ID = "01JCTESTID0000000000000003"
+
+
+class UnexpectedLibraryError(Exception):
+    """Stands in for a bug or an untranslated library error inside a gateway adapter."""
+
+
+class RecordingFailureError(Exception):
+    """Stands in for a database or subscriber failure while an outcome is being recorded."""
+
+
+def _fail_recording(event: object, unit_of_work: UnitOfWork) -> None:  # noqa: ARG001
+    """A subscriber that fails, which rolls back the transaction recording the outcome."""
+    raise RecordingFailureError
 
 
 def _build_command(**overrides: object) -> CreatePaymentLinkCommand:
@@ -252,3 +271,96 @@ def test_create_payment_link_colliding_on_another_unique_column_reraises(
     )
     _create_expecting(kit, PaymentAttemptAlreadyExistsError, _build_command())
     assert kit.payment_gateway.create_link_calls == []
+
+
+@pytest.mark.parametrize(
+    ("unexpected_error", "expected_cause_code"),
+    [
+        (UnexpectedLibraryError("boom"), UNEXPECTED_FAILURE_CAUSE_CODE),
+        (PaymentGatewayError("untyped gateway failure"), "PAYMENT_GATEWAY_ERROR"),
+    ],
+)
+def test_create_payment_link_with_an_unexpected_failure_stores_outcome_unknown_and_reraises(
+    kit: ServiceTestKit, unexpected_error: Exception, expected_cause_code: str
+) -> None:
+    """Any other exception may come after the request left: OUTCOME_UNKNOWN, audited, re-raised."""
+    kit.payment_gateway.create_link_error = unexpected_error
+    with pytest.raises(type(unexpected_error)) as raised:
+        _build_service(kit).create_payment_link(_build_command())
+    assert raised.value is unexpected_error
+    assert kit.only_attempt().status is PaymentAttemptStatus.OUTCOME_UNKNOWN
+    assert kit.audit_event_types() == [AuditEventType.PAYMENT_LINK_OUTCOME_UNKNOWN]
+    assert kit.last_audit_event().details["cause_error_code"] == expected_cause_code
+    kit.payment_gateway.create_link_error = None
+    _create_expecting(kit, PaymentLinkOutcomeUnknownError, _build_command())
+    assert len(kit.payment_gateway.create_link_calls) == 1
+
+
+def test_create_payment_link_unexpected_failure_that_cannot_be_recorded_raises_the_original(
+    kit: ServiceTestKit,
+) -> None:
+    """Recording is best effort: the gateway's error propagates, chained to the recording one."""
+    unexpected_error = UnexpectedLibraryError("boom")
+    kit.payment_gateway.create_link_error = unexpected_error
+    kit.event_bus.subscribe(PaymentLinkOutcomeUnknown, _fail_recording)
+    with pytest.raises(UnexpectedLibraryError) as raised:
+        _build_service(kit).create_payment_link(_build_command())
+    assert raised.value is unexpected_error
+    assert isinstance(raised.value.__cause__, RecordingFailureError)
+    assert kit.only_attempt().status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
+    assert kit.database.audit_events == []
+
+
+def test_create_payment_link_whose_success_cannot_be_recorded_stays_in_progress(
+    kit: ServiceTestKit,
+) -> None:
+    """A failure while recording LINK_CREATED rolls it back; the in-progress row remains."""
+    kit.event_bus.subscribe(PaymentLinkCreated, _fail_recording)
+    with pytest.raises(RecordingFailureError):
+        _build_service(kit).create_payment_link(_build_command())
+    assert kit.only_attempt().status is PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS
+    assert kit.database.audit_events == []
+
+
+def _pay_during_the_create_call(kit: ServiceTestKit) -> None:
+    """Makes a gateway report mark the attempt PAID while the create-link call is running."""
+    kit.payment_gateway.before_create_link = lambda: kit.store_attempt(
+        replace(kit.only_attempt(), status=PaymentAttemptStatus.PAID)
+    )
+
+
+def test_create_payment_link_made_after_a_paid_report_adds_the_link_and_keeps_paid(
+    kit: ServiceTestKit,
+) -> None:
+    """A report during the call is newer evidence: PAID stays and only the link is added."""
+    _pay_during_the_create_call(kit)
+    handoff = _build_service(kit).create_payment_link(_build_command())
+    stored_attempt = kit.only_attempt()
+    assert (handoff.status, stored_attempt.status) == (
+        PaymentAttemptStatus.PAID,
+        PaymentAttemptStatus.PAID,
+    )
+    assert stored_attempt.payment_link_url == handoff.payment_url
+    assert stored_attempt.gateway_link_id == f"fake-link-{EXPECTED_ORDER_ID}"
+    assert kit.audit_event_types() == [AuditEventType.PAYMENT_LINK_CREATED]
+
+
+@pytest.mark.parametrize(
+    "create_link_error",
+    [
+        PaymentGatewayTimeoutError("no answer"),
+        PaymentGatewayUnavailableError("not sent"),
+        UnexpectedLibraryError("boom"),
+    ],
+)
+def test_create_payment_link_failing_after_a_paid_report_never_overwrites_paid(
+    kit: ServiceTestKit, create_link_error: Exception
+) -> None:
+    """Whatever the call's failure, money received during it stays recorded as PAID."""
+    _pay_during_the_create_call(kit)
+    kit.payment_gateway.create_link_error = create_link_error
+    with pytest.raises(type(create_link_error)):
+        _build_service(kit).create_payment_link(_build_command())
+    stored_attempt = kit.only_attempt()
+    assert stored_attempt.status is PaymentAttemptStatus.PAID
+    assert stored_attempt.failure_code is None

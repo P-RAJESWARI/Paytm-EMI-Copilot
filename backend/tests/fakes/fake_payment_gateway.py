@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.domain.errors import (
-    DomainError,
     InvalidPaymentGatewayValueError,
     WebhookSignatureInvalidError,
 )
@@ -58,7 +57,7 @@ class FakePaymentGateway(PaymentGatewayPort):
     """
 
     offers: tuple[EmiOffer, ...] = field(default_factory=build_design_plan_offers)
-    create_link_error: DomainError | None = None
+    create_link_error: Exception | None = None
     status_results_by_order_id: dict[str, PaymentStatusResult] = field(default_factory=dict)
     verified_events_by_signature: dict[str, VerifiedWebhookEvent] = field(default_factory=dict)
     malformed_signatures: set[str] = field(default_factory=set)
