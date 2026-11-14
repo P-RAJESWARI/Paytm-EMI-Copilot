@@ -1,1 +1,18 @@
 .DS_Store
+
+# Local configuration and secrets
+.env
+
+# Python environments, caches and build output
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/

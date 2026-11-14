@@ -1,0 +1,27 @@
+# Hooks run on every commit (git-workflow.md section 6). Revisions are pinned; keep the ruff
+# revision equal to the ruff version pinned in backend/pyproject.toml.
+default_install_hook_types: [pre-commit]
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict, whole backend)
+        entry: uv run --directory backend --locked mypy
+        language: system
+        types: [python]
+        files: ^backend/
+        pass_filenames: false
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: (^|/)uv\.lock$

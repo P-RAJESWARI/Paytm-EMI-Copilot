@@ -1,0 +1,122 @@
+[project]
+name = "emi-copilot"
+version = "0.1.0"
+description = "EMI-at-Counter Copilot backend: EMI maths, payment gateway handoff and merchant reports."
+requires-python = "==3.12.*"
+dependencies = [
+    "alembic==1.20.1",
+    "fastapi==0.162.0",
+    "httpx==0.28.1",
+    "psycopg[binary]==3.3.6",
+    "pydantic==2.14.2",
+    "pydantic-settings==2.16.2",
+    "python-ulid==4.1.0",
+    "sqlalchemy==2.1.6",
+    "uvicorn==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "detect-secrets==1.5.0",
+    "hypothesis==6.170.14",
+    "mypy==2.4.1",
+    "pre-commit==4.7.0",
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.3",
+]
+
+[build-system]
+requires = ["uv_build==0.13.6"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "emi_copilot"
+module-root = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "A",     # flake8-builtins: no shadowed builtins
+    "ANN",   # flake8-annotations: every signature typed
+    "ARG",   # unused arguments
+    "B",     # flake8-bugbear: likely bugs and design problems
+    "BLE",   # no blind `except Exception`
+    "C4",    # comprehension hygiene
+    "C90",   # mccabe complexity
+    "D",     # pydocstyle: every module, class and function has a docstring
+    "DTZ",   # no naive datetimes
+    "E",     # pycodestyle errors
+    "ERA",   # no commented-out code
+    "F",     # pyflakes
+    "FIX",   # no TODO/FIXME left behind
+    "I",     # isort
+    "N",     # pep8-naming
+    "PL",    # pylint
+    "PT",    # pytest style
+    "PTH",   # pathlib over os.path
+    "RET",   # return hygiene
+    "RUF",   # ruff-specific
+    "S",     # flake8-bandit security checks
+    "SIM",   # simplifications
+    "T20",   # no print statements
+    "TRY",   # exception hygiene
+    "UP",    # modern Python syntax
+    "W",     # pycodestyle warnings
+]
+ignore = [
+    "D104",   # empty package __init__.py files carry no docstring
+    "TRY003", # typed errors may take a descriptive message
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "PLR2004", # literal expected values read best inline in tests
+    "S101",    # pytest uses bare assert
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+files = ["src", "tests"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests/unit", "tests/contract", "tests/integration"]
+addopts = ["--strict-markers", "--strict-config", "-ra"]
+markers = ["integration: needs the Docker Compose PostgreSQL test database"]
+xfail_strict = true
+filterwarnings = [
+    "error",
+    # Starlette 1.10 prefers httpx2 for its TestClient; httpx is the pinned HTTP client (ADR 0008).
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning",
+]
+
+[tool.coverage.run]
+source = ["emi_copilot"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
