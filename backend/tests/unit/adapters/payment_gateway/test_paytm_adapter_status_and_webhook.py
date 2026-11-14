@@ -13,6 +13,8 @@ from emi_copilot.core.logging import configure_logging
 from emi_copilot.domain.errors import (
     InvalidPaymentGatewayValueError,
     PaymentGatewayError,
+    PaymentGatewayRejectionReason,
+    PaymentGatewayRequestRejectedError,
     PaymentGatewayTimeoutError,
     PaymentGatewayUnavailableError,
     WebhookSignatureInvalidError,
@@ -139,6 +141,55 @@ def test_get_payment_status_without_reply_signature_reads_the_body(
     reply_text = "{" + head_text + '"body": ' + json.dumps(build_status_body()) + "}"
     under_test.server.script(STATUS_ROUTE, httpx.Response(200, content=reply_text.encode()))
     assert under_test.adapter.get_payment_status(ORDER_ID).status is GatewayPaymentStatus.PAID
+
+
+def script_signed_status_failure(under_test: PaytmAdapterUnderTest, result_code: str) -> None:
+    """Scripts one signed TXN_FAILURE status reply with the given Paytm result code."""
+    body: dict[str, Any] = load_fixture("status_txn_failure.json")["body"]
+    body["resultInfo"]["resultCode"] = result_code
+    under_test.server.script(
+        STATUS_ROUTE, httpx.Response(200, content=sign_status_reply(body).encode("utf-8"))
+    )
+
+
+def test_get_payment_status_with_code_501_is_unavailable_and_not_failed(
+    under_test: PaytmAdapterUnderTest,
+) -> None:
+    """ADR 0011 decision 1: Paytm down (501) leaves the status unknown; no FAILED is reported."""
+    script_signed_status_failure(under_test, "501")
+    with pytest.raises(PaymentGatewayUnavailableError):
+        under_test.adapter.get_payment_status(ORDER_ID)
+
+
+@pytest.mark.parametrize(
+    ("result_code", "expected_reason"),
+    [
+        ("334", PaymentGatewayRejectionReason.INVALID_REQUEST),
+        ("335", PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED),
+    ],
+    ids=["invalid-order-id-334", "invalid-mid-335"],
+)
+def test_get_payment_status_with_code_334_or_335_is_a_refusal_and_not_failed(
+    under_test: PaytmAdapterUnderTest,
+    result_code: str,
+    expected_reason: PaymentGatewayRejectionReason,
+) -> None:
+    """ADR 0011 decision 1: a bad order id or MID is our problem, not a failed payment."""
+    script_signed_status_failure(under_test, result_code)
+    with pytest.raises(PaymentGatewayRequestRejectedError) as raised:
+        under_test.adapter.get_payment_status(ORDER_ID)
+    assert raised.value.reason is expected_reason
+
+
+@pytest.mark.parametrize("result_code", ["227", "401", "235", "295", "810", "820", "843", "267"])
+def test_get_payment_status_with_any_other_failure_code_is_failed(
+    under_test: PaytmAdapterUnderTest, result_code: str
+) -> None:
+    """Every remaining documented TXN_FAILURE code still maps the payment to FAILED."""
+    script_signed_status_failure(under_test, result_code)
+    assert under_test.adapter.get_payment_status(ORDER_ID) == PaymentStatusResult(
+        ORDER_ID, GatewayPaymentStatus.FAILED, "SYNTHETIC-TXN-0002", None
+    )
 
 
 def test_verify_webhook_reads_a_genuine_notification(under_test: PaytmAdapterUnderTest) -> None:

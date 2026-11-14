@@ -123,8 +123,9 @@ LINK_ID_FIELD = "linkId"  # [Verify] docs/create-link-api response
 SHORT_URL_FIELD = "shortUrl"  # [Verify] docs/create-link-api: shared with the customer
 # longUrl is in the response too and is never read or shared. [Verify] docs/create-link-api
 
-# Create Link failure codes that mean Paytm refused the request (ADR 0010 section 3 applies to
-# the rest). [Verify] docs/create-link-api result code table.
+# Create Link failure codes, all refusals: the attempt is stored as LINK_CREATION_FAILED. An
+# undocumented code is INVALID_REQUEST. Only HTTP 5xx answers and timeouts are outcome unknown
+# (ADR 0010 section 3). [Verify] docs/create-link-api result code table.
 LINK_REJECTION_REASONS_BY_RESULT_CODE = MappingProxyType(
     {
         "100": PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED,  # [Verify] failed (risk)
@@ -137,21 +138,23 @@ LINK_REJECTION_REASONS_BY_RESULT_CODE = MappingProxyType(
         "5028": PaymentGatewayRejectionReason.INVALID_REQUEST,  # [Verify] invalid checksum
         "5023": PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED,  # [Verify] invalid mid
         "5025": PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED,  # [Verify] not linked
+        # Paytm's internal (501) and unknown (502) errors in a readable body are refusals by
+        # owner decision (ADR 0011 decision 2), with the accepted risk of a second link.
+        "501": PaymentGatewayRejectionReason.GATEWAY_INTERNAL_ERROR,  # [Verify] internal error
+        "502": PaymentGatewayRejectionReason.GATEWAY_INTERNAL_ERROR,  # [Verify] unknown error
     }
 )
-# Paytm's own internal (501) and unknown (502) errors: whether a link was made is unknown, so
-# they are treated like a 5xx answer (ADR 0010 section 3).
-LINK_OUTCOME_UNKNOWN_RESULT_CODES = frozenset({"501", "502"})  # [Verify] docs/create-link-api
 
 # --- Transaction Status API v3 --------------------------------------------------------------
 STATUS_ORDER_ID_FIELD = "orderId"  # [Verify] docs/api/v3/transaction-status-api: request, reply
 STATUS_TRANSACTION_ID_FIELD = "txnId"  # [Verify] docs/api/v3/transaction-status-api
 STATUS_TRANSACTION_AMOUNT_FIELD = "txnAmount"  # [Verify] same page: rupees, text or number
+TRANSACTION_FAILURE_RESULT_STATUS = "TXN_FAILURE"  # [Verify] docs/api/v3/transaction-status-api
 # [Verify] docs/api/v3/transaction-status-api: resultStatus values and how we read them.
 TRANSACTION_STATUSES_BY_RESULT_STATUS = MappingProxyType(
     {
         "TXN_SUCCESS": GatewayPaymentStatus.PAID,  # [Verify] code 01
-        "TXN_FAILURE": GatewayPaymentStatus.FAILED,  # [Verify] codes below
+        TRANSACTION_FAILURE_RESULT_STATUS: GatewayPaymentStatus.FAILED,  # [Verify] not 334/335/501
         "PENDING": GatewayPaymentStatus.PENDING,  # [Verify] codes 400, 402
         "NO_RECORD_FOUND": GatewayPaymentStatus.NOT_FOUND,  # [Verify] code 331
     }
@@ -161,12 +164,26 @@ TRANSACTION_STATUSES_BY_RESULT_STATUS = MappingProxyType(
 DOCUMENTED_RESULT_CODES_BY_RESULT_STATUS = MappingProxyType(
     {
         "TXN_SUCCESS": frozenset({"01"}),  # [Verify] same page
-        "TXN_FAILURE": frozenset(  # [Verify] same page: 227/401 bank declined, 334 order, 335 mid
+        # 334, 335 and 501 are translated to errors before mapping (ADR 0011 decision 1).
+        TRANSACTION_FAILURE_RESULT_STATUS: frozenset(  # [Verify] same page: 227/401 bank declined
             {"227", "401", "235", "295", "334", "335"}  # [Verify] same page
             | {"501", "810", "820", "843", "267"}  # [Verify] same page
         ),
         "PENDING": frozenset({"400", "402"}),  # [Verify] same page
         "NO_RECORD_FOUND": frozenset({"331"}),  # [Verify] same page
+    }
+)
+# TXN_FAILURE codes that do not mean the payment failed (ADR 0011 decision 1); every other
+# TXN_FAILURE code maps the payment to FAILED. [Verify] docs/api/v3/transaction-status-api.
+# 501 (Paytm server down): the status stays unknown, so the read is Unavailable and may be
+# repeated later.
+STATUS_UNAVAILABLE_RESULT_CODES = frozenset({"501"})  # [Verify] same page
+# 334 (invalid order id) points at our order id, so INVALID_REQUEST; 335 (invalid MID) at our
+# merchant configuration, so OPERATION_NOT_PERMITTED, as Create Link's 5023 (invalid mid).
+STATUS_REJECTION_REASONS_BY_RESULT_CODE = MappingProxyType(
+    {
+        "334": PaymentGatewayRejectionReason.INVALID_REQUEST,  # [Verify] invalid order id
+        "335": PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED,  # [Verify] invalid mid
     }
 )
 # Card-like reply fields (cardScheme, lastFourDigit, authCode, rrnCode) and every other field

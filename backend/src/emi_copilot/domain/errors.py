@@ -127,6 +127,12 @@ class PaymentGatewayRejectionReason(StrEnum):
     OPERATION_NOT_PERMITTED = "OPERATION_NOT_PERMITTED"
     """The merchant account is not allowed to do this, for example EMI is not enabled for it."""
 
+    GATEWAY_INTERNAL_ERROR = "GATEWAY_INTERNAL_ERROR"
+    """The gateway answered that it failed on its own side (ADR 0011); our request may be fine.
+
+    A new attempt needs a new idempotency key and could, rarely, make a second payment link.
+    """
+
 
 class PaymentGatewayRequestRejectedError(PaymentGatewayError):
     """Raised when the gateway answered and refused the request; retrying the same call won't help.

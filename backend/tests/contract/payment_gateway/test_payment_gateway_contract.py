@@ -6,7 +6,6 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from emi_copilot.domain.emi import QuotedTotalStrategy
 from emi_copilot.domain.errors import WebhookSignatureInvalidError
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import (
@@ -18,8 +17,7 @@ from emi_copilot.domain.payments import (
 from tests.contract.payment_gateway.gateway_contract_harness import GatewayContractHarness
 from tests.payment_builders import build_offer_discovery_query, build_payment_link_request
 
-# ADR 0001: a lender quote within ₹1 per installment of our schedule is consistent.
-QUOTE_CROSS_CHECK_TOLERANCE = Money.from_rupees("1")
+NO_AMOUNT = Money.from_paise(0)
 CARD_LIKE_WORDS = frozenset({"card", "pan", "cvv", "cvc", "expiry", "bin"})
 WORD_SEPARATOR = re.compile(r"_")
 SAMPLE_TRANSACTION_ID = "transaction-sample-0001"
@@ -32,11 +30,6 @@ def find_card_like_attribute_names(returned_object: object) -> list[str]:
         for field in dataclasses.fields(returned_object)  # type: ignore[arg-type]
         if CARD_LIKE_WORDS & set(WORD_SEPARATOR.split(field.name.lower()))
     ]
-
-
-def calculate_difference(first_amount: Money, second_amount: Money) -> Money:
-    """Gives the non-negative gap between two amounts, since Money is never negative."""
-    return max(first_amount, second_amount) - min(first_amount, second_amount)
 
 
 def test_gateway_adapter_name_is_short_lowercase_text(
@@ -56,21 +49,23 @@ def test_gateway_discover_offers_for_sample_query_returns_valid_offers(
     assert len({offer.offer_id for offer in offers}) == len(offers)
 
 
-def test_gateway_discover_offers_quotes_agree_with_quoted_total_strategy_within_one_rupee(
+def test_gateway_discover_offers_quotes_are_structurally_sound(
     gateway_contract_harness: GatewayContractHarness,
 ) -> None:
-    """Each quoted installment is within ₹1 of our schedule built from the quoted extra."""
-    query = build_offer_discovery_query()
-    for offer in gateway_contract_harness.gateway.discover_offers(query):
-        schedule = QuotedTotalStrategy(offer.quoted_extra_in_total).calculate_schedule(
-            query.price, offer.tenure_in_months
-        )
-        installment_difference = calculate_difference(
-            schedule.regular_installment, offer.quoted_monthly_installment
-        )
-        assert installment_difference <= QUOTE_CROSS_CHECK_TOLERANCE, offer.offer_id
+    """Positive whole-paise installments, a non-negative whole-paise extra and a valid tenure.
+
+    The ₹1 quote-versus-schedule check is the service's job, not the contract's (ADR 0011
+    decision 4), so real cashback plans whose quote differs stay valid gateway answers.
+    """
+    for offer in gateway_contract_harness.gateway.discover_offers(build_offer_discovery_query()):
+        assert offer.quoted_monthly_installment > NO_AMOUNT, offer.offer_id
+        assert offer.quoted_monthly_installment.is_whole_paise, offer.offer_id
+        assert offer.quoted_extra_in_total >= NO_AMOUNT, offer.offer_id
+        assert offer.quoted_extra_in_total.is_whole_paise, offer.offer_id
+        assert type(offer.tenure_in_months) is int, offer.offer_id
+        assert offer.tenure_in_months >= 1, offer.offer_id
         if offer.emi_type is EmiType.NO_COST:
-            assert schedule.extra_in_total.is_zero
+            assert offer.quoted_extra_in_total.is_zero, offer.offer_id
 
 
 def test_gateway_create_payment_link_returns_https_link_for_the_same_order(

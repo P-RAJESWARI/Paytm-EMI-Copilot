@@ -127,7 +127,10 @@ class PaytmPaymentGatewayAdapter(PaymentGatewayPort):
         return self._configuration.merchant_id.get_secret_value()
 
     def discover_offers(self, query: OfferDiscoveryQuery) -> tuple[EmiOffer, ...]:
-        """Asks Banks, then Tenures for every bank and card type; returns every plan, uncapped."""
+        """Asks Banks, then Tenures for every bank and card type; returns every plan, uncapped.
+
+        Any refused or failed call fails the whole discovery: no partial list (ADR 0011).
+        """
         banks_body = self._call_subvention_api(
             BANKS_PATH, BANKS_API_NAME, build_banks_request_body(self._merchant_id, query)
         )
@@ -168,7 +171,10 @@ class PaytmPaymentGatewayAdapter(PaymentGatewayPort):
         return read_payment_link(link_body, request.order_id)
 
     def get_payment_status(self, order_id: str) -> PaymentStatusResult:
-        """Asks the v3 status API, verifies the reply signature when present, maps the status."""
+        """Asks the v3 status API, checks the reply signature when present, then maps the status.
+
+        Codes 334, 335 and 501 raise a typed error instead of a FAILED status (ADR 0011).
+        """
         body_text = serialise_json(build_status_request_body(self._merchant_id, order_id))
         head = build_status_head(self._checksum_signer.generate_signature_for_text(body_text))
         http_request = self._build_post_request(
@@ -179,7 +185,11 @@ class PaytmPaymentGatewayAdapter(PaymentGatewayPort):
         response = self._send_idempotent(self._http_clients.transaction_status, http_request)
         reply_text, document = self._read_reply_document(response, TRANSACTION_STATUS_API_NAME)
         self._require_valid_reply_signature(reply_text, document)
-        return read_payment_status(read_object(document, BODY_FIELD), order_id, self._merchant_id)
+        status_body = read_object(document, BODY_FIELD)
+        self._error_translator.require_transaction_status_answer(
+            read_result_info(status_body), TRANSACTION_STATUS_API_NAME
+        )
+        return read_payment_status(status_body, order_id, self._merchant_id)
 
     def verify_webhook(self, notification: UnverifiedWebhookNotification) -> VerifiedWebhookEvent:
         """Verifies CHECKSUMHASH over every other field first; only then reads MID and payment."""

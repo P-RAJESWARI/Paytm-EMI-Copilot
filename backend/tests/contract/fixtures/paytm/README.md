@@ -35,7 +35,10 @@ No signature is stored here. The tests sign status replies and webhook fields at
   are not documented. The adapter does not read them.
 - Status `txnType`, `paymentMode` and `txnDate` are placeholders because their values are not
   documented.
-- The 12-month cashback plan uses a small ₹10 cashback. With it, Paytm's `emi` (gross interest)
-  stays within ₹1 of the schedule built from the net extra (ADR 0001 tolerance). A real cashback
-  plan may differ by more. ADR 0010 sends that case to the `OFFER_QUOTE_MISMATCH` audit, and a
-  unit test covers it.
+- The 12-month cashback plan uses a small ₹10 cashback. A real cashback plan's `emi` (gross
+  interest) may differ from the schedule built from the net extra by more than ₹1. That is a
+  valid gateway answer: the contract suite checks offers for structure only, and the ₹1 check
+  with its `OFFER_QUOTE_MISMATCH` audit lives in `OfferDiscoveryService` (ADR 0011 decision 4).
+  A unit test covers such a plan.
+- Error replies are derived from these files in the tests by changing `resultCode` only: v3
+  status 501, 334 and 335 (ADR 0011 decision 1) and Create Link 501 and 502 (decision 2).

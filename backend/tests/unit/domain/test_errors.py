@@ -110,4 +110,5 @@ def test_payment_gateway_rejection_reason_values_are_stable_words() -> None:
         "INVALID_REQUEST",
         "DUPLICATE_ORDER_ID",
         "OPERATION_NOT_PERMITTED",
+        "GATEWAY_INTERNAL_ERROR",
     ]

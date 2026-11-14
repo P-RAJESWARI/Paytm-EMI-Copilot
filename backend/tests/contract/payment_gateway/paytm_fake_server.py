@@ -50,6 +50,18 @@ def split_signed_body_text(request: httpx.Request) -> tuple[dict[str, Any], str]
     return head, body_text
 
 
+def reply_with(document: dict[str, Any], status_code: int = 200) -> httpx.Response:
+    """Builds a scripted reply; Decimal amounts are written as text, which Paytm also uses."""
+    return httpx.Response(status_code, content=json.dumps(document, default=str).encode("utf-8"))
+
+
+def read_sent_body(request: httpx.Request) -> dict[str, Any]:
+    """Parses the body object of a request the adapter sent."""
+    _, body_text = split_signed_body_text(request)
+    sent_body: dict[str, Any] = json.loads(body_text, parse_float=Decimal)
+    return sent_body
+
+
 def sign_status_reply(body: dict[str, Any]) -> str:
     """Writes a status reply whose head signs the pretty-printed body text with the official lib."""
     body_text = json.dumps(body, indent=2)

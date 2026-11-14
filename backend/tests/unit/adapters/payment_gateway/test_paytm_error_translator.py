@@ -29,6 +29,7 @@ READ = PaytmCallKind.IDEMPOTENT_READ
 CREATE = PaytmCallKind.PAYMENT_LINK_CREATION
 INVALID_REQUEST = PaymentGatewayRejectionReason.INVALID_REQUEST
 NOT_PERMITTED = PaymentGatewayRejectionReason.OPERATION_NOT_PERMITTED
+GATEWAY_INTERNAL_ERROR = PaymentGatewayRejectionReason.GATEWAY_INTERNAL_ERROR
 
 READ_TIMEOUT = UpstreamTimeoutError(DEPENDENCY, "read timeout", is_outcome_unknown=True)
 CONNECT_FAILURE = UpstreamTimeoutError(DEPENDENCY, "connect failed", is_outcome_unknown=False)
@@ -126,15 +127,64 @@ def test_require_link_creation_success_maps_each_documented_refusal_code(
     assert raised.value.reason is expected_reason
 
 
-@pytest.mark.parametrize("result_code", ["501", "502"])
-def test_require_link_creation_success_treats_paytm_internal_errors_as_outcome_unknown(
+@pytest.mark.parametrize("result_code", ["501", "502"], ids=["internal-501", "unknown-502"])
+def test_require_link_creation_success_treats_paytm_internal_errors_as_refusals_adr_0011(
     translator: PaytmErrorTranslator, result_code: str
 ) -> None:
-    """Paytm's internal (501) and unknown (502) errors may hide a made link: Timeout."""
-    with pytest.raises(PaymentGatewayTimeoutError):
+    """ADR 0011 decision 2: a FAILED body with 501 or 502 is a refusal, not outcome unknown."""
+    with pytest.raises(PaymentGatewayRequestRejectedError) as raised:
         translator.require_link_creation_success(
             PaytmResultInfo("FAILED", result_code), "create_link"
         )
+    assert raised.value.reason is GATEWAY_INTERNAL_ERROR
+
+
+def test_require_transaction_status_answer_501_is_unavailable_not_failed(
+    translator: PaytmErrorTranslator, caplog: pytest.LogCaptureFixture
+) -> None:
+    """ADR 0011 decision 1: 501 (Paytm down) leaves the status unknown, so the read can repeat."""
+    with caplog.at_level(logging.WARNING), pytest.raises(PaymentGatewayUnavailableError):
+        translator.require_transaction_status_answer(
+            PaytmResultInfo("TXN_FAILURE", "501"), "transaction_status"
+        )
+    (record,) = caplog.records
+    assert record.__dict__["paytm_result_code"] == "501"
+
+
+@pytest.mark.parametrize(
+    ("result_code", "expected_reason"),
+    [("334", INVALID_REQUEST), ("335", NOT_PERMITTED)],
+    ids=["invalid-order-id-334", "invalid-mid-335"],
+)
+def test_require_transaction_status_answer_334_and_335_are_refusals_not_failed(
+    translator: PaytmErrorTranslator,
+    result_code: str,
+    expected_reason: PaymentGatewayRejectionReason,
+) -> None:
+    """ADR 0011 decision 1: 334 points at our order id and 335 at our MID, so both are refusals."""
+    with pytest.raises(PaymentGatewayRequestRejectedError) as raised:
+        translator.require_transaction_status_answer(
+            PaytmResultInfo("TXN_FAILURE", result_code), "transaction_status"
+        )
+    assert raised.value.reason is expected_reason
+
+
+@pytest.mark.parametrize(
+    "result_info",
+    [
+        PaytmResultInfo("TXN_FAILURE", "227"),
+        PaytmResultInfo("TXN_FAILURE", "999"),
+        PaytmResultInfo("TXN_SUCCESS", "01"),
+        PaytmResultInfo("PENDING", "501"),
+        PaytmResultInfo("NO_RECORD_FOUND", "334"),
+    ],
+    ids=["bank-declined", "undocumented-failure", "success", "pending-501", "no-record-334"],
+)
+def test_require_transaction_status_answer_passes_every_other_answer_on_to_mapping(
+    translator: PaytmErrorTranslator, result_info: PaytmResultInfo
+) -> None:
+    """Other TXN_FAILURE codes are payment failures, and other statuses are read as they say."""
+    translator.require_transaction_status_answer(result_info, "transaction_status")
 
 
 def test_require_link_creation_success_passes_on_success_and_refuses_unknown_status(

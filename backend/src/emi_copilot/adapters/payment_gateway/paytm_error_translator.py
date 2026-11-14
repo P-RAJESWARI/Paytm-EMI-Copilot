@@ -9,11 +9,13 @@ from enum import StrEnum
 
 from emi_copilot.adapters.payment_gateway.paytm_api_definitions import (
     LINK_FAILURE_RESULT_STATUS,
-    LINK_OUTCOME_UNKNOWN_RESULT_CODES,
     LINK_REJECTION_REASONS_BY_RESULT_CODE,
     LINK_SUCCESS_RESULT_STATUS,
+    STATUS_REJECTION_REASONS_BY_RESULT_CODE,
+    STATUS_UNAVAILABLE_RESULT_CODES,
     SUBVENTION_FAILURE_RESULT_STATUS,
     SUBVENTION_SUCCESS_RESULT_STATUS,
+    TRANSACTION_FAILURE_RESULT_STATUS,
 )
 from emi_copilot.adapters.payment_gateway.paytm_response_values import PaytmResultInfo
 from emi_copilot.core.upstream_errors import (
@@ -114,23 +116,42 @@ class PaytmErrorTranslator:
         )
 
     def require_link_creation_success(self, result_info: PaytmResultInfo, api_name: str) -> None:
-        """Passes on SUCCESS; on FAILED raises a refusal, or outcome-unknown for codes 501/502.
+        """Passes on SUCCESS; on FAILED raises a refusal with the reason for Paytm's code.
 
-        An undocumented failure code is still a refusal, as INVALID_REQUEST, logged by code.
+        Every FAILED body is a refusal, 501 and 502 included (ADR 0011 decision 2); an
+        undocumented code is INVALID_REQUEST, logged by code.
         """
         if result_info.result_status == LINK_SUCCESS_RESULT_STATUS:
             return
         if result_info.result_status != LINK_FAILURE_RESULT_STATUS:
             raise InvalidPaymentGatewayValueError("The reply status is not a documented value.")
         self._log_refusal(api_name, result_info.result_code)
-        if result_info.result_code in LINK_OUTCOME_UNKNOWN_RESULT_CODES:
-            raise _build_outcome_unknown_error()
         raise PaymentGatewayRequestRejectedError(
             LINK_REJECTION_REASONS_BY_RESULT_CODE.get(
                 result_info.result_code, PaymentGatewayRejectionReason.INVALID_REQUEST
             ),
             "The gateway refused to create the payment link.",
         )
+
+    def require_transaction_status_answer(
+        self, result_info: PaytmResultInfo, api_name: str
+    ) -> None:
+        """Raises for TXN_FAILURE codes that are not a failed payment (ADR 0011 decision 1).
+
+        501 is Unavailable, so the status stays unknown; 334 and 335 are refusals. Every other
+        answer passes on to be mapped as a payment status.
+        """
+        if result_info.result_status != TRANSACTION_FAILURE_RESULT_STATUS:
+            return
+        if result_info.result_code in STATUS_UNAVAILABLE_RESULT_CODES:
+            self._log_refusal(api_name, result_info.result_code)
+            raise PaymentGatewayUnavailableError("The gateway could not report the status now.")
+        rejection_reason = STATUS_REJECTION_REASONS_BY_RESULT_CODE.get(result_info.result_code)
+        if rejection_reason is not None:
+            self._log_refusal(api_name, result_info.result_code)
+            raise PaymentGatewayRequestRejectedError(
+                rejection_reason, "The gateway refused the status request."
+            )
 
     def _log_refusal(self, api_name: str, result_code: str) -> None:
         """Logs one event with the API and Paytm's result code; never the vendor's message."""
