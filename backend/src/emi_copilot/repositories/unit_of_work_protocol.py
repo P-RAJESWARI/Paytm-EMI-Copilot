@@ -15,6 +15,9 @@ from emi_copilot.domain.merchants import DevicePairing, Merchant
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
 from emi_copilot.domain.sales import Sale, SaleStatus
 
+AfterCommitCallback = Callable[[], None]
+"""Work to run once a transaction has committed, such as telling live streams what changed."""
+
 
 class PaymentAttemptStore(Protocol):
     """Adds, finds and updates payment attempts inside one transaction."""
@@ -206,6 +209,10 @@ class UnitOfWork(Protocol):
     @property
     def funnel_events(self) -> FunnelEventStore:
         """Gives the funnel event repository of this transaction."""
+        ...
+
+    def call_after_commit(self, callback: AfterCommitCallback) -> None:
+        """Queues work to run only after this transaction commits; a rollback drops it unrun."""
         ...
 
     def __enter__(self) -> Self:

@@ -11,6 +11,8 @@ from emi_copilot.domain.funnel import FunnelEvent
 from emi_copilot.domain.merchants import DevicePairing, Merchant
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
 from emi_copilot.domain.sales import Sale
+from emi_copilot.repositories.after_commit_callbacks import AfterCommitCallbacks
+from emi_copilot.repositories.unit_of_work_protocol import AfterCommitCallback
 from tests.fakes.fake_merchant_repositories import (
     FakeDevicePairingRepository,
     FakeMerchantRepository,
@@ -114,7 +116,10 @@ class FakeAuditEventRepository:
 
 
 class FakeUnitOfWork:
-    """Copies the committed state on entry and publishes the copy only on a clean exit."""
+    """Copies the committed state on entry and publishes the copy only on a clean exit.
+
+    Like the real one, it runs after-commit callbacks only once the copy is published.
+    """
 
     payment_attempts: FakePaymentAttemptRepository
     audit_events: FakeAuditEventRepository
@@ -135,6 +140,7 @@ class FakeUnitOfWork:
         self._working_products: dict[str, CatalogueProduct] = {}
         self._working_sales: dict[str, Sale] = {}
         self._working_funnel_events: list[FunnelEvent] = []
+        self._after_commit_callbacks = AfterCommitCallbacks()
 
     def __enter__(self) -> Self:
         """Starts a transaction on private copies of every committed collection."""
@@ -145,6 +151,7 @@ class FakeUnitOfWork:
         self._working_products = dict(self._database.products_by_id)
         self._working_sales = dict(self._database.sales_by_id)
         self._working_funnel_events = list(self._database.funnel_events)
+        self._after_commit_callbacks = AfterCommitCallbacks()
         self.payment_attempts = FakePaymentAttemptRepository(self._working_attempts, self._clock)
         self.audit_events = FakeAuditEventRepository(self._working_audit_events)
         self.merchants = FakeMerchantRepository(self._working_merchants)
@@ -153,6 +160,10 @@ class FakeUnitOfWork:
         self.sales = FakeSaleRepository(self._working_sales)
         self.funnel_events = FakeFunnelEventRepository(self._working_funnel_events)
         return self
+
+    def call_after_commit(self, callback: AfterCommitCallback) -> None:
+        """Queues work to run only after this transaction commits; a rollback drops it unrun."""
+        self._after_commit_callbacks.add(callback)
 
     def __exit__(
         self,
@@ -170,8 +181,10 @@ class FakeUnitOfWork:
             self._database.sales_by_id = self._working_sales
             self._database.funnel_events = self._working_funnel_events
             self._database.commit_count += 1
+            self._after_commit_callbacks.run_all()
         else:
             self._database.rollback_count += 1
+            self._after_commit_callbacks.discard_all()
 
 
 class FakeUnitOfWorkFactory:

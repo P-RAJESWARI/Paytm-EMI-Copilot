@@ -71,3 +71,62 @@ def test_unit_of_work_shares_one_session_between_its_repositories(
         assert unit_of_work.payment_attempts.find_by_order_id(payment_attempt.order_id) == (
             payment_attempt
         )
+
+
+def test_unit_of_work_runs_after_commit_callbacks_in_order_once_the_rows_are_committed(
+    session_factory: sessionmaker[Session], fixed_clock: FixedClock
+) -> None:
+    """Each callback runs after the commit, so a fresh transaction already sees the row."""
+    payment_attempt = build_payment_attempt()
+    observations: list[tuple[str, bool]] = []
+
+    def observe(label: str) -> None:
+        """Records whether the attempt is visible to a new transaction when the callback runs."""
+        stored_attempt, _ = _stored_attempt_and_events(
+            session_factory, fixed_clock, payment_attempt
+        )
+        observations.append((label, stored_attempt is not None))
+
+    with SqlAlchemyUnitOfWork(session_factory, fixed_clock) as unit_of_work:
+        unit_of_work.payment_attempts.add(payment_attempt)
+        unit_of_work.call_after_commit(lambda: observe("first"))
+        unit_of_work.call_after_commit(lambda: observe("second"))
+        assert observations == []
+    assert observations == [("first", True), ("second", True)]
+
+
+def test_unit_of_work_drops_after_commit_callbacks_when_the_block_raises(
+    session_factory: sessionmaker[Session], fixed_clock: FixedClock
+) -> None:
+    """A rolled-back transaction announces nothing."""
+    calls: list[str] = []
+
+    def queue_callback_then_fail() -> None:
+        """Writes, queues a callback and fails before the end of the block."""
+        with SqlAlchemyUnitOfWork(session_factory, fixed_clock) as unit_of_work:
+            unit_of_work.payment_attempts.add(build_payment_attempt())
+            unit_of_work.call_after_commit(lambda: calls.append("must not run"))
+            raise SimulatedUseCaseFailureError
+
+    with pytest.raises(SimulatedUseCaseFailureError):
+        queue_callback_then_fail()
+    assert calls == []
+
+
+def _raise_callback_failure() -> None:
+    """An after-commit callback that fails."""
+    raise SimulatedUseCaseFailureError
+
+
+def test_unit_of_work_keeps_the_commit_when_an_after_commit_callback_fails(
+    session_factory: sessionmaker[Session], fixed_clock: FixedClock
+) -> None:
+    """A failed notification never turns a committed write into an error."""
+    payment_attempt = build_payment_attempt()
+    with SqlAlchemyUnitOfWork(session_factory, fixed_clock) as unit_of_work:
+        unit_of_work.payment_attempts.add(payment_attempt)
+        unit_of_work.call_after_commit(_raise_callback_failure)
+    assert _stored_attempt_and_events(session_factory, fixed_clock, payment_attempt) == (
+        payment_attempt,
+        0,
+    )
