@@ -1,7 +1,16 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+  type MockInstance,
+} from 'vitest';
 
 import { MerchantApiProvider } from '../../../shared/api/MerchantApiProvider';
 import { COUNTER_SALES_QUERY_KEY } from '../../../shared/api/saleQueryKeys';
@@ -49,12 +58,17 @@ function invalidatedKeys(
   return invalidateQueries.mock.calls.map((call) => call[0]?.queryKey);
 }
 
+let reportError: Mock<(error: unknown) => void>;
+
 beforeEach(() => {
   vi.useFakeTimers();
+  reportError = vi.fn();
+  vi.stubGlobal('reportError', reportError);
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('useLiveSaleStatus', () => {
@@ -129,6 +143,7 @@ describe('useLiveSaleStatus', () => {
     await advance(2_000);
     expect(fetchFunction).toHaveBeenCalledTimes(3);
     expect(invalidatedKeys(invalidateQueries)).toEqual([['sale']]);
+    expect(reportError).not.toHaveBeenCalled();
   });
 
   it('polls every five seconds after three failures in a row, and stops once live again', async () => {
@@ -167,26 +182,61 @@ describe('useLiveSaleStatus', () => {
     await advance(5_000);
 
     expect(invalidatedKeys(invalidateQueries)).toEqual([['sale'], ['sale']]);
+    expect(reportError).not.toHaveBeenCalled();
   });
 
-  it('treats an unexpected error as a failed connection and falls back to polling', async () => {
-    const eventStream = createControllableEventStream();
+  it('reconnects without reporting when the stream breaks mid-read', async () => {
+    const brokenStream = createControllableEventStream();
+    const nextStream = createControllableEventStream();
     const fetchFunction = vi
       .fn<FetchFunction>()
-      .mockResolvedValueOnce(eventStream.createResponse())
-      .mockRejectedValue(new Error('Unexpected failure'));
+      .mockResolvedValueOnce(brokenStream.createResponse())
+      .mockResolvedValueOnce(nextStream.createResponse());
+    renderLiveSaleStatus(fetchFunction);
+    await advance(0);
+
+    brokenStream.fail(new TypeError('network error'));
+    await advance(1_000);
+
+    expect(fetchFunction).toHaveBeenCalledTimes(2);
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it('reports an unexpected error, yet still reconnects and falls back to polling', async () => {
+    const unexpectedError = new Error('Unexpected failure');
+    const fetchFunction = vi.fn<FetchFunction>(() => Promise.reject(unexpectedError));
     const { result, invalidateQueries } = renderLiveSaleStatus(fetchFunction);
     await advance(0);
 
-    eventStream.fail(new RangeError('Unexpected stream failure'));
-    await advance(1_000);
-    expect(fetchFunction).toHaveBeenCalledTimes(2);
-    await advance(2_000 + 4_000);
-    expect(fetchFunction).toHaveBeenCalledTimes(4);
+    expect(reportError).toHaveBeenCalledExactlyOnceWith(unexpectedError);
+    await advance(1_000 + 2_000);
+    expect(fetchFunction).toHaveBeenCalledTimes(3);
     expect(result.current.liveStatus.isPolling).toBe(true);
     await advance(5_000);
 
+    expect(reportError).toHaveBeenCalledTimes(fetchFunction.mock.calls.length);
     expect(invalidatedKeys(invalidateQueries)).toContainEqual(['sale']);
+  });
+
+  it('reports an error thrown while applying an event, and reconnects', async () => {
+    const firstStream = createControllableEventStream();
+    const secondStream = createControllableEventStream();
+    const fetchFunction = vi
+      .fn<FetchFunction>()
+      .mockResolvedValueOnce(firstStream.createResponse())
+      .mockResolvedValueOnce(secondStream.createResponse());
+    const { invalidateQueries } = renderLiveSaleStatus(fetchFunction);
+    await advance(0);
+    const handlingError = new TypeError('Cannot read the cache');
+    invalidateQueries.mockImplementationOnce(() => {
+      throw handlingError;
+    });
+
+    firstStream.send('event: resync\ndata: {}\n\n');
+    await advance(1_000);
+
+    expect(reportError).toHaveBeenCalledExactlyOnceWith(handlingError);
+    expect(fetchFunction).toHaveBeenCalledTimes(2);
   });
 
   it('signs out when the stream says the token is no longer valid', async () => {

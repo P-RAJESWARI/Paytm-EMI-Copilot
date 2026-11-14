@@ -5,10 +5,12 @@ import { SALE_QUERY_KEY_ROOT } from '../../../shared/api/saleQueryKeys';
 import { useMerchantApi } from '../../../shared/api/useMerchantApi';
 import { useMerchantSession } from '../../../shared/session/useMerchantSession';
 import { applyLiveStatusEvent } from '../model/applyLiveStatusEvent';
+import { reportUnexpectedLiveStatusError } from '../model/reportUnexpectedLiveStatusError';
 import { SaleStatusStreamFollower } from '../model/SaleStatusStreamFollower';
 
 // Follows the live stream while a merchant is signed in: applies its events, catches up after a
-// recovery, signs out on 401 and says whether polling is needed; stops on unmount or sign-out.
+// recovery, signs out on 401, reports unexpected errors to the browser and says whether polling is
+// needed; stops on unmount or sign-out.
 export function useSaleStatusStream(): boolean {
   const { fetchFunction, baseUrl } = useMerchantApi();
   const { session, signOut } = useMerchantSession();
@@ -28,6 +30,7 @@ export function useSaleStatusStream(): boolean {
         onRecovered: () => void queryClient.invalidateQueries({ queryKey: [SALE_QUERY_KEY_ROOT] }),
         onPollingChange: setIsPolling,
         onSignedOut: signOut,
+        onUnexpectedError: reportUnexpectedLiveStatusError,
       },
     );
     follower.start();
