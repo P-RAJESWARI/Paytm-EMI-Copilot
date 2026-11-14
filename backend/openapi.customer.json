@@ -1322,7 +1322,7 @@
           "customer consent"
         ],
         "summary": "Agree to the chosen plan with the one-time code",
-        "description": "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012). Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Re-quotes the chosen plan server-side and stores the exact plan shown as evidence, once per session. The same Idempotency-Key and body return the original 201 response. No payment link is made: the shop takes payment on Paytm. Location points at the receipt. Needs the confirmed budget and a requested, unexpired, matching code.",
+        "description": "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012). Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Names the exact selection shown on C9: the offer, the product (null for the session's item, or the cheaper model) and the down payment (0, or exactly the one suggested). It is re-quoted server-side; if the shown monthly or total no longer match, the answer is 409 SHOWN_PLAN_CHANGED and nothing is recorded. The exact selection is stored as evidence, once per session. The same Idempotency-Key and selection return the original 201 response (the code is not part of the comparison). No payment link is made: the shop takes payment on Paytm. Location points at the receipt. Needs the confirmed budget and a requested, unexpired, matching code.",
         "operationId": "give_customer_consent_api_v1_customer_sessions__customerSessionId__consent_post",
         "security": [
           {
@@ -1397,7 +1397,11 @@
                     "lastInstallmentInPaise": 366665,
                     "extraInTotalInPaise": 0,
                     "totalPayableInPaise": 2200000,
-                    "priceInPaise": 2200000
+                    "priceInPaise": 2200000,
+                    "productId": "stub-product-phone-128gb",
+                    "productName": "Example phone, 128 GB",
+                    "downPaymentInPaise": 0,
+                    "financedAmountInPaise": 2200000
                   }
                 }
               }
@@ -1492,7 +1496,7 @@
             }
           },
           "409": {
-            "description": "The monthly budget has not been confirmed yet. Consent was already recorded in this session under another Idempotency-Key.",
+            "description": "The monthly budget has not been confirmed yet. Consent was already recorded in this session under another Idempotency-Key. A fresh quote no longer matches the monthly or total shown; nothing was recorded.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1517,6 +1521,17 @@
                       "code": "CONSENT_ALREADY_GIVEN",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
+                  },
+                  "SHOWN_PLAN_CHANGED": {
+                    "summary": "Plan figures changed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/shown-plan-changed",
+                      "title": "Plan figures changed",
+                      "status": 409,
+                      "detail": "The plan figures changed; show the plans again.",
+                      "code": "SHOWN_PLAN_CHANGED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
                   }
                 },
                 "schema": {
@@ -1526,7 +1541,7 @@
             }
           },
           "422": {
-            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. No one-time code was requested for this session. The code does not match; the customer may try again or request a new code. The code is past its 5-minute lifetime; request a new one. The Idempotency-Key was already used with a different body.",
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. No one-time code was requested for this session. The code does not match; the customer may try again or request a new code. The code is past its 5-minute lifetime; request a new one. The Idempotency-Key was already used with a different body. The product or the down payment is not one this session offers.",
             "content": {
               "application/problem+json": {
                 "examples": {
@@ -1588,6 +1603,17 @@
                       "status": 422,
                       "detail": "The Idempotency-Key was already used with a different body.",
                       "code": "IDEMPOTENCY_KEY_REUSED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PLAN_SELECTION": {
+                    "summary": "Plan selection not offered",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-plan-selection",
+                      "title": "Plan selection not offered",
+                      "status": 422,
+                      "detail": "This down payment is not offered for this plan.",
+                      "code": "INVALID_PLAN_SELECTION",
                       "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
                     }
                   }
@@ -1725,7 +1751,11 @@
                     "lastInstallmentInPaise": 366665,
                     "extraInTotalInPaise": 0,
                     "totalPayableInPaise": 2200000,
-                    "priceInPaise": 2200000
+                    "priceInPaise": 2200000,
+                    "productId": "stub-product-phone-128gb",
+                    "productName": "Example phone, 128 GB",
+                    "downPaymentInPaise": 0,
+                    "financedAmountInPaise": 2200000
                   }
                 }
               }
@@ -2161,7 +2191,7 @@
             "$ref": "#/components/schemas/ReceiptStatus"
           },
           "plan": {
-            "$ref": "#/components/schemas/OfferSnapshotResponse"
+            "$ref": "#/components/schemas/ConsentedPlanResponse"
           }
         },
         "type": "object",
@@ -2174,6 +2204,130 @@
         ],
         "title": "ConsentResponse",
         "description": "The recorded consent: the exact plan agreed to, frozen, and the hand-off status."
+      },
+      "ConsentedPlanResponse": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-card-6m"
+            ]
+          },
+          "lenderLabel": {
+            "type": "string",
+            "title": "Lenderlabel",
+            "examples": [
+              "Your card's bank"
+            ]
+          },
+          "emiType": {
+            "$ref": "#/components/schemas/EmiType"
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths",
+            "examples": [
+              6
+            ]
+          },
+          "regularInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Regularinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "lastInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Lastinstallmentinpaise",
+            "examples": [
+              385000
+            ]
+          },
+          "extraInTotalInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Extraintotalinpaise",
+            "examples": [
+              110000
+            ]
+          },
+          "totalPayableInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Totalpayableinpaise",
+            "examples": [
+              2310000
+            ]
+          },
+          "priceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Priceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "productId": {
+            "type": "string",
+            "title": "Productid",
+            "examples": [
+              "stub-product-phone-128gb"
+            ]
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "downPaymentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Downpaymentinpaise",
+            "examples": [
+              0
+            ]
+          },
+          "financedAmountInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Financedamountinpaise",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "offerId",
+          "lenderLabel",
+          "emiType",
+          "tenureInMonths",
+          "regularInstallmentInPaise",
+          "lastInstallmentInPaise",
+          "extraInTotalInPaise",
+          "totalPayableInPaise",
+          "priceInPaise",
+          "productId",
+          "productName",
+          "downPaymentInPaise",
+          "financedAmountInPaise"
+        ],
+        "title": "ConsentedPlanResponse",
+        "description": "The frozen selection: the plan's schedule plus product, price and down payment.\n\npriceInPaise is the product's price; financedAmountInPaise is the price less the down\npayment, which the installments repay with any extra."
       },
       "CoolingOffNoticeStatus": {
         "type": "string",
@@ -2392,7 +2546,7 @@
             "$ref": "#/components/schemas/CoolingOffNoticeStatus"
           },
           "plan": {
-            "$ref": "#/components/schemas/OfferSnapshotResponse"
+            "$ref": "#/components/schemas/ConsentedPlanResponse"
           }
         },
         "type": "object",
@@ -2521,6 +2675,51 @@
               "mock-offer-no-cost-6m"
             ]
           },
+          "productId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[!-~]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Productid",
+            "examples": [
+              null
+            ]
+          },
+          "downPaymentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Downpaymentinpaise",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "shownMonthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Shownmonthlyinstallmentinpaise",
+            "examples": [
+              366667
+            ]
+          },
+          "shownTotalPayableInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Showntotalpayableinpaise",
+            "examples": [
+              2200000
+            ]
+          },
           "otp": {
             "type": "string",
             "pattern": "^[0-9]{6}$",
@@ -2542,99 +2741,13 @@
         "type": "object",
         "required": [
           "offerId",
+          "shownMonthlyInstallmentInPaise",
+          "shownTotalPayableInPaise",
           "otp",
           "hasAgreedToPlan"
         ],
         "title": "GiveConsentRequest",
-        "description": "The plan agreed to, the 6-digit code and the customer's explicit agreement.\n\nEvery figure of the plan is re-quoted server-side; only the offer id is taken from here."
-      },
-      "OfferSnapshotResponse": {
-        "properties": {
-          "offerId": {
-            "type": "string",
-            "title": "Offerid",
-            "examples": [
-              "mock-offer-card-6m"
-            ]
-          },
-          "lenderLabel": {
-            "type": "string",
-            "title": "Lenderlabel",
-            "examples": [
-              "Your card's bank"
-            ]
-          },
-          "emiType": {
-            "$ref": "#/components/schemas/EmiType"
-          },
-          "tenureInMonths": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Tenureinmonths",
-            "examples": [
-              6
-            ]
-          },
-          "regularInstallmentInPaise": {
-            "type": "integer",
-            "maximum": 9007199254740991.0,
-            "minimum": 0.0,
-            "title": "Regularinstallmentinpaise",
-            "examples": [
-              385000
-            ]
-          },
-          "lastInstallmentInPaise": {
-            "type": "integer",
-            "maximum": 9007199254740991.0,
-            "minimum": 0.0,
-            "title": "Lastinstallmentinpaise",
-            "examples": [
-              385000
-            ]
-          },
-          "extraInTotalInPaise": {
-            "type": "integer",
-            "maximum": 9007199254740991.0,
-            "minimum": 0.0,
-            "title": "Extraintotalinpaise",
-            "examples": [
-              110000
-            ]
-          },
-          "totalPayableInPaise": {
-            "type": "integer",
-            "maximum": 9007199254740991.0,
-            "exclusiveMinimum": 0.0,
-            "title": "Totalpayableinpaise",
-            "examples": [
-              2310000
-            ]
-          },
-          "priceInPaise": {
-            "type": "integer",
-            "maximum": 9007199254740991.0,
-            "exclusiveMinimum": 0.0,
-            "title": "Priceinpaise",
-            "examples": [
-              2200000
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "offerId",
-          "lenderLabel",
-          "emiType",
-          "tenureInMonths",
-          "regularInstallmentInPaise",
-          "lastInstallmentInPaise",
-          "extraInTotalInPaise",
-          "totalPayableInPaise",
-          "priceInPaise"
-        ],
-        "title": "OfferSnapshotResponse",
-        "description": "The exact plan frozen when the link was made: tenure - 1 regular installments, then a last.\n\nThe amounts are our schedule's, so they add up to totalPayableInPaise to the paisa."
+        "description": "The exact selection agreed to, the figures shown, the 6-digit code and the agreement.\n\nThe selection is the offer, the product (null for the session's item, or a cheaper model\nfrom the alternatives) and the down payment (0 for none, else exactly the one suggested).\nIt is re-quoted server-side; if the shown monthly or total no longer match, the answer is\n409 SHOWN_PLAN_CHANGED and nothing is recorded (ADR 0021)."
       },
       "OtpChallengeResponse": {
         "properties": {

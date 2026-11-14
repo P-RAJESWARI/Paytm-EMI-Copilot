@@ -18,6 +18,10 @@ RISKY_QR_TOKEN = "stub-qr-4822"  # noqa: S105 - published sample QR value
 SESSION_TOKEN_HEADER = "X-Customer-Session-Token"  # noqa: S105 - a header name
 STUB_CODE = "123456"
 NO_COST_OFFER_ID = "mock-offer-no-cost-6m"
+DESIGN_PLAN_A_SHOWN_FIGURES = {
+    "shownMonthlyInstallmentInPaise": 366_667,
+    "shownTotalPayableInPaise": 2_200_000,
+}
 
 
 @dataclass
@@ -79,17 +83,27 @@ class CustomerSessionClient:
     def give_consent(
         self,
         idempotency_key: str | None = "stub-consent-key-0001",
+        *,
         offer_id: str = NO_COST_OFFER_ID,
         otp: str = STUB_CODE,
+        selection: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        """Gives consent; None leaves the Idempotency-Key header out."""
+        """Gives consent; None leaves the Idempotency-Key header out.
+
+        selection replaces the shown no-cost 6-month figures on the 128 GB phone, for example
+        with a downPaymentInPaise or a productId and their own shown figures.
+        """
         headers = dict(self.headers)
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
+        body = {
+            "offerId": offer_id,
+            "otp": otp,
+            "hasAgreedToPlan": True,
+            **(selection or DESIGN_PLAN_A_SHOWN_FIGURES),
+        }
         response: httpx.Response = self.client.post(
-            self.base_path + "/consent",
-            json={"offerId": offer_id, "otp": otp, "hasAgreedToPlan": True},
-            headers=headers,
+            self.base_path + "/consent", json=body, headers=headers
         )
         return response
 

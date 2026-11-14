@@ -78,16 +78,34 @@ class OtpChallenge:
 
 @dataclass(frozen=True, slots=True)
 class GiveConsentCommand:
-    """The customer's consent to one plan, with the one-time code, under an Idempotency-Key."""
+    """Consent to the exact selection shown on C9, with the one-time code, under a key.
+
+    The selection is the offer, the product (None means the session's item) and the down payment
+    (zero for none). The shown figures are what the customer saw; a fresh quote must match them.
+    """
 
     idempotency_key: str
     offer_id: str
     one_time_code: str
+    product_id: str | None
+    down_payment: Money
+    shown_monthly_installment: Money
+    shown_total_payable: Money
 
     def calculate_request_fingerprint(self) -> str:
-        """Gives the SHA-256 hex of the canonical body; the key itself is not part of it."""
+        """Gives the SHA-256 hex of the selection and shown figures; never the code or the key.
+
+        An unsalted hash of a 6-digit code is effectively the code, so the code is left out: the
+        same key and selection with another code is the same request (ADR 0021).
+        """
         canonical_body = json.dumps(
-            {"offerId": self.offer_id, "otp": self.one_time_code},
+            {
+                "offerId": self.offer_id,
+                "productId": self.product_id,
+                "downPaymentInPaise": self.down_payment.to_paise(),
+                "shownMonthlyInstallmentInPaise": self.shown_monthly_installment.to_paise(),
+                "shownTotalPayableInPaise": self.shown_total_payable.to_paise(),
+            },
             sort_keys=True,
             separators=(",", ":"),
         )
@@ -95,24 +113,38 @@ class GiveConsentCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ConsentedPlan:
+    """The exact selection agreed to: the plan snapshot plus product, price and down payment.
+
+    financed_amount is what the plan spreads over its months (the price less the down payment);
+    it equals the snapshot's principal.
+    """
+
+    offer_snapshot: OfferSnapshot
+    product_id: str
+    product_name: str
+    price: Money
+    down_payment: Money
+    financed_amount: Money
+
+
+@dataclass(frozen=True, slots=True)
 class RecordedConsent:
-    """Evidence of consent: the exact plan shown, frozen, with when and under which reference."""
+    """Evidence of consent: the exact selection shown, frozen, with when and which reference."""
 
     consent_id: str
     reference: str
     consented_at: datetime
-    offer_snapshot: OfferSnapshot
-    price: Money
+    consented_plan: ConsentedPlan
 
 
 @dataclass(frozen=True, slots=True)
 class CustomerReceipt:
-    """What C10 shows: status, the frozen plan, reference and the cooling-off note's status."""
+    """What C10 shows: status, the frozen selection, reference and the cooling-off note's status."""
 
     status: ReceiptStatus
     reference: str
     phone_last_two_digits: str
     consented_at: datetime
     cooling_off_notice_status: CoolingOffNoticeStatus
-    offer_snapshot: OfferSnapshot
-    price: Money
+    consented_plan: ConsentedPlan

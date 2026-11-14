@@ -5,8 +5,10 @@ from typing import Annotated
 
 from pydantic import Field
 
-from emi_copilot.dtos.customer_consent_dtos import PHONE_LAST_TWO_DIGITS_PATTERN
-from emi_copilot.dtos.payment_link_dtos import OfferSnapshotResponse
+from emi_copilot.dtos.customer_consent_dtos import (
+    PHONE_LAST_TWO_DIGITS_PATTERN,
+    ConsentedPlanResponse,
+)
 from emi_copilot.dtos.wire_types import CamelCaseResponseModel
 from emi_copilot.services.customer_flow.customer_flow_types import (
     CoolingOffNoticeStatus,
@@ -29,7 +31,7 @@ class CustomerReceiptResponse(CamelCaseResponseModel):
     ]
     consented_at: Annotated[datetime, Field(examples=["2026-11-15T09:31:00Z"])]
     cooling_off_notice_status: CoolingOffNoticeStatus
-    plan: OfferSnapshotResponse
+    plan: ConsentedPlanResponse
 
     @classmethod
     def from_receipt(cls, receipt: CustomerReceipt) -> "CustomerReceiptResponse":
@@ -40,5 +42,5 @@ class CustomerReceiptResponse(CamelCaseResponseModel):
             phone_last_two_digits=receipt.phone_last_two_digits,
             consented_at=receipt.consented_at,
             cooling_off_notice_status=receipt.cooling_off_notice_status,
-            plan=OfferSnapshotResponse.from_snapshot(receipt.offer_snapshot, receipt.price),
+            plan=ConsentedPlanResponse.from_consented_plan(receipt.consented_plan),
         )

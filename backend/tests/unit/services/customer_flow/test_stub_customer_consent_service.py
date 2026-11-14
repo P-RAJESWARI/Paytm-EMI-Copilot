@@ -11,10 +11,12 @@ from emi_copilot.domain.errors import (
     ConsentNotGivenError,
     DomainError,
     IdempotencyKeyReusedError,
+    InvalidPlanSelectionError,
     OfferNotFoundError,
     OtpExpiredError,
     OtpIncorrectError,
     OtpNotRequestedError,
+    ShownPlanChangedError,
 )
 from emi_copilot.domain.money import Money
 from emi_copilot.services.customer_flow.customer_flow_types import (
@@ -33,13 +35,26 @@ SECOND_KEY = "stub-consent-key-0002"
 NO_COST_OFFER_ID = "mock-offer-no-cost-6m"
 
 
-def build_command(
+def build_command(  # noqa: PLR0913 - one override per field of the selection
     idempotency_key: str = FIRST_KEY,
+    *,
     offer_id: str = NO_COST_OFFER_ID,
     one_time_code: str = STUB_CODE,
+    product_id: str | None = None,
+    down_payment_in_rupees: str = "0",
+    shown_monthly_in_rupees: str = "3666.67",
+    shown_total_in_rupees: str = "22000",
 ) -> GiveConsentCommand:
-    """Builds a consent to no-cost 6 months with the stub code."""
-    return GiveConsentCommand(idempotency_key, offer_id, one_time_code)
+    """Builds a consent to no-cost 6 months on the 128 GB phone, as C9 showed it."""
+    return GiveConsentCommand(
+        idempotency_key=idempotency_key,
+        offer_id=offer_id,
+        one_time_code=one_time_code,
+        product_id=product_id,
+        down_payment=Money.from_rupees(down_payment_in_rupees),
+        shown_monthly_installment=Money.from_rupees(shown_monthly_in_rupees),
+        shown_total_payable=Money.from_rupees(shown_total_in_rupees),
+    )
 
 
 def prepare_for_consent(kit: CustomerFlowKit) -> CustomerSessionCredentials:
@@ -71,12 +86,17 @@ def test_request_one_time_code_gives_phone_ending_lifetime_and_resend_time(
 def test_give_consent_freezes_the_exact_plan_shown(kit: CustomerFlowKit) -> None:
     """Consent stores plan A as evidence: 5 x ₹3,666.67 then ₹3,666.65, nothing extra."""
     recorded_consent = give_consent(kit, prepare_for_consent(kit), build_command())
-    snapshot = recorded_consent.offer_snapshot
+    consented_plan = recorded_consent.consented_plan
+    snapshot = consented_plan.offer_snapshot
     assert snapshot.offer_id == NO_COST_OFFER_ID
     assert snapshot.regular_installment.to_paise() == 366_667
     assert snapshot.last_installment.to_paise() == 366_665
     assert snapshot.extra_in_total.is_zero
-    assert recorded_consent.price == Money.from_rupees("22000")
+    assert consented_plan.price == Money.from_rupees("22000")
+    assert consented_plan.financed_amount == Money.from_rupees("22000")
+    assert consented_plan.down_payment.is_zero
+    assert consented_plan.product_id == "stub-product-phone-128gb"
+    assert consented_plan.product_name == "Example phone, 128 GB"
     assert recorded_consent.reference == "EMI-2611-0042"
     assert recorded_consent.consented_at == CREATED_AT
 
@@ -161,11 +181,10 @@ def test_get_receipt_after_consent_is_ready_to_pay_with_a_placeholder_note(
     receipt = kit.services.consent_service.get_receipt(credentials)
     assert receipt.status is ReceiptStatus.READY_TO_PAY
     assert receipt.cooling_off_notice_status is CoolingOffNoticeStatus.PLACEHOLDER
-    assert receipt.offer_snapshot == recorded_consent.offer_snapshot
+    assert receipt.consented_plan == recorded_consent.consented_plan
     assert receipt.reference == "EMI-2611-0042"
     assert receipt.phone_last_two_digits == "42"
     assert receipt.consented_at == recorded_consent.consented_at
-    assert receipt.price == Money.from_rupees("22000")
 
 
 def test_give_consent_racing_under_two_keys_records_exactly_one(kit: CustomerFlowKit) -> None:
@@ -191,11 +210,111 @@ def test_give_consent_racing_under_two_keys_records_exactly_one(kit: CustomerFlo
     assert sorted(outcomes) == ["CONSENT_ALREADY_GIVEN", "recorded"]
 
 
-def test_give_consent_command_fingerprint_ignores_the_key_and_follows_the_body() -> None:
-    """Two keys with one body share a fingerprint; another code changes it."""
-    assert build_command().calculate_request_fingerprint() == (
-        build_command(SECOND_KEY).calculate_request_fingerprint()
+def test_give_consent_command_fingerprint_follows_the_selection_never_the_key_or_code() -> None:
+    """Keys and codes do not change it; another shown figure or down payment does."""
+    fingerprint = build_command().calculate_request_fingerprint()
+    assert build_command(SECOND_KEY).calculate_request_fingerprint() == fingerprint
+    assert build_command(one_time_code="654321").calculate_request_fingerprint() == fingerprint
+    assert build_command(shown_total_in_rupees="22001").calculate_request_fingerprint() != (
+        fingerprint
     )
-    assert build_command().calculate_request_fingerprint() != (
-        build_command(one_time_code="654321").calculate_request_fingerprint()
+    assert build_command(down_payment_in_rupees="4000").calculate_request_fingerprint() != (
+        fingerprint
     )
+
+
+def test_give_consent_replay_with_another_code_gives_the_original(kit: CustomerFlowKit) -> None:
+    """The code is not part of the request body's identity, so a retry with a typo replays."""
+    credentials = prepare_for_consent(kit)
+    first_consent = give_consent(kit, credentials, build_command())
+    assert give_consent(kit, credentials, build_command(one_time_code="654321")) == first_consent
+
+
+def test_give_consent_to_the_down_payment_option_stores_that_selection(
+    kit: CustomerFlowKit,
+) -> None:
+    """₹4,000 down on no-cost 6 months: ₹18,000 financed, ₹3,000.00 x 6, price ₹22,000."""
+    credentials = prepare_for_consent(kit)
+    consented_plan = give_consent(
+        kit,
+        credentials,
+        build_command(
+            down_payment_in_rupees="4000",
+            shown_monthly_in_rupees="3000",
+            shown_total_in_rupees="18000",
+        ),
+    ).consented_plan
+    assert consented_plan.down_payment == Money.from_rupees("4000")
+    assert consented_plan.financed_amount == Money.from_rupees("18000")
+    assert consented_plan.price == Money.from_rupees("22000")
+    assert consented_plan.offer_snapshot.regular_installment.to_paise() == 300_000
+    assert consented_plan.offer_snapshot.last_installment.to_paise() == 300_000
+    assert consented_plan.product_id == "stub-product-phone-128gb"
+
+
+def test_give_consent_to_the_cheaper_model_stores_that_product(kit: CustomerFlowKit) -> None:
+    """The 64 GB phone at ₹18,000 on no-cost 6 months is stored with its id and name."""
+    credentials = prepare_for_consent(kit)
+    consented_plan = give_consent(
+        kit,
+        credentials,
+        build_command(
+            product_id="stub-product-phone-64gb",
+            shown_monthly_in_rupees="3000",
+            shown_total_in_rupees="18000",
+        ),
+    ).consented_plan
+    assert consented_plan.product_id == "stub-product-phone-64gb"
+    assert consented_plan.product_name == "Example phone, 64 GB"
+    assert consented_plan.price == Money.from_rupees("18000")
+    assert consented_plan.financed_amount == Money.from_rupees("18000")
+    assert consented_plan.down_payment.is_zero
+
+
+def test_give_consent_with_figures_that_differ_from_the_quote_raises(
+    kit: CustomerFlowKit,
+) -> None:
+    """A shown monthly or total that the fresh quote does not match records nothing."""
+    credentials = prepare_for_consent(kit)
+    with pytest.raises(ShownPlanChangedError, match="show the plans again"):
+        give_consent(kit, credentials, build_command(shown_monthly_in_rupees="3667"))
+    with pytest.raises(ShownPlanChangedError):
+        give_consent(kit, credentials, build_command(SECOND_KEY, shown_total_in_rupees="22002"))
+    with pytest.raises(ConsentNotGivenError):
+        kit.services.consent_service.get_receipt(credentials)
+
+
+@pytest.mark.parametrize(
+    ("offer_id", "down_payment_in_rupees"),
+    [(NO_COST_OFFER_ID, "1234"), (NO_COST_OFFER_ID, "5000"), ("mock-offer-cardless-12m", "1000")],
+    ids=["not-the-suggestion", "more-than-suggested", "plan-already-fits"],
+)
+def test_give_consent_with_a_down_payment_not_offered_raises(
+    kit: CustomerFlowKit, offer_id: str, down_payment_in_rupees: str
+) -> None:
+    """Only zero or exactly the suggested down payment for that plan can be agreed to."""
+    credentials = prepare_for_consent(kit)
+    with pytest.raises(InvalidPlanSelectionError, match="down payment"):
+        give_consent(
+            kit,
+            credentials,
+            build_command(offer_id=offer_id, down_payment_in_rupees=down_payment_in_rupees),
+        )
+
+
+def test_give_consent_for_an_unknown_product_raises(kit: CustomerFlowKit) -> None:
+    """Only the session's item and the offered cheaper model can be agreed to."""
+    credentials = prepare_for_consent(kit)
+    with pytest.raises(InvalidPlanSelectionError, match="product"):
+        give_consent(kit, credentials, build_command(product_id="stub-product-other"))
+
+
+def test_give_consent_to_the_item_by_its_explicit_product_id_is_accepted(
+    kit: CustomerFlowKit,
+) -> None:
+    """Naming the session's own item is the same as leaving the product out."""
+    credentials = prepare_for_consent(kit)
+    consented_plan = give_consent(
+        kit, credentials, build_command(product_id="stub-product-phone-128gb")
+    ).consented_plan
+    assert consented_plan.product_name == "Example phone, 128 GB"

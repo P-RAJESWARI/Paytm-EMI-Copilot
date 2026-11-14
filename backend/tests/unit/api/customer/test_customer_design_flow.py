@@ -1,5 +1,7 @@
 """The design flow end to end over HTTP: the documented examples are what the stub answers."""
 
+from typing import Any
+
 from emi_copilot.api.controllers.customer_response_examples import (
     BUDGET_RESPONSE_EXAMPLE,
     COMFORT_CHECK_RESPONSE_EXAMPLE,
@@ -145,3 +147,55 @@ def test_no_fit_budget_lists_every_plan_above_budget(customer_api: CustomerApi) 
         186_667,
         205_000,
     ]
+
+
+def consent_to_the_first_alternative_of_kind(
+    customer_api: CustomerApi, kind: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Runs C2 to C9 and agrees to the C6 alternative of a kind, exactly as it was shown."""
+    session = customer_api.start_session()
+    session.confirm_budget()
+    (alternative,) = [
+        item for item in session.find_alternatives().json()["alternatives"] if item["kind"] == kind
+    ]
+    session.request_code()
+    selection = {
+        "downPaymentInPaise": alternative["downPaymentInPaise"],
+        "productId": alternative["productId"],
+        "shownMonthlyInstallmentInPaise": alternative["monthlyInstallmentInPaise"],
+        "shownTotalPayableInPaise": alternative["totalPayableInPaise"],
+    }
+    consent_response = session.give_consent(offer_id=alternative["offerId"], selection=selection)
+    assert consent_response.status_code == 201, consent_response.text
+    return consent_response.json()["plan"], session.get_receipt().json()["plan"]
+
+
+def test_consent_to_the_down_payment_alternative_records_that_selection(
+    customer_api: CustomerApi,
+) -> None:
+    """₹4,000 down: ₹18,000 financed at ₹3,000.00 x 6 on the ₹22,000 phone, also on the receipt."""
+    consented_plan, receipt_plan = consent_to_the_first_alternative_of_kind(
+        customer_api, "DOWN_PAYMENT"
+    )
+    assert consented_plan == receipt_plan
+    assert consented_plan["downPaymentInPaise"] == 400_000
+    assert consented_plan["financedAmountInPaise"] == 1_800_000
+    assert consented_plan["priceInPaise"] == 2_200_000
+    assert consented_plan["regularInstallmentInPaise"] == 300_000
+    assert consented_plan["lastInstallmentInPaise"] == 300_000
+    assert consented_plan["productId"] == "stub-product-phone-128gb"
+
+
+def test_consent_to_the_cheaper_model_alternative_records_that_product(
+    customer_api: CustomerApi,
+) -> None:
+    """The 64 GB phone at ₹18,000 is the product on the consent and the receipt."""
+    consented_plan, receipt_plan = consent_to_the_first_alternative_of_kind(
+        customer_api, "CHEAPER_MODEL"
+    )
+    assert consented_plan == receipt_plan
+    assert consented_plan["productId"] == "stub-product-phone-64gb"
+    assert consented_plan["productName"] == "Example phone, 64 GB"
+    assert consented_plan["priceInPaise"] == 1_800_000
+    assert consented_plan["financedAmountInPaise"] == 1_800_000
+    assert consented_plan["downPaymentInPaise"] == 0

@@ -16,6 +16,7 @@ from emi_copilot.api.controllers.customer_problem_examples import (
     OTP_EXPIRED_PROBLEM,
     OTP_INCORRECT_PROBLEM,
     OTP_NOT_REQUESTED_PROBLEM,
+    PLAN_SELECTION_PROBLEMS,
     QUOTING_PROBLEMS,
     SESSION_PROBLEMS,
     SESSION_TOKEN_NOTE,
@@ -74,11 +75,15 @@ def request_consent_one_time_code(
     status_code=201,
     summary="Agree to the chosen plan with the one-time code",
     description=(
-        STUB_OPERATION_NOTE + SESSION_TOKEN_NOTE + "Re-quotes the chosen plan server-side and "
-        "stores the exact plan shown as evidence, once per session. The same Idempotency-Key "
-        "and body return the original 201 response. No payment link is made: the shop takes "
-        "payment on Paytm. Location points at the receipt. Needs the confirmed budget and a "
-        "requested, unexpired, matching code."
+        STUB_OPERATION_NOTE + SESSION_TOKEN_NOTE + "Names the exact selection shown on C9: "
+        "the offer, the product (null for the session's item, or the cheaper model) and the down "
+        "payment (0, or exactly the one suggested). It is re-quoted server-side; if the shown "
+        "monthly or total no longer match, the answer is 409 SHOWN_PLAN_CHANGED and nothing is "
+        "recorded. The exact selection is stored as evidence, once per session. The same "
+        "Idempotency-Key and selection return the original 201 response (the code is not part "
+        "of the comparison). No payment link is made: the shop takes payment on Paytm. Location "
+        "points at the receipt. Needs the confirmed budget and a requested, unexpired, matching "
+        "code."
     ),
     response_description="The consent was recorded (or this is the replay of it).",
     responses={
@@ -101,6 +106,7 @@ def request_consent_one_time_code(
             OTP_INCORRECT_PROBLEM,
             OTP_EXPIRED_PROBLEM,
             IDEMPOTENCY_KEY_REUSED_PROBLEM,
+            *PLAN_SELECTION_PROBLEMS,
             *QUOTING_PROBLEMS,
         ),
     },

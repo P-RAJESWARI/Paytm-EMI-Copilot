@@ -194,3 +194,44 @@ def test_consent_without_agreeing_answers_422(customer_api: CustomerApi) -> None
         headers={**session.headers, "Idempotency-Key": "stub-consent-key-0003"},
     )
     assert_problem(response, 422, "REQUEST_VALIDATION_FAILED")
+
+
+def test_consent_with_figures_that_were_not_quoted_answers_409(customer_api: CustomerApi) -> None:
+    """A shown monthly that a fresh quote does not match records nothing."""
+    response = ready_for_consent(customer_api).give_consent(
+        selection={"shownMonthlyInstallmentInPaise": 366_700, "shownTotalPayableInPaise": 2_200_000}
+    )
+    assert_problem(response, 409, "SHOWN_PLAN_CHANGED")
+
+
+def test_consent_with_a_down_payment_not_offered_answers_422(customer_api: CustomerApi) -> None:
+    """Only zero or the suggested down payment can be agreed to."""
+    response = ready_for_consent(customer_api).give_consent(
+        selection={
+            "downPaymentInPaise": 123_400,
+            "shownMonthlyInstallmentInPaise": 300_000,
+            "shownTotalPayableInPaise": 1_800_000,
+        }
+    )
+    assert_problem(response, 422, "INVALID_PLAN_SELECTION")
+
+
+def test_consent_for_an_unknown_product_answers_422(customer_api: CustomerApi) -> None:
+    """Only the session's item and the offered cheaper model can be agreed to."""
+    response = ready_for_consent(customer_api).give_consent(
+        selection={
+            "productId": "stub-product-other",
+            "shownMonthlyInstallmentInPaise": 366_667,
+            "shownTotalPayableInPaise": 2_200_000,
+        }
+    )
+    assert_problem(response, 422, "INVALID_PLAN_SELECTION")
+
+
+def test_consent_replay_with_another_code_returns_the_original(customer_api: CustomerApi) -> None:
+    """The same key and selection with a different code is the same request."""
+    session = ready_for_consent(customer_api)
+    first_response = session.give_consent()
+    replayed_response = session.give_consent(otp="654321")
+    assert replayed_response.status_code == 201
+    assert replayed_response.json() == first_response.json()

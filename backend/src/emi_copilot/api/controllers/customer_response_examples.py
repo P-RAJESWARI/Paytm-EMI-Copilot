@@ -206,6 +206,10 @@ CONSENT_RESPONSE_EXAMPLE: dict[str, Any] = {
         "extraInTotalInPaise": 0,
         "totalPayableInPaise": 2200000,
         "priceInPaise": 2200000,
+        "productId": "stub-product-phone-128gb",
+        "productName": "Example phone, 128 GB",
+        "downPaymentInPaise": 0,
+        "financedAmountInPaise": 2200000,
     },
 }
 RECEIPT_RESPONSE_EXAMPLE: dict[str, Any] = {
@@ -224,5 +228,9 @@ RECEIPT_RESPONSE_EXAMPLE: dict[str, Any] = {
         "extraInTotalInPaise": 0,
         "totalPayableInPaise": 2200000,
         "priceInPaise": 2200000,
+        "productId": "stub-product-phone-128gb",
+        "productName": "Example phone, 128 GB",
+        "downPaymentInPaise": 0,
+        "financedAmountInPaise": 2200000,
     },
 }

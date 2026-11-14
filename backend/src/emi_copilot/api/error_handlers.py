@@ -157,6 +157,8 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.OtpNotRequestedError: ProblemMapping(422, "One-time code not requested"),
             errors.OtpIncorrectError: ProblemMapping(422, "One-time code does not match"),
             errors.OtpExpiredError: ProblemMapping(422, "One-time code expired"),
+            errors.InvalidPlanSelectionError: ProblemMapping(422, "Plan selection not offered"),
+            errors.ShownPlanChangedError: ProblemMapping(409, "Plan figures changed"),
         }
     )
 )

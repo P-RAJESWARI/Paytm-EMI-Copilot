@@ -98,6 +98,22 @@ CUSTOMER_GATEWAY_UNAVAILABLE_PROBLEM = ProblemExample(
     "The payment gateway could not quote plans right now.",
 )
 
+INVALID_PLAN_SELECTION_PROBLEM = ProblemExample(
+    422,
+    "INVALID_PLAN_SELECTION",
+    "Plan selection not offered",
+    "This down payment is not offered for this plan.",
+    "The product or the down payment is not one this session offers.",
+)
+SHOWN_PLAN_CHANGED_PROBLEM = ProblemExample(
+    409,
+    "SHOWN_PLAN_CHANGED",
+    "Plan figures changed",
+    "The plan figures changed; show the plans again.",
+    "A fresh quote no longer matches the monthly or total shown; nothing was recorded.",
+)
+
+PLAN_SELECTION_PROBLEMS = (INVALID_PLAN_SELECTION_PROBLEM, SHOWN_PLAN_CHANGED_PROBLEM)
 SESSION_PROBLEMS = (
     CUSTOMER_SESSION_TOKEN_INVALID_PROBLEM,
     CUSTOMER_SESSION_NOT_FOUND_PROBLEM,

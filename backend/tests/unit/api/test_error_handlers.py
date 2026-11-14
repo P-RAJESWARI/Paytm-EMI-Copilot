@@ -75,6 +75,8 @@ def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:
         (errors.OtpNotRequestedError, 422),
         (errors.OtpIncorrectError, 422),
         (errors.OtpExpiredError, 422),
+        (errors.InvalidPlanSelectionError, 422),
+        (errors.ShownPlanChangedError, 409),
         (errors.DomainError, 422),
     ],
 )

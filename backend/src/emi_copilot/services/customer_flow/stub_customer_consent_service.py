@@ -10,13 +10,13 @@ from emi_copilot.domain.errors import (
     ConsentAlreadyGivenError,
     ConsentNotGivenError,
     IdempotencyKeyReusedError,
-    OfferNotFoundError,
     OtpExpiredError,
     OtpIncorrectError,
     OtpNotRequestedError,
 )
-from emi_copilot.domain.payments import PricedEmiOffer
+from emi_copilot.domain.money import Money
 from emi_copilot.services.customer_flow.customer_flow_types import (
+    ConsentedPlan,
     CoolingOffNoticeStatus,
     CustomerReceipt,
     CustomerSessionCredentials,
@@ -35,21 +35,21 @@ from emi_copilot.services.customer_flow.stub_customer_session_store import (
     StubCustomerSessionStore,
 )
 from emi_copilot.services.customer_flow.stub_design_sample import (
-    STUB_ITEM,
     STUB_ONE_TIME_CODE,
     STUB_ONE_TIME_CODE_LIFETIME,
     STUB_ONE_TIME_CODE_RESEND_DELAY,
     STUB_PHONE_LAST_TWO_DIGITS,
     STUB_RECEIPT_REFERENCE,
 )
-from emi_copilot.services.plan_advice_types import PricedOfferSource
+from emi_copilot.services.customer_flow.stub_plan_selection_quoter import StubPlanSelectionQuoter
 
 
 class StubCustomerConsentService:
     """STUB until Phase 3C: consent with a fixed one-time code, kept in memory as evidence.
 
-    Consent stores the exact plan snapshot shown, once per session. The same Idempotency-Key and
-    body replay the stored result. There is no payment link: the merchant takes payment on Paytm.
+    Consent stores the exact selection shown (plan, product, down payment), once per session.
+    The same Idempotency-Key and body replay the stored result. There is no payment link: the
+    merchant takes payment on Paytm.
     Phase 3C moves consent to the append-only, hash-chained consent_record table.
     """
 
@@ -57,14 +57,14 @@ class StubCustomerConsentService:
         self,
         store: StubCustomerSessionStore,
         session_service: StubCustomerSessionService,
-        offer_source: PricedOfferSource,
+        plan_selection_quoter: StubPlanSelectionQuoter,
         clock: Clock,
         id_generator: IdGenerator,
     ) -> None:
-        """Keeps the store, the session checker, the offer source, the clock and id generator."""
+        """Keeps the store, the session checker, the selection quoter, the clock and ids."""
         self._store = store
         self._session_service = session_service
-        self._offer_source = offer_source
+        self._plan_selection_quoter = plan_selection_quoter
         self._clock = clock
         self._id_generator = id_generator
 
@@ -99,8 +99,10 @@ class StubCustomerConsentService:
                 return stored_record.recorded_consent
             if session.recorded_consent is not None:
                 raise ConsentAlreadyGivenError("Consent was already given in this session.")
-            self._require_valid_one_time_code(session, command.one_time_code)
-            recorded_consent = self._record_consent(self._find_quoted_plan(command.offer_id))
+            monthly_budget = self._require_valid_one_time_code(session, command.one_time_code)
+            recorded_consent = self._record_consent(
+                self._plan_selection_quoter.quote_selection(command, monthly_budget)
+            )
             consent_record = StubConsentRecord(
                 command.idempotency_key, request_fingerprint, recorded_consent
             )
@@ -108,7 +110,7 @@ class StubCustomerConsentService:
                 replace(
                     session,
                     consent_records_by_key=MappingProxyType(
-                        {command.idempotency_key: consent_record}
+                        {**session.consent_records_by_key, command.idempotency_key: consent_record}
                     ),
                 )
             )
@@ -127,35 +129,30 @@ class StubCustomerConsentService:
             phone_last_two_digits=STUB_PHONE_LAST_TWO_DIGITS,
             consented_at=recorded_consent.consented_at,
             cooling_off_notice_status=CoolingOffNoticeStatus.PLACEHOLDER,
-            offer_snapshot=recorded_consent.offer_snapshot,
-            price=recorded_consent.price,
+            consented_plan=recorded_consent.consented_plan,
         )
 
     def _require_valid_one_time_code(
         self, session: StubCustomerSession, one_time_code: str
-    ) -> None:
-        """Needs a budget, a requested code within its lifetime, and a matching code."""
-        require_confirmed_budget(session)
+    ) -> Money:
+        """Needs a budget, a requested code within its lifetime, and a matching code.
+
+        Gives the confirmed budget, which the down-payment check needs.
+        """
+        monthly_budget = require_confirmed_budget(session)
         if session.one_time_code_issued_at is None:
             raise OtpNotRequestedError("Request a one-time code before agreeing.")
         if self._clock.now() >= session.one_time_code_issued_at + STUB_ONE_TIME_CODE_LIFETIME:
             raise OtpExpiredError("This code has expired; request a new code.")
         if not hmac.compare_digest(one_time_code.encode("utf-8"), STUB_ONE_TIME_CODE.encode()):
             raise OtpIncorrectError("This code does not match; check it or request a new code.")
+        return monthly_budget
 
-    def _find_quoted_plan(self, offer_id: str) -> PricedEmiOffer:
-        """Re-quotes the sample item and gives the chosen plan; OfferNotFoundError if absent."""
-        for priced_offer in self._offer_source.discover_offers(STUB_ITEM):
-            if priced_offer.offer.offer_id == offer_id:
-                return priced_offer
-        raise OfferNotFoundError("The chosen offer is not quoted for this item and price.")
-
-    def _record_consent(self, priced_offer: PricedEmiOffer) -> RecordedConsent:
-        """Freezes the plan shown as evidence, with a new consent id and the consent time."""
+    def _record_consent(self, consented_plan: ConsentedPlan) -> RecordedConsent:
+        """Freezes the selection shown as evidence, with a new consent id and the consent time."""
         return RecordedConsent(
             consent_id=self._id_generator.new_id(),
             reference=STUB_RECEIPT_REFERENCE,
             consented_at=self._clock.now(),
-            offer_snapshot=priced_offer.to_offer_snapshot(),
-            price=priced_offer.schedule.principal,
+            consented_plan=consented_plan,
         )

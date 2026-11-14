@@ -415,3 +415,18 @@ class OtpExpiredError(DomainError):
     """Raised when the one-time code is past its lifetime; the customer requests a new one."""
 
     code: ClassVar[str] = "OTP_EXPIRED"
+
+
+class InvalidPlanSelectionError(DomainError):
+    """Raised when a consent names a product or down payment this session does not offer."""
+
+    code: ClassVar[str] = "INVALID_PLAN_SELECTION"
+
+
+class ShownPlanChangedError(DomainError):
+    """Raised when the plan figures the customer saw no longer match a fresh quote.
+
+    Nothing is recorded; the customer is shown the plans again before agreeing.
+    """
+
+    code: ClassVar[str] = "SHOWN_PLAN_CHANGED"

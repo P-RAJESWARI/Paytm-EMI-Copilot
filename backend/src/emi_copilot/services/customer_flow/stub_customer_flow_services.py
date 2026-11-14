@@ -18,6 +18,7 @@ from emi_copilot.services.customer_flow.stub_customer_session_service import (
 from emi_copilot.services.customer_flow.stub_customer_session_store import (
     StubCustomerSessionStore,
 )
+from emi_copilot.services.customer_flow.stub_plan_selection_quoter import StubPlanSelectionQuoter
 from emi_copilot.services.customer_flow.stub_priced_offer_source import (
     StubGatewayPricedOfferSource,
 )
@@ -49,6 +50,6 @@ def build_stub_customer_flow_services(
             store, session_service, PlanAdviceService(offer_source), financial_profile_port
         ),
         consent_service=StubCustomerConsentService(
-            store, session_service, offer_source, clock, id_generator
+            store, session_service, StubPlanSelectionQuoter(offer_source), clock, id_generator
         ),
     )
