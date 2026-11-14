@@ -39,6 +39,17 @@ export const TEST_CARD_PLAN: ApiSchemas['ChosenPlanResponse'] = {
   totalPayableInPaise: 2310000,
 };
 
+/** The earbuds' card plan, whose extra and total carry paise: ₹124.95 extra, ₹2,623.95 total. */
+export const TEST_EARBUDS_CARD_PLAN: ApiSchemas['ChosenPlanResponse'] = {
+  offerId: 'mock-offer-earbuds-card-6m',
+  planKind: 'STANDARD',
+  lenderLabel: "Your card's bank",
+  tenureInMonths: 6,
+  monthlyInstallmentInPaise: 43733,
+  extraInTotalInPaise: 12495,
+  totalPayableInPaise: 262395,
+};
+
 // Builds a counter-list sale with the design's 128 GB phone, overridable per test.
 export function buildTestSaleSummary(
   overrides: Partial<ApiSchemas['SaleSummaryResponse']> = {},

@@ -1,8 +1,8 @@
-import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { Button } from '@emi-copilot/ui-kit';
 import { useId } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import type { SaleHandoff } from '../api/paymentHandoffApi';
 
 export interface EdcStepsProps {
@@ -57,7 +57,7 @@ export function EdcSteps({
         <li>
           <Trans
             i18nKey="handoff.edc.stepCheckAmount"
-            values={{ amount: formatRupeesFromPaise(edcInstructions.amountInPaise) }}
+            values={{ amount: formatExactRupeesFromPaise(edcInstructions.amountInPaise) }}
             components={BOLD_COMPONENTS}
           />
         </li>

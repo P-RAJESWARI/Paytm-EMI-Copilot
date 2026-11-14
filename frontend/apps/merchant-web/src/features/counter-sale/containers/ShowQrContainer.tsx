@@ -1,4 +1,3 @@
-import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { getButtonClassName } from '@emi-copilot/ui-kit';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -6,6 +5,7 @@ import { Link } from 'react-router';
 import { MERCHANT_PATHS } from '../../../app/merchantPaths';
 import { getProblemMessageKey } from '../../../shared/api/problemMessageKey';
 import { CalmErrorMessage } from '../../../shared/components/CalmErrorMessage';
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import { LoadingSkeleton } from '../../../shared/components/LoadingSkeleton';
 import { PageHeading } from '../../../shared/components/PageHeading';
 import { CustomerQrArea } from '../components/CustomerQrArea';
@@ -55,7 +55,7 @@ export function ShowQrContainer({ saleId }: ShowQrContainerProps) {
         title={t('showQr.title')}
         description={t('showQr.saleLine', {
           productName: sale.productName,
-          price: formatRupeesFromPaise(sale.priceInPaise),
+          price: formatExactRupeesFromPaise(sale.priceInPaise),
           code: sale.sessionCode,
         })}
         action={backLink}

@@ -1,6 +1,7 @@
 import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { useTranslation } from 'react-i18next';
 
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import { getPlanNameKey } from '../../../shared/plan/planName';
 import type { SaleHandoff } from '../api/paymentHandoffApi';
 
@@ -15,7 +16,7 @@ export function HandoffPlanGrid({ sale }: HandoffPlanGridProps) {
   const plan = sale.chosenPlan;
   const rows = [
     { label: t('handoff.product'), value: sale.productName },
-    { label: t('handoff.price'), value: formatRupeesFromPaise(sale.priceInPaise) },
+    { label: t('handoff.price'), value: formatExactRupeesFromPaise(sale.priceInPaise) },
   ];
   if (plan !== null) {
     rows.unshift({
@@ -27,8 +28,11 @@ export function HandoffPlanGrid({ sale }: HandoffPlanGridProps) {
     });
     rows.push(
       { label: t('plan.eachMonth'), value: formatRupeesFromPaise(plan.monthlyInstallmentInPaise) },
-      { label: t('plan.extraInTotal'), value: formatRupeesFromPaise(plan.extraInTotalInPaise) },
-      { label: t('plan.total'), value: formatRupeesFromPaise(plan.totalPayableInPaise) },
+      {
+        label: t('plan.extraInTotal'),
+        value: formatExactRupeesFromPaise(plan.extraInTotalInPaise),
+      },
+      { label: t('plan.total'), value: formatExactRupeesFromPaise(plan.totalPayableInPaise) },
       { label: t('plan.fundedBy'), value: plan.lenderLabel },
     );
   }

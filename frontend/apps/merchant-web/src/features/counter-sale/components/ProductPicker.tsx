@@ -1,8 +1,8 @@
-import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import type { TFunction } from 'i18next';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import type { CatalogueProduct } from '../api/counterSaleApi';
 
 export interface ProductPickerProps {
@@ -60,7 +60,7 @@ export function ProductPicker({
               </span>
             </span>
             <span className="text-lead font-bold tabular-nums text-navy">
-              {formatRupeesFromPaise(product.listPriceInPaise)}
+              {formatExactRupeesFromPaise(product.listPriceInPaise)}
             </span>
           </label>
         );

@@ -2,6 +2,7 @@ import type { ApiSchemas } from '@emi-copilot/api-client';
 import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { useTranslation } from 'react-i18next';
 
+import { formatExactRupeesFromPaise } from '../formatting/formatExactRupees';
 import { getPlanNameKey } from './planName';
 
 export interface ChosenPlanFiguresProps {
@@ -14,8 +15,8 @@ export function ChosenPlanFigures({ plan }: ChosenPlanFiguresProps) {
   const { t } = useTranslation();
   const figures = [
     { label: t('plan.eachMonth'), value: formatRupeesFromPaise(plan.monthlyInstallmentInPaise) },
-    { label: t('plan.extraInTotal'), value: formatRupeesFromPaise(plan.extraInTotalInPaise) },
-    { label: t('plan.total'), value: formatRupeesFromPaise(plan.totalPayableInPaise) },
+    { label: t('plan.extraInTotal'), value: formatExactRupeesFromPaise(plan.extraInTotalInPaise) },
+    { label: t('plan.total'), value: formatExactRupeesFromPaise(plan.totalPayableInPaise) },
   ];
   return (
     <div className="flex flex-col gap-3">

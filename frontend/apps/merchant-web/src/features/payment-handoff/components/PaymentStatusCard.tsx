@@ -1,10 +1,11 @@
-import { formatRupeesFromPaise, useLanguagePreference } from '@emi-copilot/shared-i18n';
+import { useLanguagePreference } from '@emi-copilot/shared-i18n';
 import { Button, getButtonClassName } from '@emi-copilot/ui-kit';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { MERCHANT_PATHS } from '../../../app/merchantPaths';
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import { formatShopTime } from '../../../shared/formatting/formatShopTime';
 import type { PlanKind } from '../../../shared/plan/planName';
 import type { HandoffPaymentStatus } from '../api/paymentHandoffApi';
@@ -34,7 +35,7 @@ export function PaymentStatusCard(props: PaymentStatusCardProps) {
   const headingId = useId();
   const { paymentStatus, paymentConfirmedAt } = props;
   const paidDetails = {
-    amount: formatRupeesFromPaise(props.amountInPaise),
+    amount: formatExactRupeesFromPaise(props.amountInPaise),
     planName: t(`handoff.planNameInSentence.${props.planKind ?? 'STANDARD'}`),
   };
   const body =

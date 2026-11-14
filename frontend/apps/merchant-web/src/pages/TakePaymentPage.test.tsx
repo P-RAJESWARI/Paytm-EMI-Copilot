@@ -17,6 +17,7 @@ import {
   buildTestSaleHandoff,
   buildTestSaleSummary,
   TEST_CARD_PLAN,
+  TEST_EARBUDS_CARD_PLAN,
 } from '../testing/merchantTestData';
 import { renderMerchantApp } from '../testing/renderMerchantApp';
 import { stubClipboard } from '../testing/stubClipboard';
@@ -126,6 +127,45 @@ describe('M4 take payment', () => {
     expect(screen.getByText('₹1,100')).toBeTruthy();
     expect(screen.getByText('₹23,100')).toBeTruthy();
     expect(screen.getByText("Your card's bank")).toBeTruthy();
+  });
+
+  it('shows a price, extra, total and EDC amount with paise exactly, never rounded', async () => {
+    renderTakePayment({
+      'GET /api/v1/sales/{saleId}/handoff': () =>
+        jsonResponse(
+          buildTestSaleHandoff({
+            paymentStatus: 'PAID',
+            paymentConfirmedAt: null,
+            sale: buildTestSaleSummary({
+              status: 'PAID',
+              productName: 'Example earbuds',
+              priceInPaise: 249900,
+              chosenPlan: TEST_EARBUDS_CARD_PLAN,
+            }),
+            edcInstructions: {
+              emiProgramme: 'BANK_EMI',
+              productName: 'Example earbuds',
+              tenureInMonths: 6,
+              isNoExtraCost: false,
+              amountInPaise: 262395,
+            },
+          }),
+        ),
+    });
+
+    const planGrid = await screen.findByLabelText('Chosen plan details');
+    const valueFor = (label: string) => within(planGrid).getByText(label).nextSibling?.textContent;
+    expect(valueFor('Price')).toBe('₹2,499');
+    expect(valueFor('Each month')).toBe('₹437');
+    expect(valueFor('Extra in total')).toBe('₹124.95');
+    expect(valueFor('Total')).toBe('₹2,623.95');
+    const edcRegion = screen.getByRole('region', { name: 'On the EDC machine' });
+    expect(within(edcRegion).getAllByRole('listitem').at(-1)?.textContent).toBe(
+      'Check the amount is ₹2,623.95, then hand it to the customer.',
+    );
+    expect(
+      screen.getByText('Confirmed by the server. ₹2,623.95 on EMI. You can hand over the product.'),
+    ).toBeTruthy();
   });
 
   it('makes a payment link, shows it as a QR code and copies it', async () => {

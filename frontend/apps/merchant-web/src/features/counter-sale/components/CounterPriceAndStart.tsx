@@ -1,8 +1,8 @@
-import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { Button } from '@emi-copilot/ui-kit';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { formatExactRupeesFromPaise } from '../../../shared/formatting/formatExactRupees';
 import type { CatalogueProduct } from '../api/counterSaleApi';
 
 export interface CounterPriceAndStartProps {
@@ -34,7 +34,7 @@ export function CounterPriceAndStart({
           <input
             id={priceInputId}
             readOnly
-            value={formatRupeesFromPaise(selectedProduct.listPriceInPaise)}
+            value={formatExactRupeesFromPaise(selectedProduct.listPriceInPaise)}
             className="min-h-touch-target-primary rounded-input border-2 border-border bg-light-blue px-4 text-title tabular-nums text-deep-navy"
           />
         </div>

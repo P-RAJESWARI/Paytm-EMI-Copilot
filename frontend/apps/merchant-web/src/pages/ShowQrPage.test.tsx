@@ -10,6 +10,7 @@ import { jsonResponse, problemResponse, type FakeRoutes } from '../testing/fakeM
 import {
   buildTestSaleDetail,
   TEST_CARD_PLAN,
+  TEST_EARBUDS_CARD_PLAN,
   TEST_NO_COST_PLAN,
 } from '../testing/merchantTestData';
 import { renderMerchantApp } from '../testing/renderMerchantApp';
@@ -119,6 +120,23 @@ describe('M3 show QR to customer', () => {
     expect(within(statusCard).getByText('₹3,850')).toBeTruthy();
     expect(within(statusCard).getByText('₹1,100')).toBeTruthy();
     expect(within(statusCard).getByText('₹23,100')).toBeTruthy();
+  });
+
+  it('shows a price, extra and total with paise exactly, and the monthly in whole rupees', async () => {
+    renderShowQr(
+      buildTestSaleDetail({
+        status: 'READY_TO_PAY',
+        productName: 'Example earbuds',
+        priceInPaise: 249950,
+        chosenPlan: TEST_EARBUDS_CARD_PLAN,
+      }),
+    );
+
+    const statusCard = await screen.findByRole('region', { name: 'The customer agreed to a plan' });
+    expect(within(statusCard).getByText('Each month').nextSibling?.textContent).toBe('₹437');
+    expect(within(statusCard).getByText('Extra in total').nextSibling?.textContent).toBe('₹124.95');
+    expect(within(statusCard).getByText('Total').nextSibling?.textContent).toBe('₹2,623.95');
+    expect(screen.getByText(/Example earbuds, ₹2,499\.50/)).toBeTruthy();
   });
 
   it('turns "Choosing" into "Ready to pay" live, without issuing another QR', async () => {
