@@ -145,6 +145,7 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.InvalidReportingPeriodError: ProblemMapping(422, "Invalid reporting period"),
             errors.InvalidReportDataError: ProblemMapping(422, "Invalid report data"),
             errors.InvalidComfortInputError: ProblemMapping(422, "Invalid comfort input"),
+            errors.InvalidMonthlyBudgetError: ProblemMapping(422, "Invalid monthly budget"),
         }
     )
 )

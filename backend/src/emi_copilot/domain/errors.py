@@ -355,3 +355,9 @@ class InvalidComfortInputError(DomainError):
     """
 
     code: ClassVar[str] = "INVALID_COMFORT_INPUT"
+
+
+class InvalidMonthlyBudgetError(DomainError):
+    """Raised when a customer's monthly budget is not whole-paise Money above zero rupees."""
+
+    code: ClassVar[str] = "INVALID_MONTHLY_BUDGET"
