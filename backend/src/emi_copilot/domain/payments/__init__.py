@@ -12,6 +12,10 @@ from emi_copilot.domain.payments.offer_snapshot import OfferSnapshot, OfferSnaps
 from emi_copilot.domain.payments.payment_attempt import PaymentAttempt
 from emi_copilot.domain.payments.payment_attempt_status import PaymentAttemptStatus
 from emi_copilot.domain.payments.payment_link import PaymentLink
+from emi_copilot.domain.payments.payment_link_failure_code import (
+    PaymentLinkFailureCode,
+    find_payment_link_failure_code,
+)
 from emi_copilot.domain.payments.payment_link_request import PaymentLinkRequest
 from emi_copilot.domain.payments.webhook_notification import (
     UnverifiedWebhookNotification,
@@ -31,8 +35,10 @@ __all__ = [
     "PaymentAttempt",
     "PaymentAttemptStatus",
     "PaymentLink",
+    "PaymentLinkFailureCode",
     "PaymentLinkRequest",
     "PaymentStatusResult",
     "UnverifiedWebhookNotification",
     "VerifiedWebhookEvent",
+    "find_payment_link_failure_code",
 ]

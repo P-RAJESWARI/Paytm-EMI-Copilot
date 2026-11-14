@@ -1,0 +1,142 @@
+"""In-memory unit of work and repositories that commit or roll back like the SQLAlchemy ones."""
+
+from dataclasses import dataclass, field, replace
+from types import TracebackType
+from typing import Self
+
+from emi_copilot.core.clock import Clock
+from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
+from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
+
+
+@dataclass
+class InMemoryDatabase:
+    """The committed state every fake unit of work of one test shares, plus what happened to it."""
+
+    payment_attempts_by_id: dict[str, PaymentAttempt] = field(default_factory=dict)
+    audit_events: list[AuditEvent] = field(default_factory=list)
+    commit_count: int = 0
+    rollback_count: int = 0
+
+    def find_audit_events_for_subject(self, subject_id: str) -> list[AuditEvent]:
+        """Lists the committed audit events about one subject, oldest first."""
+        return [event for event in self.audit_events if event.subject_id == subject_id]
+
+
+class FakePaymentAttemptRepository:
+    """Holds attempts in a dict and enforces the three unique keys like the database does."""
+
+    def __init__(self, payment_attempts_by_id: dict[str, PaymentAttempt], clock: Clock) -> None:
+        """Works on the unit of work's private copy of the attempts."""
+        self._payment_attempts_by_id = payment_attempts_by_id
+        self._clock = clock
+
+    def add(self, payment_attempt: PaymentAttempt) -> None:
+        """Stores a new attempt; a duplicate id, order id or key raises the typed error."""
+        for stored_attempt in self._payment_attempts_by_id.values():
+            if (
+                stored_attempt.id == payment_attempt.id
+                or stored_attempt.order_id == payment_attempt.order_id
+                or stored_attempt.idempotency_key == payment_attempt.idempotency_key
+            ):
+                raise PaymentAttemptAlreadyExistsError("A payment attempt already exists (fake).")
+        self._payment_attempts_by_id[payment_attempt.id] = payment_attempt
+
+    def find_by_idempotency_key(self, idempotency_key: str) -> PaymentAttempt | None:
+        """Returns the attempt stored under the key, or None."""
+        return next(
+            (
+                attempt
+                for attempt in self._payment_attempts_by_id.values()
+                if attempt.idempotency_key == idempotency_key
+            ),
+            None,
+        )
+
+    def find_by_order_id(self, order_id: str) -> PaymentAttempt | None:
+        """Returns the attempt for the order id, or None."""
+        return next(
+            (
+                attempt
+                for attempt in self._payment_attempts_by_id.values()
+                if attempt.order_id == order_id
+            ),
+            None,
+        )
+
+    def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
+        """Saves only the mutable fields and stamps updated_at, as the real repository does."""
+        stored_attempt = self._payment_attempts_by_id.get(payment_attempt.id)
+        if stored_attempt is None:
+            raise PaymentAttemptNotFoundError("No such payment attempt (fake).")
+        updated_attempt = replace(
+            stored_attempt,
+            status=payment_attempt.status,
+            gateway_link_id=payment_attempt.gateway_link_id,
+            payment_link_url=payment_attempt.payment_link_url,
+            gateway_transaction_id=payment_attempt.gateway_transaction_id,
+            updated_at=self._clock.now(),
+        )
+        self._payment_attempts_by_id[payment_attempt.id] = updated_attempt
+        return updated_attempt
+
+
+class FakeAuditEventRepository:
+    """Appends audit events to a list; like the real one it cannot update or delete."""
+
+    def __init__(self, audit_events: list[AuditEvent]) -> None:
+        """Works on the unit of work's private copy of the audit trail."""
+        self._audit_events = audit_events
+
+    def append(self, audit_event: AuditEvent) -> None:
+        """Appends one audit event."""
+        self._audit_events.append(audit_event)
+
+
+class FakeUnitOfWork:
+    """Copies the committed state on entry and publishes the copy only on a clean exit."""
+
+    payment_attempts: FakePaymentAttemptRepository
+    audit_events: FakeAuditEventRepository
+
+    def __init__(self, database: InMemoryDatabase, clock: Clock) -> None:
+        """Keeps the shared in-memory database and the clock for updated_at."""
+        self._database = database
+        self._clock = clock
+        self._working_attempts: dict[str, PaymentAttempt] = {}
+        self._working_audit_events: list[AuditEvent] = []
+
+    def __enter__(self) -> Self:
+        """Starts a transaction on private copies of the committed attempts and audit trail."""
+        self._working_attempts = dict(self._database.payment_attempts_by_id)
+        self._working_audit_events = list(self._database.audit_events)
+        self.payment_attempts = FakePaymentAttemptRepository(self._working_attempts, self._clock)
+        self.audit_events = FakeAuditEventRepository(self._working_audit_events)
+        return self
+
+    def __exit__(
+        self,
+        exception_type: type[BaseException] | None,
+        exception: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Commits the copies after a clean block, otherwise discards them; never swallows."""
+        if exception_type is None:
+            self._database.payment_attempts_by_id = self._working_attempts
+            self._database.audit_events = self._working_audit_events
+            self._database.commit_count += 1
+        else:
+            self._database.rollback_count += 1
+
+
+class FakeUnitOfWorkFactory:
+    """Builds a fresh FakeUnitOfWork on the shared database for every transaction."""
+
+    def __init__(self, database: InMemoryDatabase, clock: Clock) -> None:
+        """Keeps the database and clock every unit of work shares."""
+        self.database = database
+        self._clock = clock
+
+    def __call__(self) -> FakeUnitOfWork:
+        """Returns a new unit of work."""
+        return FakeUnitOfWork(self.database, self._clock)

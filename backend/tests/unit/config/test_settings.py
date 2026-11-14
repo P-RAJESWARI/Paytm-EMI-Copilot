@@ -3,11 +3,6 @@
 import pytest
 from pydantic import ValidationError
 
-from emi_copilot.adapters.payment_gateway.paytm_api_definitions import (
-    STAGING_EMI_SUBVENTION_BASE_URL,
-    STAGING_PAYMENT_LINK_BASE_URL,
-    STAGING_TRANSACTION_STATUS_BASE_URL,
-)
 from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
 
 SETTINGS_ENVIRONMENT_VARIABLES = (
@@ -20,6 +15,7 @@ SETTINGS_ENVIRONMENT_VARIABLES = (
     "PAYMENT_GATEWAY_RETRY_MAX_DELAY_IN_SECONDS",
     "PAYMENT_GATEWAY_CIRCUIT_BREAKER_FAILURE_THRESHOLD",
     "PAYMENT_GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_IN_SECONDS",
+    "MOCK_GATEWAY_WEBHOOK_SIGNING_SECRET",
     "PAYTM_MERCHANT_ID",
     "PAYTM_MERCHANT_KEY",
     "PAYTM_EMI_SUBVENTION_BASE_URL",
@@ -30,6 +26,7 @@ SETTINGS_ENVIRONMENT_VARIABLES = (
 )
 SYNTHETIC_MERCHANT_ID = "SYNTHETICMID00000001"
 SYNTHETIC_MERCHANT_KEY = "0123456789abcdef"  # pragma: allowlist secret
+SYNTHETIC_MOCK_SIGNING_KEY = "synthetic-mock-signing-key-0123456789ab"  # pragma: allowlist secret
 
 
 @pytest.fixture(autouse=True)
@@ -119,17 +116,30 @@ def test_application_settings_with_unusable_resilience_value_raises_validation_e
         ApplicationSettings()
 
 
-def test_application_settings_without_environment_has_no_paytm_credentials_and_staging_urls() -> (
-    None
-):
-    """No Paytm credential exists by default; the base URLs are the staging hosts (ADR 0002)."""
+def test_application_settings_without_environment_has_no_gateway_secrets_or_base_urls() -> None:
+    """No credential or secret exists by default; unset base URLs are filled by the factory."""
     settings = ApplicationSettings()
+    assert settings.mock_gateway_webhook_signing_secret is None
     assert settings.paytm_merchant_id is None
     assert settings.paytm_merchant_key is None
     assert settings.paytm_webhook_callback_url is None
-    assert settings.paytm_emi_subvention_base_url == STAGING_EMI_SUBVENTION_BASE_URL
-    assert settings.paytm_payment_link_base_url == STAGING_PAYMENT_LINK_BASE_URL
-    assert settings.paytm_transaction_status_base_url == STAGING_TRANSACTION_STATUS_BASE_URL
+    assert settings.paytm_emi_subvention_base_url is None
+    assert settings.paytm_payment_link_base_url is None
+    assert settings.paytm_transaction_status_base_url is None
+
+
+def test_application_settings_reads_and_hides_the_mock_webhook_signing_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Mock's webhook secret comes from the environment and never prints."""
+    monkeypatch.setenv("MOCK_GATEWAY_WEBHOOK_SIGNING_SECRET", SYNTHETIC_MOCK_SIGNING_KEY)
+    settings = ApplicationSettings()
+    assert settings.mock_gateway_webhook_signing_secret is not None
+    assert (
+        settings.mock_gateway_webhook_signing_secret.get_secret_value()
+        == SYNTHETIC_MOCK_SIGNING_KEY
+    )
+    assert SYNTHETIC_MOCK_SIGNING_KEY not in repr(settings)
 
 
 def test_application_settings_reads_paytm_values_and_hides_the_credentials(
@@ -152,9 +162,18 @@ def test_application_settings_reads_paytm_values_and_hides_the_credentials(
 
 
 @pytest.mark.parametrize(
-    "variable_name", ["PAYTM_MERCHANT_ID", "PAYTM_MERCHANT_KEY", "PAYTM_WEBHOOK_CALLBACK_URL"]
+    "variable_name",
+    [
+        "MOCK_GATEWAY_WEBHOOK_SIGNING_SECRET",
+        "PAYTM_MERCHANT_ID",
+        "PAYTM_MERCHANT_KEY",
+        "PAYTM_EMI_SUBVENTION_BASE_URL",
+        "PAYTM_PAYMENT_LINK_BASE_URL",
+        "PAYTM_TRANSACTION_STATUS_BASE_URL",
+        "PAYTM_WEBHOOK_CALLBACK_URL",
+    ],
 )
-def test_application_settings_reads_a_blank_paytm_value_as_not_set(
+def test_application_settings_reads_a_blank_gateway_value_as_not_set(
     monkeypatch: pytest.MonkeyPatch, variable_name: str
 ) -> None:
     """The empty placeholders copied from .env.example mean "not set", never an empty secret."""

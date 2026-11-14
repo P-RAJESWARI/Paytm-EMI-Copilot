@@ -6,12 +6,6 @@ from typing import Literal, Self
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from emi_copilot.adapters.payment_gateway.paytm_api_definitions import (
-    STAGING_EMI_SUBVENTION_BASE_URL,
-    STAGING_PAYMENT_LINK_BASE_URL,
-    STAGING_TRANSACTION_STATUS_BASE_URL,
-)
-
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 # Local-only default that matches docker-compose.yml. Never a real credential.
@@ -43,19 +37,30 @@ class ApplicationSettings(BaseSettings):
     payment_gateway_retry_max_delay_in_seconds: float = Field(default=2.0, gt=0)
     payment_gateway_circuit_breaker_failure_threshold: int = Field(default=5, ge=1)
     payment_gateway_circuit_breaker_open_duration_in_seconds: float = Field(default=30.0, gt=0)
+    # Mock adapter (the default). Signs and verifies simulated webhooks; at least 32 bytes. When
+    # unset, the gateway factory draws a random secret once per process.
+    mock_gateway_webhook_signing_secret: SecretStr | None = None
     # Paytm adapter (PAYMENT_GATEWAY_MODE=paytm). No credentials exist yet (CLAUDE.md D2); the
-    # factory refuses to start without them (ADR 0004). Base URLs default to the staging hosts;
-    # production hosts are not documented, so they must be set explicitly (ADR 0002).
+    # factory refuses to start without them (ADR 0004). An unset base URL gets the staging host
+    # from the gateway factory, which owns every Paytm detail (ADR 0011); production hosts are
+    # not documented, so they must be set explicitly (ADR 0002).
     paytm_merchant_id: SecretStr | None = None
     paytm_merchant_key: SecretStr | None = None
-    paytm_emi_subvention_base_url: str = STAGING_EMI_SUBVENTION_BASE_URL
-    paytm_payment_link_base_url: str = STAGING_PAYMENT_LINK_BASE_URL
-    paytm_transaction_status_base_url: str = STAGING_TRANSACTION_STATUS_BASE_URL
+    paytm_emi_subvention_base_url: str | None = None
+    paytm_payment_link_base_url: str | None = None
+    paytm_transaction_status_base_url: str | None = None
     paytm_webhook_callback_url: str | None = None
     log_level: LogLevel = "INFO"
 
     @field_validator(
-        "paytm_merchant_id", "paytm_merchant_key", "paytm_webhook_callback_url", mode="before"
+        "mock_gateway_webhook_signing_secret",
+        "paytm_merchant_id",
+        "paytm_merchant_key",
+        "paytm_emi_subvention_base_url",
+        "paytm_payment_link_base_url",
+        "paytm_transaction_status_base_url",
+        "paytm_webhook_callback_url",
+        mode="before",
     )
     @classmethod
     def treat_blank_value_as_unset(cls, value: object) -> object:

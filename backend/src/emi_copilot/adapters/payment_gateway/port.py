@@ -51,12 +51,19 @@ class PaymentGatewayPort(ABC):
         link (backend.md section 6, ADR 0005).
 
         Raises:
-            PaymentGatewayTimeoutError: no answer in time, so the outcome is unknown; the gateway
-                may have made the link. The attempt is stored as OUTCOME_UNKNOWN (ADR 0005).
-            PaymentGatewayUnavailableError: the circuit breaker is open, so nothing was sent, or
-                the gateway failed to serve the call.
-            PaymentGatewayRequestRejectedError: the gateway refused the request, with a reason.
-            InvalidPaymentGatewayValueError: the gateway's answer cannot form a valid link.
+            PaymentGatewayTimeoutError: the request may have reached the gateway, so the outcome
+                is unknown and the gateway may have made the link: a read or write timeout, a
+                connection dropped after sending, or any HTTP 5xx answer. The attempt is stored
+                as OUTCOME_UNKNOWN (ADR 0005, ADR 0010 section 3).
+            PaymentGatewayUnavailableError: the request provably never left: a connect error, a
+                connect or pool timeout, or an open circuit breaker. The attempt is stored as
+                LINK_CREATION_FAILED (ADR 0010 section 3).
+            PaymentGatewayRequestRejectedError: the gateway answered that it made no link, with
+                a stable reason; GATEWAY_INTERNAL_ERROR when it reports failing on its own side
+                (ADR 0011 decision 2). The attempt is stored as LINK_CREATION_FAILED.
+            InvalidPaymentGatewayValueError: the gateway answered with success but the reply
+                cannot be read as a valid link, so it may have made one. The attempt is stored
+                as OUTCOME_UNKNOWN (ADR 0011).
         """
 
     @abstractmethod
@@ -68,9 +75,12 @@ class PaymentGatewayPort(ABC):
 
         Raises:
             PaymentGatewayTimeoutError: the gateway did not answer in time.
-            PaymentGatewayUnavailableError: the circuit breaker is open or the gateway failed.
-            PaymentGatewayRequestRejectedError: the gateway refused the status request.
-            InvalidPaymentGatewayValueError: the gateway's answer cannot form a valid result.
+            PaymentGatewayUnavailableError: the circuit breaker is open, the gateway failed, or
+                it answered that it cannot report the status now; asking again later is safe.
+            PaymentGatewayRequestRejectedError: the gateway refused the status request, for
+                example because it rejects our merchant account or order id (ADR 0011).
+            InvalidPaymentGatewayValueError: the gateway's answer cannot form a valid result,
+                including a reply whose signature does not match.
         """
 
     @abstractmethod

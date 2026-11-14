@@ -135,9 +135,12 @@ class PaymentGatewayRejectionReason(StrEnum):
 
 
 class PaymentGatewayRequestRejectedError(PaymentGatewayError):
-    """Raised when the gateway answered and refused the request; retrying the same call won't help.
+    """Raised when the gateway answered that it did not do what was asked, giving a reason.
 
-    It carries a stable domain reason only, never the vendor's code, message or payload.
+    For most reasons the same request would be refused again. GATEWAY_INTERNAL_ERROR means the
+    gateway failed on its own side; the request may be fine, but a new create-link attempt needs
+    a new idempotency key (ADR 0011). It carries a stable domain reason only, never the vendor's
+    code, message or payload.
     """
 
     code: ClassVar[str] = "PAYMENT_GATEWAY_REQUEST_REJECTED"

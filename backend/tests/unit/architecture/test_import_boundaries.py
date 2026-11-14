@@ -1,7 +1,8 @@
-"""Import boundaries: domain/, the gateway port and core/ each depend only on what they may.
+"""Import boundaries: domain/, the gateway port, core/ and config/ depend only on what they may.
 
 domain/ and the port import only the standard library and domain/. core/ never reaches up into
-domain/, the other application layers or the web framework.
+domain/, the other application layers or the web framework. config/ is read by every layer, so
+it imports none of them.
 """
 
 import ast
@@ -13,6 +14,7 @@ import pytest
 from tests.unit.architecture.source_files import (
     PAYMENT_GATEWAY_PORT_FILE,
     describe_source_file,
+    list_config_modules,
     list_core_modules,
     list_domain_modules,
 )
@@ -26,6 +28,13 @@ PACKAGES_FORBIDDEN_IN_CORE = (
     "emi_copilot.repositories",
     "emi_copilot.api",
     "fastapi",
+)
+# config/ sits below every layer; the gateway factory, not settings, owns Paytm defaults.
+PACKAGES_FORBIDDEN_IN_CONFIG = (
+    "emi_copilot.adapters",
+    "emi_copilot.services",
+    "emi_copilot.repositories",
+    "emi_copilot.api",
 )
 
 
@@ -159,4 +168,46 @@ def test_find_imports_forbidden_in_core_reports_layers_framework_and_relative_im
         "emi_copilot.services",
         "fastapi",
         ".clock",
+    ]
+
+
+def find_imports_forbidden_in_config(source_file: Path) -> list[str]:
+    """Lists the imports of a file that reach an application layer config/ must not depend on."""
+    return [
+        module_name
+        for module_name in list_imported_module_names(source_file)
+        if module_name.startswith(".")
+        or any(is_inside_package(module_name, package) for package in PACKAGES_FORBIDDEN_IN_CONFIG)
+    ]
+
+
+def test_config_has_modules_to_check() -> None:
+    """Guards the config boundary test against silently checking nothing if the package moves."""
+    assert len(list_config_modules()) >= 1
+
+
+@pytest.mark.parametrize("config_module", list_config_modules(), ids=describe_source_file)
+def test_config_module_imports_no_adapter_service_repository_or_api(config_module: Path) -> None:
+    """Settings stay below every layer, so reading them can never pull in vendor code."""
+    assert find_imports_forbidden_in_config(config_module) == []
+
+
+def test_find_imports_forbidden_in_config_reports_each_application_layer(tmp_path: Path) -> None:
+    """The config rule rejects adapter, service, repository, api and relative imports."""
+    sample_module = tmp_path / "sample_module.py"
+    sample_module.write_text(
+        "from pydantic import SecretStr\n"
+        "from emi_copilot.adapters.payment_gateway.paytm_api_definitions import ADAPTER_NAME\n"
+        "import emi_copilot.services\n"
+        "from emi_copilot.repositories import database\n"
+        "from emi_copilot.api.controllers import health_controller\n"
+        "from .settings import ApplicationSettings\n",
+        encoding="utf-8",
+    )
+    assert find_imports_forbidden_in_config(sample_module) == [
+        "emi_copilot.adapters.payment_gateway.paytm_api_definitions",
+        "emi_copilot.services",
+        "emi_copilot.repositories",
+        "emi_copilot.api.controllers",
+        ".settings",
     ]
