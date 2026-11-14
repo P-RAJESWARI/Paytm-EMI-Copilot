@@ -158,10 +158,10 @@ def test_every_api_path_is_classified_as_merchant_or_layer_1_gateway(
     assert unclassified_paths == [], f"Classify these paths in the allow-list: {unclassified_paths}"
 
 
-def test_merchant_operations_include_pairing_profile_products_and_sales(
+def test_merchant_operations_include_pairing_profile_products_sales_and_reports(
     committed_document: dict[str, Any],
 ) -> None:
-    """The check really covers every merchant endpoint of steps 2.2 and 2.3."""
+    """The check really covers every merchant endpoint of steps 2.1 to 2.4."""
     assert {operation_id for operation_id, _ in list_merchant_operations(committed_document)} == {
         "POST /api/v1/merchants/pairing",
         "GET /api/v1/merchants/me",
@@ -176,6 +176,12 @@ def test_merchant_operations_include_pairing_profile_products_and_sales(
         "GET /api/v1/sales/{saleId}/payment-status",
         "POST /api/v1/payment-links",
         "GET /api/v1/payments/{orderId}/status",
+        "GET /api/v1/reports/funnel",
+        "GET /api/v1/reports/missed-sales",
+        "GET /api/v1/reports/suggested-actions",
+        "GET /api/v1/reports/money-due",
+        "GET /api/v1/reports/weekly-message",
+        "POST /api/v1/reports/weekly-message/send",
     }
 
 

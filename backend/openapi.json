@@ -3285,10 +3285,1342 @@
           }
         }
       }
+    },
+    "/api/v1/reports/funnel": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Read where customers drop off",
+        "description": "M5 funnel: the sales started in the period (a cohort), counted by every stage each reached: STARTED, BUDGET_TOLD, PLANS_VIEWED, AGREED, PAID. biggestDrop is the largest fall between adjacent stages (afterStage is the earlier one; ties go to the earliest), null when no stage falls. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_funnel_report_api_v1_reports_funnel_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReportingRange",
+              "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+            },
+            "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The funnel.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FunnelReportResponse"
+                },
+                "example": {
+                  "range": "THIS_WEEK",
+                  "periodStartDate": "2026-11-09",
+                  "periodEndDate": "2026-11-15",
+                  "stages": [
+                    {
+                      "stage": "STARTED",
+                      "customerCount": 120,
+                      "isSuppressed": false
+                    },
+                    {
+                      "stage": "BUDGET_TOLD",
+                      "customerCount": 96,
+                      "isSuppressed": false
+                    },
+                    {
+                      "stage": "PLANS_VIEWED",
+                      "customerCount": 88,
+                      "isSuppressed": false
+                    },
+                    {
+                      "stage": "AGREED",
+                      "customerCount": 51,
+                      "isSuppressed": false
+                    },
+                    {
+                      "stage": "PAID",
+                      "customerCount": 44,
+                      "isSuppressed": false
+                    }
+                  ],
+                  "biggestDrop": {
+                    "afterStage": "PLANS_VIEWED",
+                    "customerCount": 37,
+                    "isSuppressed": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/missed-sales": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Read the missed sales and monthly budget ranges",
+        "description": "M5 missed sales: sales started in the period that told a monthly amount below the cheapest no-extra-cost plan of their product and never agreed. budgetCeilingInPaise is the smallest range boundary (₹2,500, ₹3,000, ₹3,500, ₹4,000) at or above every missed amount, null when none was missed or one lies above ₹4,000. productInsight is the product with the most missed sales, with gateway-quoted figures. budgetBuckets counts every told amount per range (lower bound included); fewer than 5 tellers hide them all (areBudgetBucketsHidden). The gateway is asked for each product's plans. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_missed_sales_report_api_v1_reports_missed_sales_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReportingRange",
+              "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+            },
+            "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The missed-sales card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissedSalesReportResponse"
+                },
+                "example": {
+                  "range": "THIS_WEEK",
+                  "periodStartDate": "2026-11-09",
+                  "periodEndDate": "2026-11-15",
+                  "missedCustomerCount": 12,
+                  "isSuppressed": false,
+                  "budgetCeilingInPaise": 300000,
+                  "productInsight": {
+                    "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                    "productName": "Example phone, 128 GB",
+                    "lowestNoExtraCostMonthlyInPaise": 366667,
+                    "cheapestPlanUnderCeiling": {
+                      "monthlyInstallmentInPaise": 205000,
+                      "extraInTotalInPaise": 260000
+                    }
+                  },
+                  "budgetTotalCustomerCount": 96,
+                  "areBudgetBucketsHidden": false,
+                  "budgetBuckets": [
+                    {
+                      "lowerBoundInPaise": 0,
+                      "upperBoundInPaise": 250000,
+                      "customerCount": 5,
+                      "isSuppressed": false,
+                      "isUnderCeiling": true,
+                      "plans": [
+                        {
+                          "planKind": "STANDARD",
+                          "lenderLabel": "Demo cardless lender (Mock)",
+                          "monthlyInstallmentInPaise": 205000
+                        }
+                      ]
+                    },
+                    {
+                      "lowerBoundInPaise": 250000,
+                      "upperBoundInPaise": 300000,
+                      "customerCount": 7,
+                      "isSuppressed": false,
+                      "isUnderCeiling": true,
+                      "plans": []
+                    },
+                    {
+                      "lowerBoundInPaise": 300000,
+                      "upperBoundInPaise": 350000,
+                      "customerCount": 14,
+                      "isSuppressed": false,
+                      "isUnderCeiling": false,
+                      "plans": []
+                    },
+                    {
+                      "lowerBoundInPaise": 350000,
+                      "upperBoundInPaise": 400000,
+                      "customerCount": 21,
+                      "isSuppressed": false,
+                      "isUnderCeiling": false,
+                      "plans": [
+                        {
+                          "planKind": "NO_COST",
+                          "lenderLabel": "Brand",
+                          "monthlyInstallmentInPaise": 366667
+                        },
+                        {
+                          "planKind": "STANDARD",
+                          "lenderLabel": "Your card's bank",
+                          "monthlyInstallmentInPaise": 385000
+                        }
+                      ]
+                    },
+                    {
+                      "lowerBoundInPaise": 400000,
+                      "customerCount": 49,
+                      "isSuppressed": false,
+                      "isUnderCeiling": false,
+                      "plans": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/suggested-actions": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Read what the shop can do to sell more",
+        "description": "Deterministic suggestions as stable codes with paise parameters, never prose: ASK_BRAND_FOR_LONGER_NO_COST_PLAN (9 and 12-month no-cost installments on the insight product's price) and KEEP_CHEAPER_MODEL_READY (a cheaper model whose no-extra-cost monthly fits under the ceiling). Empty when nothing was missed. A count from 1 to 4 is sent as customerCount null with isSuppressed true; 0 and 5 or more are shown. Periods are in IST; THIS_WEEK is Monday to Sunday. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_suggested_actions_api_v1_reports_suggested_actions_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "range",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReportingRange",
+              "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+            },
+            "description": "TODAY, THIS_WEEK (Monday to Sunday) or THIS_MONTH, in IST."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The actions, in a stable order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestedActionsResponse"
+                },
+                "example": {
+                  "actions": [
+                    {
+                      "actionCode": "ASK_BRAND_FOR_LONGER_NO_COST_PLAN",
+                      "parameters": {
+                        "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                        "productName": "Example phone, 128 GB",
+                        "currentNoCostTenureInMonths": 6,
+                        "currentNoCostMonthlyInPaise": 366667,
+                        "suggestedTenures": [
+                          {
+                            "tenureInMonths": 9,
+                            "monthlyInstallmentInPaise": 244444
+                          },
+                          {
+                            "tenureInMonths": 12,
+                            "monthlyInstallmentInPaise": 183333
+                          }
+                        ],
+                        "missedCustomerCount": 12,
+                        "isMissedCustomerCountSuppressed": false,
+                        "budgetCeilingInPaise": 300000
+                      }
+                    },
+                    {
+                      "actionCode": "KEEP_CHEAPER_MODEL_READY",
+                      "parameters": {
+                        "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+                        "productName": "Example phone, 64 GB",
+                        "listPriceInPaise": 1800000,
+                        "monthlyInstallmentInPaise": 300000,
+                        "tenureInMonths": 6
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/money-due": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Read the money due from brands",
+        "description": "M7: what brands are expected to pay the shop for no-cost EMI sales, in batches with estimated dates. Synthetic data from the labelled MockSettlementAdapter (rule 10); not filtered by any range (plan Q13). Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_money_due_api_v1_reports_money_due_get",
+        "responses": {
+          "200": {
+            "description": "The batches, their total and the next expected date.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyDueResponse"
+                },
+                "example": {
+                  "totalDueInPaise": 18400000,
+                  "nextExpectedDate": "2027-01-13",
+                  "batches": [
+                    {
+                      "batchNumber": 1,
+                      "saleCount": 18,
+                      "amountInPaise": 7200000,
+                      "expectedDate": "2027-01-13",
+                      "status": "CLAIM_FILED"
+                    },
+                    {
+                      "batchNumber": 2,
+                      "saleCount": 16,
+                      "amountInPaise": 6400000,
+                      "expectedDate": "2027-01-28",
+                      "status": "WAITING_FOR_BRAND"
+                    },
+                    {
+                      "batchNumber": 3,
+                      "saleCount": 10,
+                      "amountInPaise": 4800000,
+                      "expectedDate": "2027-02-12",
+                      "status": "NOT_YET_DUE"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reports/weekly-message": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Read the shop's weekly message",
+        "description": "The week's message (the current IST week when periodStartDate is left out), with whether it was sent. The text is written by the backend from the week's report numbers (template, plan Q14) in English and draft Tamil; a sentence whose count is suppressed (1 to 4) is left out. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_weekly_message_api_v1_reports_weekly_message_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "periodStartDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The week's Monday (IST), as YYYY-MM-DD; a later week is refused.",
+              "title": "Periodstartdate"
+            },
+            "description": "The week's Monday (IST), as YYYY-MM-DD; a later week is refused."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The weekly message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyMessageResponse"
+                },
+                "example": {
+                  "periodStartDate": "2026-11-09",
+                  "periodEndDate": "2026-11-15",
+                  "source": "TEMPLATE",
+                  "messages": {
+                    "en": {
+                      "title": "Your EMI sales, 9 to 15 November",
+                      "paragraphs": [
+                        "44 of 120 customers bought on EMI. The biggest drop was after seeing the plans.",
+                        "12 customers wanted under ₹3,000 a month with nothing extra, and no plan fit. ₹1,84,000 is due from brands, first payment around 13 Jan.",
+                        "One thing to do: ask the brand for a 9 or 12-month no-cost plan on Example phone, 128 GB. That would be ₹2,444 or ₹1,833 a month."
+                      ]
+                    },
+                    "ta": {
+                      "title": "உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்",
+                      "paragraphs": [
+                        "120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்."
+                      ]
+                    }
+                  },
+                  "isSent": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. periodStartDate is not a Monday, or names a week that has not started yet.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "INVALID_REPORTING_PERIOD": {
+                    "summary": "Invalid reporting period",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-reporting-period",
+                      "title": "Invalid reporting period",
+                      "status": 422,
+                      "detail": "A reporting week starts on a Monday.",
+                      "code": "INVALID_REPORTING_PERIOD",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/weekly-message/send": {
+      "post": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Mark the shop's weekly message sent",
+        "description": "Marks the week's message sent once and hands it to the labelled MockWeeklyMessageDeliveryAdapter, which sends nothing (plan Q14, rule 10). Idempotent: a repeat answers 200 with the first sentAt and delivers nothing more. The text is written by the backend from the week's report numbers (template, plan Q14) in English and draft Tamil; a sentence whose count is suppressed (1 to 4) is left out. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "send_weekly_message_api_v1_reports_weekly_message_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendWeeklyMessageRequest"
+              },
+              "examples": {
+                "design-week": {
+                  "summary": "The week of 9 November 2026",
+                  "value": {
+                    "periodStartDate": "2026-11-09"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The weekly message, now marked sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyMessageResponse"
+                },
+                "example": {
+                  "periodStartDate": "2026-11-09",
+                  "periodEndDate": "2026-11-15",
+                  "source": "TEMPLATE",
+                  "messages": {
+                    "en": {
+                      "title": "Your EMI sales, 9 to 15 November",
+                      "paragraphs": [
+                        "44 of 120 customers bought on EMI. The biggest drop was after seeing the plans.",
+                        "12 customers wanted under ₹3,000 a month with nothing extra, and no plan fit. ₹1,84,000 is due from brands, first payment around 13 Jan.",
+                        "One thing to do: ask the brand for a 9 or 12-month no-cost plan on Example phone, 128 GB. That would be ₹2,444 or ₹1,833 a month."
+                      ]
+                    },
+                    "ta": {
+                      "title": "உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்",
+                      "paragraphs": [
+                        "120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்."
+                      ]
+                    }
+                  },
+                  "isSent": true,
+                  "sentAt": "2026-11-15T09:30:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. periodStartDate is not a Monday, or names a week that has not started yet.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "INVALID_REPORTING_PERIOD": {
+                    "summary": "Invalid reporting period",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-reporting-period",
+                      "title": "Invalid reporting period",
+                      "status": 422,
+                      "detail": "A reporting week starts on a Monday.",
+                      "code": "INVALID_REPORTING_PERIOD",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "BrandSettlementBatchResponse": {
+        "properties": {
+          "batchNumber": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Batchnumber"
+          },
+          "saleCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Salecount"
+          },
+          "amountInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amountinpaise"
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Expecteddate"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BrandSettlementStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batchNumber",
+          "saleCount",
+          "amountInPaise",
+          "expectedDate",
+          "status"
+        ],
+        "title": "BrandSettlementBatchResponse",
+        "description": "One batch of no-cost EMI sales a brand is expected to pay for, with an estimated date."
+      },
+      "BrandSettlementStatus": {
+        "type": "string",
+        "enum": [
+          "CLAIM_FILED",
+          "WAITING_FOR_BRAND",
+          "NOT_YET_DUE"
+        ],
+        "title": "BrandSettlementStatus",
+        "description": "Where a batch's payment from the brand stands (M7's status chips)."
+      },
+      "BucketPlanResponse": {
+        "properties": {
+          "planKind": {
+            "$ref": "#/components/schemas/EmiType"
+          },
+          "lenderLabel": {
+            "type": "string",
+            "title": "Lenderlabel"
+          },
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planKind",
+          "lenderLabel",
+          "monthlyInstallmentInPaise"
+        ],
+        "title": "BucketPlanResponse",
+        "description": "One quoted plan of the insight product whose monthly figure falls in the range."
+      },
+      "BudgetBucketResponse": {
+        "properties": {
+          "lowerBoundInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Lowerboundinpaise"
+          },
+          "upperBoundInPaise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9007199254740991.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upperboundinpaise"
+          },
+          "customerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "isSuppressed": {
+            "type": "boolean",
+            "title": "Issuppressed"
+          },
+          "isUnderCeiling": {
+            "type": "boolean",
+            "title": "Isunderceiling"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/BucketPlanResponse"
+            },
+            "type": "array",
+            "title": "Plans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lowerBoundInPaise",
+          "upperBoundInPaise",
+          "customerCount",
+          "isSuppressed",
+          "isUnderCeiling",
+          "plans"
+        ],
+        "title": "BudgetBucketResponse",
+        "description": "How many customers told a monthly amount in [lowerBound, upperBound); null upper is open."
+      },
       "CatalogueProductResponse": {
         "properties": {
           "productId": {
@@ -3341,6 +4673,87 @@
         ],
         "title": "CatalogueProductResponse",
         "description": "One product at its list price with the counts behind \"3 EMI plans, 1 with no extra cost\"."
+      },
+      "CheaperModelActionResponse": {
+        "properties": {
+          "actionCode": {
+            "type": "string",
+            "const": "KEEP_CHEAPER_MODEL_READY",
+            "title": "Actioncode"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/CheaperModelParametersResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actionCode",
+          "parameters"
+        ],
+        "title": "CheaperModelActionResponse",
+        "description": "KEEP_CHEAPER_MODEL_READY with its parameters."
+      },
+      "CheaperModelParametersResponse": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "title": "Productid"
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname"
+          },
+          "listPriceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Listpriceinpaise"
+          },
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise"
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths"
+          }
+        },
+        "type": "object",
+        "required": [
+          "productId",
+          "productName",
+          "listPriceInPaise",
+          "monthlyInstallmentInPaise",
+          "tenureInMonths"
+        ],
+        "title": "CheaperModelParametersResponse",
+        "description": "Figures for \"keep the cheaper model ready\": its price and no-extra-cost plan."
+      },
+      "CheapestPlanUnderCeilingResponse": {
+        "properties": {
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise"
+          },
+          "extraInTotalInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Extraintotalinpaise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "monthlyInstallmentInPaise",
+          "extraInTotalInPaise"
+        ],
+        "title": "CheapestPlanUnderCeilingResponse",
+        "description": "The insight product's plan at or under the ceiling that adds the least extra."
       },
       "ChosenPlanResponse": {
         "properties": {
@@ -3732,6 +5145,126 @@
         "title": "FieldErrorResponse",
         "description": "One invalid request field, named as on the wire, with an English message."
       },
+      "FunnelDropResponse": {
+        "properties": {
+          "afterStage": {
+            "$ref": "#/components/schemas/FunnelStage"
+          },
+          "customerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "isSuppressed": {
+            "type": "boolean",
+            "title": "Issuppressed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "afterStage",
+          "customerCount",
+          "isSuppressed"
+        ],
+        "title": "FunnelDropResponse",
+        "description": "The largest fall between adjacent stages; afterStage is the earlier stage."
+      },
+      "FunnelReportResponse": {
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/ReportingRange"
+          },
+          "periodStartDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodstartdate"
+          },
+          "periodEndDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodenddate"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/FunnelStageCountResponse"
+            },
+            "type": "array",
+            "title": "Stages"
+          },
+          "biggestDrop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FunnelDropResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "range",
+          "periodStartDate",
+          "periodEndDate",
+          "stages",
+          "biggestDrop"
+        ],
+        "title": "FunnelReportResponse",
+        "description": "M5 \"Where customers drop off\": the cohort of sales started in the period."
+      },
+      "FunnelStage": {
+        "type": "string",
+        "enum": [
+          "STARTED",
+          "BUDGET_TOLD",
+          "PLANS_VIEWED",
+          "AGREED",
+          "PAID"
+        ],
+        "title": "FunnelStage",
+        "description": "A step a sale reached; stored by value, so a rename needs a migration.\n\nThe merchant sees only counts per stage, never which sale or customer reached which step\n(rule 6). In Layer 2 live code records STARTED, AGREED and PAID; BUDGET_TOLD and PLANS_VIEWED\ncome from the Layer 3 customer flow and from the step 2.4 demo seed."
+      },
+      "FunnelStageCountResponse": {
+        "properties": {
+          "stage": {
+            "$ref": "#/components/schemas/FunnelStage"
+          },
+          "customerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "isSuppressed": {
+            "type": "boolean",
+            "title": "Issuppressed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage",
+          "customerCount",
+          "isSuppressed"
+        ],
+        "title": "FunnelStageCountResponse",
+        "description": "How many of the period's sales reached one stage."
+      },
       "HandoffPaymentStatus": {
         "type": "string",
         "enum": [
@@ -3790,6 +5323,98 @@
         "title": "LatestPaymentLinkResponse",
         "description": "The sale's newest payment link and where its payment stands."
       },
+      "LongerNoCostPlanActionResponse": {
+        "properties": {
+          "actionCode": {
+            "type": "string",
+            "const": "ASK_BRAND_FOR_LONGER_NO_COST_PLAN",
+            "title": "Actioncode"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/LongerNoCostPlanParametersResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actionCode",
+          "parameters"
+        ],
+        "title": "LongerNoCostPlanActionResponse",
+        "description": "ASK_BRAND_FOR_LONGER_NO_COST_PLAN with its parameters."
+      },
+      "LongerNoCostPlanParametersResponse": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "title": "Productid"
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname"
+          },
+          "currentNoCostTenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Currentnocosttenureinmonths"
+          },
+          "currentNoCostMonthlyInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Currentnocostmonthlyinpaise"
+          },
+          "suggestedTenures": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedNoCostTenureResponse"
+            },
+            "type": "array",
+            "title": "Suggestedtenures"
+          },
+          "missedCustomerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missedcustomercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "isMissedCustomerCountSuppressed": {
+            "type": "boolean",
+            "title": "Ismissedcustomercountsuppressed"
+          },
+          "budgetCeilingInPaise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9007199254740991.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetceilinginpaise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "productId",
+          "productName",
+          "currentNoCostTenureInMonths",
+          "currentNoCostMonthlyInPaise",
+          "suggestedTenures",
+          "missedCustomerCount",
+          "isMissedCustomerCountSuppressed",
+          "budgetCeilingInPaise"
+        ],
+        "title": "LongerNoCostPlanParametersResponse",
+        "description": "Figures for \"ask the brand for a longer no-cost plan\" on the insight product."
+      },
       "MerchantProfileResponse": {
         "properties": {
           "merchantId": {
@@ -3830,6 +5455,139 @@
         ],
         "title": "MerchantProfileResponse",
         "description": "The signed-in shop and device, as the merchant app shows them in its header."
+      },
+      "MissedSalesReportResponse": {
+        "properties": {
+          "range": {
+            "$ref": "#/components/schemas/ReportingRange"
+          },
+          "periodStartDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodstartdate"
+          },
+          "periodEndDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodenddate"
+          },
+          "missedCustomerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missedcustomercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "isSuppressed": {
+            "type": "boolean",
+            "title": "Issuppressed"
+          },
+          "budgetCeilingInPaise": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9007199254740991.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetceilinginpaise"
+          },
+          "productInsight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductInsightResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "budgetTotalCustomerCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgettotalcustomercount",
+            "description": "Null when suppressed (1 to 4)."
+          },
+          "areBudgetBucketsHidden": {
+            "type": "boolean",
+            "title": "Arebudgetbucketshidden"
+          },
+          "budgetBuckets": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetBucketResponse"
+            },
+            "type": "array",
+            "title": "Budgetbuckets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "range",
+          "periodStartDate",
+          "periodEndDate",
+          "missedCustomerCount",
+          "isSuppressed",
+          "budgetCeilingInPaise",
+          "productInsight",
+          "budgetTotalCustomerCount",
+          "areBudgetBucketsHidden",
+          "budgetBuckets"
+        ],
+        "title": "MissedSalesReportResponse",
+        "description": "M5 \"Missed sales\": who wanted less than every no-extra-cost plan, and the buckets."
+      },
+      "MoneyDueResponse": {
+        "properties": {
+          "totalDueInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Totaldueinpaise"
+          },
+          "nextExpectedDate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextexpecteddate"
+          },
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BrandSettlementBatchResponse"
+            },
+            "type": "array",
+            "title": "Batches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "totalDueInPaise",
+          "nextExpectedDate",
+          "batches"
+        ],
+        "title": "MoneyDueResponse",
+        "description": "What brands still owe the shop, in batch order; not filtered by any range (plan Q13)."
       },
       "OfferSnapshotResponse": {
         "properties": {
@@ -4123,6 +5881,43 @@
         "title": "ProblemDetailsResponse",
         "description": "An error: a stable code for the UI to translate and an English detail for developers.\n\nIt never holds a stack trace, SQL, a vendor payload or personal data."
       },
+      "ProductInsightResponse": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "title": "Productid"
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname"
+          },
+          "lowestNoExtraCostMonthlyInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Lowestnoextracostmonthlyinpaise"
+          },
+          "cheapestPlanUnderCeiling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheapestPlanUnderCeilingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "productId",
+          "productName",
+          "lowestNoExtraCostMonthlyInPaise",
+          "cheapestPlanUnderCeiling"
+        ],
+        "title": "ProductInsightResponse",
+        "description": "The product most missed sales were for, with its quoted figures."
+      },
       "ProductsResponse": {
         "properties": {
           "products": {
@@ -4153,6 +5948,16 @@
         ],
         "title": "PublicPaymentStatus",
         "description": "Where a payment stands, as the UIs see it; decoupled from the stored attempt status.\n\nThe stored statuses may be renamed or split later without breaking the wire contract."
+      },
+      "ReportingRange": {
+        "type": "string",
+        "enum": [
+          "TODAY",
+          "THIS_WEEK",
+          "THIS_MONTH"
+        ],
+        "title": "ReportingRange",
+        "description": "Which span of the shop's calendar a report covers (M5's Today, This week, This month)."
       },
       "SaleDetailResponse": {
         "properties": {
@@ -4476,6 +6281,26 @@
         "title": "SalesView",
         "description": "Which list of sales to read; the counter view is the only one in Layer 2."
       },
+      "SendWeeklyMessageRequest": {
+        "properties": {
+          "periodStartDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodstartdate",
+            "description": "The week's Monday (IST), as YYYY-MM-DD; a later week is refused.",
+            "examples": [
+              "2026-11-09"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "periodStartDate"
+        ],
+        "title": "SendWeeklyMessageRequest",
+        "description": "Which week's message to mark sent."
+      },
       "StartSaleRequest": {
         "properties": {
           "productId": {
@@ -4497,6 +6322,147 @@
         ],
         "title": "StartSaleRequest",
         "description": "The product the customer wants; the price is always the catalogue list price."
+      },
+      "SuggestedActionsResponse": {
+        "properties": {
+          "actions": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/LongerNoCostPlanActionResponse"
+                },
+                {
+                  "$ref": "#/components/schemas/CheaperModelActionResponse"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "actionCode",
+                "mapping": {
+                  "ASK_BRAND_FOR_LONGER_NO_COST_PLAN": "#/components/schemas/LongerNoCostPlanActionResponse",
+                  "KEEP_CHEAPER_MODEL_READY": "#/components/schemas/CheaperModelActionResponse"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actions"
+        ],
+        "title": "SuggestedActionsResponse",
+        "description": "M5 \"What you can do to sell more\", in a stable order; empty when nothing applies."
+      },
+      "SuggestedNoCostTenureResponse": {
+        "properties": {
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths"
+          },
+          "monthlyInstallmentInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Monthlyinstallmentinpaise"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenureInMonths",
+          "monthlyInstallmentInPaise"
+        ],
+        "title": "SuggestedNoCostTenureResponse",
+        "description": "A longer no-cost tenure and its regular monthly installment on the list price."
+      },
+      "WeeklyMessageLanguagesResponse": {
+        "properties": {
+          "en": {
+            "$ref": "#/components/schemas/WeeklyMessageTextResponse"
+          },
+          "ta": {
+            "$ref": "#/components/schemas/WeeklyMessageTextResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "en",
+          "ta"
+        ],
+        "title": "WeeklyMessageLanguagesResponse",
+        "description": "The same message in English (en) and Tamil (ta, draft wording)."
+      },
+      "WeeklyMessageResponse": {
+        "properties": {
+          "periodStartDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodstartdate"
+          },
+          "periodEndDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Periodenddate"
+          },
+          "source": {
+            "type": "string",
+            "const": "TEMPLATE",
+            "title": "Source"
+          },
+          "messages": {
+            "$ref": "#/components/schemas/WeeklyMessageLanguagesResponse"
+          },
+          "isSent": {
+            "type": "boolean",
+            "title": "Issent"
+          },
+          "sentAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodStartDate",
+          "periodEndDate",
+          "source",
+          "messages",
+          "isSent",
+          "sentAt"
+        ],
+        "title": "WeeklyMessageResponse",
+        "description": "A week's message; source TEMPLATE means deterministic text (Layer 4 may add AI text)."
+      },
+      "WeeklyMessageTextResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paragraphs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "paragraphs"
+        ],
+        "title": "WeeklyMessageTextResponse",
+        "description": "One language's message: a title and its paragraphs (a left-out sentence is just absent)."
       }
     },
     "securitySchemes": {

@@ -29,6 +29,8 @@ ALLOWED_APPLICATION_MODULES_IN_CONTROLLERS = (
     "emi_copilot.domain.errors",
     "emi_copilot.api.dependencies",
     "emi_copilot.api.merchant_authentication",
+    "emi_copilot.api.merchant_dependencies",
+    "emi_copilot.api.report_dependencies",
     "emi_copilot.api.openapi_documentation",
     "emi_copilot.api.rate_limiting",
     "emi_copilot.api.sale_dependencies",

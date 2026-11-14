@@ -14,9 +14,10 @@ MERCHANT_PATH_PREFIXES = (
     "/api/v1/sales",
     "/api/v1/payment-links",
     "/api/v1/payments/",
+    "/api/v1/reports",
 )
-"""Every merchant endpoint, the Layer 1 payment ones included since plan Q16; step 2.4 adds
-/api/v1/reports."""
+"""Every merchant endpoint, the Layer 1 payment ones included since plan Q16, and the step 2.4
+reports."""
 
 LAYER_1_GATEWAY_PATH_PREFIXES = ("/api/v1/offers", "/api/v1/webhooks/")
 """The unauthenticated Layer 1 gateway endpoints (ADR 0009); they carry no customer data."""
@@ -89,6 +90,84 @@ ALLOWED_PROPERTIES_BY_SCHEMA: Mapping[str, frozenset[str]] = MappingProxyType(
         "EdcEmiProgramme": frozenset(),
         "HandoffPaymentStatus": frozenset(),
         "PublicPaymentStatus": frozenset(),
+        "FunnelReportResponse": frozenset(
+            {"range", "periodStartDate", "periodEndDate", "stages", "biggestDrop"}
+        ),
+        "FunnelStageCountResponse": frozenset({"stage", "customerCount", "isSuppressed"}),
+        "FunnelDropResponse": frozenset({"afterStage", "customerCount", "isSuppressed"}),
+        "MissedSalesReportResponse": frozenset(
+            {
+                "range",
+                "periodStartDate",
+                "periodEndDate",
+                "missedCustomerCount",
+                "isSuppressed",
+                "budgetCeilingInPaise",
+                "productInsight",
+                "budgetTotalCustomerCount",
+                "areBudgetBucketsHidden",
+                "budgetBuckets",
+            }
+        ),
+        "ProductInsightResponse": frozenset(
+            {
+                "productId",
+                "productName",
+                "lowestNoExtraCostMonthlyInPaise",
+                "cheapestPlanUnderCeiling",
+            }
+        ),
+        "CheapestPlanUnderCeilingResponse": frozenset(
+            {"monthlyInstallmentInPaise", "extraInTotalInPaise"}
+        ),
+        "BudgetBucketResponse": frozenset(
+            {
+                "lowerBoundInPaise",
+                "upperBoundInPaise",
+                "customerCount",
+                "isSuppressed",
+                "isUnderCeiling",
+                "plans",
+            }
+        ),
+        "BucketPlanResponse": frozenset({"planKind", "lenderLabel", "monthlyInstallmentInPaise"}),
+        "SuggestedActionsResponse": frozenset({"actions"}),
+        "LongerNoCostPlanActionResponse": frozenset({"actionCode", "parameters"}),
+        "LongerNoCostPlanParametersResponse": frozenset(
+            {
+                "productId",
+                "productName",
+                "currentNoCostTenureInMonths",
+                "currentNoCostMonthlyInPaise",
+                "suggestedTenures",
+                "missedCustomerCount",
+                "isMissedCustomerCountSuppressed",
+                "budgetCeilingInPaise",
+            }
+        ),
+        "SuggestedNoCostTenureResponse": frozenset({"tenureInMonths", "monthlyInstallmentInPaise"}),
+        "CheaperModelActionResponse": frozenset({"actionCode", "parameters"}),
+        "CheaperModelParametersResponse": frozenset(
+            {
+                "productId",
+                "productName",
+                "listPriceInPaise",
+                "monthlyInstallmentInPaise",
+                "tenureInMonths",
+            }
+        ),
+        "MoneyDueResponse": frozenset({"totalDueInPaise", "nextExpectedDate", "batches"}),
+        "BrandSettlementBatchResponse": frozenset(
+            {"batchNumber", "saleCount", "amountInPaise", "expectedDate", "status"}
+        ),
+        "WeeklyMessageResponse": frozenset(
+            {"periodStartDate", "periodEndDate", "source", "messages", "isSent", "sentAt"}
+        ),
+        "WeeklyMessageLanguagesResponse": frozenset({"en", "ta"}),
+        "WeeklyMessageTextResponse": frozenset({"title", "paragraphs"}),
+        "ReportingRange": frozenset(),
+        "FunnelStage": frozenset(),
+        "BrandSettlementStatus": frozenset(),
         "ProblemDetailsResponse": frozenset(
             {"type", "title", "status", "detail", "code", "correlationId", "fieldErrors"}
         ),
@@ -97,6 +176,11 @@ ALLOWED_PROPERTIES_BY_SCHEMA: Mapping[str, frozenset[str]] = MappingProxyType(
 )
 """Every schema reachable from a merchant response, with exactly the property names it has."""
 
-SCHEMAS_ALLOWED_A_BUDGET_PROPERTY: frozenset[str] = frozenset()
-"""Schemas that may name a budget: only step 2.4's aggregate report budget-bucket schema, which
-counts customers per budget range and never shows one customer's budget. Empty until then."""
+SCHEMAS_ALLOWED_A_BUDGET_PROPERTY: frozenset[str] = frozenset(
+    {"MissedSalesReportResponse", "LongerNoCostPlanParametersResponse"}
+)
+"""Schemas that may name a budget, all aggregates of step 2.4's missed-sales report: the
+budget-range counts (budgetBuckets, budgetTotalCustomerCount, areBudgetBucketsHidden) and the
+range boundary over every missed amount (budgetCeilingInPaise, which the longer no-cost
+suggestion repeats). None shows one customer's budget; BudgetBucketResponse itself names no
+budget property."""

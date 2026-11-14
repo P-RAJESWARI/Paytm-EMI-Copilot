@@ -9,13 +9,15 @@ from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayConfigura
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
 from emi_copilot.api.dependencies import (
     ApplicationComponents,
-    provide_access_token_lifetime,
     provide_clock,
     provide_event_bus,
     provide_id_generator,
     provide_payment_gateway,
-    provide_pin_hasher,
     provide_unit_of_work_factory,
+)
+from emi_copilot.api.merchant_dependencies import (
+    provide_access_token_lifetime,
+    provide_pin_hasher,
 )
 from emi_copilot.api.rate_limiting import (
     provide_merchant_payment_rate_limiter,

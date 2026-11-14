@@ -4,8 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Request, Response
 
-from emi_copilot.api.dependencies import PairDeviceServiceDependency
 from emi_copilot.api.merchant_authentication import CurrentMerchant
+from emi_copilot.api.merchant_dependencies import PairDeviceServiceDependency
 from emi_copilot.api.openapi_documentation import (
     MALFORMED_REQUEST_PROBLEM,
     MERCHANT_AUTHENTICATION_PROBLEM,

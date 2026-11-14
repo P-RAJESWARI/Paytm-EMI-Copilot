@@ -4,8 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from emi_copilot.api.dependencies import ProductCatalogueServiceDependency
 from emi_copilot.api.merchant_authentication import CurrentMerchant
+from emi_copilot.api.merchant_dependencies import ProductCatalogueServiceDependency
 from emi_copilot.api.openapi_documentation import (
     GATEWAY_FAILURE_PROBLEMS,
     GATEWAY_TIMEOUT_PROBLEM,

@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from emi_copilot.api.dependencies import AuthenticateMerchantServiceDependency
+from emi_copilot.api.merchant_dependencies import AuthenticateMerchantServiceDependency
 from emi_copilot.domain.errors import MerchantAuthenticationRequiredError
 from emi_copilot.domain.merchants import MerchantPrincipal
 from emi_copilot.services.authenticate_merchant_service import AUTHENTICATION_REQUIRED_DETAIL
