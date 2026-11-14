@@ -29,8 +29,9 @@ class SalePaymentLinkIntent:
     Under the same lock, a sale whose latest attempt may still be paid takes no second link
     (PAYMENT_LINK_ALREADY_ACTIVE), so two keys can never leave two payable links. The one
     exception is the OUTCOME_UNKNOWN attempt the gateway has just reported NOT_FOUND
-    (LatestSaleAttemptCheck): it goes ahead only if that attempt is still the latest and still
-    OUTCOME_UNKNOWN under the lock, so a report or another key arriving meanwhile still refuses.
+    (LatestSaleAttemptCheck): it goes ahead only if that attempt is still the latest, still
+    OUTCOME_UNKNOWN and still without a link URL under the lock, so a report, another key or a
+    late create outcome filling in its link meanwhile still refuses.
     """
 
     def __init__(
@@ -86,13 +87,18 @@ class SalePaymentLinkIntent:
 def _refuse_while_the_latest_link_may_be_paid(
     unit_of_work: UnitOfWork, sale_id: str, attempt_proven_without_link_id: str | None
 ) -> None:
-    """Refuses a new link while the latest attempt is not failed, refused or proven linkless."""
+    """Refuses a new link while the latest attempt is not failed, refused or proven linkless.
+
+    Proven linkless means NOT_FOUND was reported for it and, under the lock, it is still
+    OUTCOME_UNKNOWN with no payment link URL stored.
+    """
     latest_attempt = unit_of_work.payment_attempts.find_latest_for_sale(sale_id)
     if latest_attempt is None or latest_attempt.status in STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK:
         return
     is_proven_without_link = (
         latest_attempt.id == attempt_proven_without_link_id
         and latest_attempt.status is PaymentAttemptStatus.OUTCOME_UNKNOWN
+        and latest_attempt.payment_link_url is None
     )
     if not is_proven_without_link:
         raise PaymentLinkAlreadyActiveError(

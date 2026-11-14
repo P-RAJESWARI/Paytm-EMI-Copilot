@@ -476,6 +476,26 @@ def test_create_payment_link_when_a_report_moves_the_proven_attempt_before_the_l
     assert kit.payment_gateway.create_link_calls == []
 
 
+def test_create_payment_link_when_a_late_create_outcome_fills_the_proven_attempt_is_refused(
+    kit: ServiceTestKit,
+) -> None:
+    """A link URL stored on the proven attempt before the lock means a link exists after all."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    unknown_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER
+    )
+    filled_in_attempt = replace(
+        unknown_attempt,
+        gateway_link_id="LATE-LINK-1",
+        payment_link_url="https://fake-gateway.invalid/pay/late-link",
+    )
+    kit.payment_gateway.before_discover_offers = lambda: kit.store_attempt(filled_in_attempt)
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="OUTCOME_UNKNOWN"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.payment_gateway.create_link_calls == []
+    assert kit.database.payment_attempts_by_id[unknown_attempt.id] == filled_in_attempt
+
+
 @pytest.mark.parametrize(
     ("attempt_status", "sale_status"),
     [
