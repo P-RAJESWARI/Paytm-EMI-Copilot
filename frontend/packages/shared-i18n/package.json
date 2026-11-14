@@ -1,0 +1,21 @@
+{
+  "name": "@emi-copilot/shared-i18n",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "i18next": "26.5.12",
+    "react": "18.3.1",
+    "react-i18next": "17.1.9"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "react-dom": "18.3.1"
+  }
+}
