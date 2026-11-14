@@ -54,36 +54,40 @@ def read_demo_merchant_pin(environment: Mapping[str, str]) -> str:
     return pin
 
 
+DEMO_PRODUCT_SEEDS = (
+    DemoProductSeed(
+        name="Example phone, 128 GB",
+        list_price=Money.from_rupees("22000"),
+        gateway_product_id=MOCK_PHONE_128_GB_PRODUCT_ID,
+        gateway_brand_id=MOCK_DEMO_BRAND_ID,
+        gateway_category_id="mock-category-phones",
+    ),
+    DemoProductSeed(
+        name="Example phone, 64 GB",
+        list_price=Money.from_rupees("18000"),
+        gateway_product_id=MOCK_PHONE_64_GB_PRODUCT_ID,
+        gateway_brand_id=MOCK_DEMO_BRAND_ID,
+        gateway_category_id="mock-category-phones",
+    ),
+    DemoProductSeed(
+        name="Example earbuds",
+        list_price=Money.from_rupees("2499"),
+        gateway_product_id=MOCK_EARBUDS_PRODUCT_ID,
+        gateway_brand_id=MOCK_DEMO_BRAND_ID,
+        gateway_category_id="mock-category-audio",
+    ),
+)
+"""The three M2 products at their DESIGN_SPEC list prices, on the Mock's demo product ids."""
+
+
 def build_demo_merchant_seed(pin: str) -> DemoMerchantSeed:
-    """Gives Ravi Electronics (RAVI-0193) with the three M2 products at their list prices."""
+    """Gives Ravi Electronics (RAVI-0193) on "Counter tablet 1" with the three M2 products."""
     return DemoMerchantSeed(
         shop_code="RAVI-0193",
         display_name="Ravi Electronics",
         counter_device_label="Counter tablet 1",
         pin=pin,
-        products=(
-            DemoProductSeed(
-                name="Example phone, 128 GB",
-                list_price=Money.from_rupees("22000"),
-                gateway_product_id=MOCK_PHONE_128_GB_PRODUCT_ID,
-                gateway_brand_id=MOCK_DEMO_BRAND_ID,
-                gateway_category_id="mock-category-phones",
-            ),
-            DemoProductSeed(
-                name="Example phone, 64 GB",
-                list_price=Money.from_rupees("18000"),
-                gateway_product_id=MOCK_PHONE_64_GB_PRODUCT_ID,
-                gateway_brand_id=MOCK_DEMO_BRAND_ID,
-                gateway_category_id="mock-category-phones",
-            ),
-            DemoProductSeed(
-                name="Example earbuds",
-                list_price=Money.from_rupees("2499"),
-                gateway_product_id=MOCK_EARBUDS_PRODUCT_ID,
-                gateway_brand_id=MOCK_DEMO_BRAND_ID,
-                gateway_category_id="mock-category-audio",
-            ),
-        ),
+        products=DEMO_PRODUCT_SEEDS,
     )
 
 
