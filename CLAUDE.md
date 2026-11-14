@@ -129,13 +129,13 @@ The **main Claude Code session is the orchestrator**. Subagents cannot spawn oth
 | Layer | Scope | Branch | Status |
 |---|---|---|---|
 | 1 | Foundation + Payment gateway integration | `layer/1-payment-gateway` | Done; MR ready for owner review (see `docs/handoff/LAYER-1-HANDOFF.md`) |
-| 2 | Merchant UI + merchant backend slice | `layer/2-merchant-ui` | In progress |
+| 2 | Merchant UI + merchant backend slice | `layer/2-merchant-ui` | Done; MR ready for owner review (see `docs/handoff/LAYER-2-HANDOFF.md`) |
 | 3 | Customer UI + customer backend slice | `layer/3-customer-ui` | Not started |
 | 4 | Sarvam AI integration | `layer/4-sarvam-ai` | Not started |
 
 ## 11. Commands (created in Layer 1)
 
-`make setup`, `make dev`, `make check` (lint + types + tests), `make test`, `make migrate`, `make openapi` (exports the OpenAPI schema used by the frontend client).
+`make setup`, `make dev`, `make check` (lint + types + tests, backend and frontend), `make test`, `make migrate`, `make openapi` (exports the OpenAPI schema and regenerates the frontend client). Added in Layer 2: `make frontend-setup`, `make frontend-check`, `make openapi-check` (drift check), `make seed` (needs `DEMO_MERCHANT_PIN`), `make db-reset`, `make demo` (seeded API with the Mock customer simulator, one worker), `make e2e-setup`, `make e2e` (Playwright on its own database and ports).
 
 ## 12. Out of scope
 
