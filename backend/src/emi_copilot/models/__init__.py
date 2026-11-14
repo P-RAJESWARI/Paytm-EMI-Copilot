@@ -8,6 +8,7 @@ from emi_copilot.models.merchant import MerchantModel
 from emi_copilot.models.payment_attempt import PaymentAttemptModel
 from emi_copilot.models.product import ProductModel
 from emi_copilot.models.sale import SaleModel
+from emi_copilot.models.weekly_message import WeeklyMessageModel
 
 __all__ = [
     "AuditEventModel",
@@ -18,4 +19,5 @@ __all__ = [
     "PaymentAttemptModel",
     "ProductModel",
     "SaleModel",
+    "WeeklyMessageModel",
 ]

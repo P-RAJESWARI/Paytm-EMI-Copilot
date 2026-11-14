@@ -1,6 +1,7 @@
 """In-memory unit of work and repositories that commit or roll back like the SQLAlchemy ones."""
 
 from dataclasses import dataclass, field, replace
+from datetime import date, datetime
 from types import TracebackType
 from typing import Self
 
@@ -18,6 +19,10 @@ from tests.fakes.fake_merchant_repositories import (
     FakeMerchantRepository,
     FakeProductRepository,
 )
+from tests.fakes.fake_report_repositories import (
+    FakeReportQueryRepository,
+    FakeWeeklyMessageRepository,
+)
 from tests.fakes.fake_sale_repositories import FakeFunnelEventRepository, FakeSaleRepository
 
 
@@ -32,6 +37,7 @@ class InMemoryDatabase:
     products_by_id: dict[str, CatalogueProduct] = field(default_factory=dict)
     sales_by_id: dict[str, Sale] = field(default_factory=dict)
     funnel_events: list[FunnelEvent] = field(default_factory=list)
+    weekly_message_sent_at_by_week: dict[tuple[str, date], datetime] = field(default_factory=dict)
     commit_count: int = 0
     rollback_count: int = 0
 
@@ -139,6 +145,8 @@ class FakeUnitOfWork:
     products: FakeProductRepository
     sales: FakeSaleRepository
     funnel_events: FakeFunnelEventRepository
+    report_queries: FakeReportQueryRepository
+    weekly_messages: FakeWeeklyMessageRepository
 
     def __init__(self, database: InMemoryDatabase, clock: Clock) -> None:
         """Keeps the shared in-memory database and the clock for updated_at."""
@@ -151,6 +159,7 @@ class FakeUnitOfWork:
         self._working_products: dict[str, CatalogueProduct] = {}
         self._working_sales: dict[str, Sale] = {}
         self._working_funnel_events: list[FunnelEvent] = []
+        self._working_weekly_messages: dict[tuple[str, date], datetime] = {}
         self._after_commit_callbacks = AfterCommitCallbacks()
 
     def __enter__(self) -> Self:
@@ -162,6 +171,7 @@ class FakeUnitOfWork:
         self._working_products = dict(self._database.products_by_id)
         self._working_sales = dict(self._database.sales_by_id)
         self._working_funnel_events = list(self._database.funnel_events)
+        self._working_weekly_messages = dict(self._database.weekly_message_sent_at_by_week)
         self._after_commit_callbacks = AfterCommitCallbacks()
         self.payment_attempts = FakePaymentAttemptRepository(self._working_attempts, self._clock)
         self.audit_events = FakeAuditEventRepository(self._working_audit_events)
@@ -170,6 +180,10 @@ class FakeUnitOfWork:
         self.products = FakeProductRepository(self._working_products)
         self.sales = FakeSaleRepository(self._working_sales)
         self.funnel_events = FakeFunnelEventRepository(self._working_funnel_events)
+        self.report_queries = FakeReportQueryRepository(
+            self._working_sales, self._working_funnel_events
+        )
+        self.weekly_messages = FakeWeeklyMessageRepository(self._working_weekly_messages)
         return self
 
     def call_after_commit(self, callback: AfterCommitCallback) -> None:
@@ -191,6 +205,7 @@ class FakeUnitOfWork:
             self._database.products_by_id = self._working_products
             self._database.sales_by_id = self._working_sales
             self._database.funnel_events = self._working_funnel_events
+            self._database.weekly_message_sent_at_by_week = self._working_weekly_messages
             self._database.commit_count += 1
             self._after_commit_callbacks.run_all()
         else:

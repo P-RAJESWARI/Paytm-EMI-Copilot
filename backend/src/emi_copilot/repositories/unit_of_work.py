@@ -13,8 +13,10 @@ from emi_copilot.repositories.funnel_event_repository import FunnelEventReposito
 from emi_copilot.repositories.merchant_repository import MerchantRepository
 from emi_copilot.repositories.payment_attempt_repository import PaymentAttemptRepository
 from emi_copilot.repositories.product_repository import ProductRepository
+from emi_copilot.repositories.report_query_repository import ReportQueryRepository
 from emi_copilot.repositories.sale_repository import SaleRepository
 from emi_copilot.repositories.unit_of_work_protocol import AfterCommitCallback
+from emi_copilot.repositories.weekly_message_repository import WeeklyMessageRepository
 
 
 # Pattern: Unit of Work. A business write, its audit event and its funnel event commit together
@@ -34,6 +36,8 @@ class SqlAlchemyUnitOfWork:
     products: ProductRepository
     sales: SaleRepository
     funnel_events: FunnelEventRepository
+    report_queries: ReportQueryRepository
+    weekly_messages: WeeklyMessageRepository
     _session: Session
 
     def __init__(self, session_factory: sessionmaker[Session], clock: Clock) -> None:
@@ -55,6 +59,8 @@ class SqlAlchemyUnitOfWork:
         self.products = ProductRepository(session, self._clock)
         self.sales = SaleRepository(session, self._clock)
         self.funnel_events = FunnelEventRepository(session, self._clock)
+        self.report_queries = ReportQueryRepository(session)
+        self.weekly_messages = WeeklyMessageRepository(session, self._clock)
         return self
 
     def call_after_commit(self, callback: AfterCommitCallback) -> None:

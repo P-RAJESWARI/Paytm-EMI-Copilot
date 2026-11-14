@@ -4,15 +4,18 @@ SqlAlchemyUnitOfWork and its repositories satisfy these protocols structurally; 
 subscribers type against the protocols and never against SQLAlchemy.
 """
 
-from collections.abc import Callable
-from datetime import datetime
+from collections.abc import Callable, Mapping, Sequence
+from datetime import date, datetime
 from types import TracebackType
 from typing import Protocol, Self
 
 from emi_copilot.domain.catalogue import CatalogueProduct
-from emi_copilot.domain.funnel import FunnelEvent
+from emi_copilot.domain.funnel import FunnelEvent, FunnelStage
 from emi_copilot.domain.merchants import DevicePairing, Merchant
+from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
+from emi_copilot.domain.reports.missed_sales import MissedSalesTally
+from emi_copilot.domain.reports.weekly_message_record import WeeklyMessageSentRecord
 from emi_copilot.domain.sales import Sale, SaleStatus
 
 AfterCommitCallback = Callable[[], None]
@@ -164,6 +167,10 @@ class SaleStore(Protocol):
         """Gives the session codes on the merchant's open sales."""
         ...
 
+    def has_any_for_merchant(self, merchant_id: str) -> bool:
+        """Tells whether the merchant has any sale at all, in any status."""
+        ...
+
 
 class FunnelEventStore(Protocol):
     """Appends funnel events; there is deliberately no update or delete."""
@@ -174,6 +181,50 @@ class FunnelEventStore(Protocol):
 
     def list_for_sale(self, sale_id: str) -> tuple[FunnelEvent, ...]:
         """Returns the stages one sale reached, oldest first."""
+        ...
+
+
+class ReportQueryStore(Protocol):
+    """Aggregate report queries over one shop's sales started in [starts_at, ends_at)."""
+
+    def count_sales_reaching_each_stage(
+        self, merchant_id: str, starts_at: datetime, ends_at: datetime
+    ) -> Mapping[FunnelStage, int]:
+        """Counts the period's sales per stage reached; a stage nobody reached is absent."""
+        ...
+
+    def count_budgets_per_range(
+        self,
+        merchant_id: str,
+        starts_at: datetime,
+        ends_at: datetime,
+        range_boundaries: Sequence[Money],
+    ) -> tuple[int, ...]:
+        """Counts the period's told budgets per range; one more count than boundaries."""
+        ...
+
+    def tally_missed_sales(
+        self,
+        merchant_id: str,
+        starts_at: datetime,
+        ends_at: datetime,
+        budget_thresholds_by_product_id: Mapping[str, Money],
+    ) -> Mapping[str, MissedSalesTally]:
+        """Tallies the period's missed sales per product that has a threshold."""
+        ...
+
+
+class WeeklyMessageStore(Protocol):
+    """Finds and records, once, when a shop's weekly message for a week was sent."""
+
+    def find_sent_at(self, merchant_id: str, period_start_date: date) -> datetime | None:
+        """Gives when the week's message was sent, or None."""
+        ...
+
+    def record_sent_once(
+        self, weekly_message_id: str, merchant_id: str, period_start_date: date, sent_at: datetime
+    ) -> WeeklyMessageSentRecord:
+        """Stores the sent moment unless one is stored, and gives the stored one."""
         ...
 
 
@@ -213,6 +264,16 @@ class UnitOfWork(Protocol):
     @property
     def funnel_events(self) -> FunnelEventStore:
         """Gives the funnel event repository of this transaction."""
+        ...
+
+    @property
+    def report_queries(self) -> ReportQueryStore:
+        """Gives the aggregate report queries of this transaction."""
+        ...
+
+    @property
+    def weekly_messages(self) -> WeeklyMessageStore:
+        """Gives the weekly message repository of this transaction."""
         ...
 
     def call_after_commit(self, callback: AfterCommitCallback) -> None:

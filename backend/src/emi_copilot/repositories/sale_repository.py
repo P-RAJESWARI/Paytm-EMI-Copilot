@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy import ColumnElement, Select, exists, select
 from sqlalchemy.orm import Session
 
 from emi_copilot.core.clock import Clock
@@ -170,6 +170,12 @@ class SaleRepository:
             .with_for_update()
         )
         return tuple(_to_domain(sale_model) for sale_model in self._session.scalars(statement))
+
+    def has_any_for_merchant(self, merchant_id: str) -> bool:
+        """Tells whether the merchant has any sale at all, in any status."""
+        return bool(
+            self._session.scalar(select(exists().where(SaleModel.merchant_id == merchant_id)))
+        )
 
     def list_open_session_codes_for_merchant(self, merchant_id: str) -> frozenset[str]:
         """Gives the session codes on the merchant's open sales, which a new sale must avoid."""

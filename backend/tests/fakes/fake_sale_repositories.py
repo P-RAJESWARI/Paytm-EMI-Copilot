@@ -99,6 +99,10 @@ class FakeSaleRepository:
         ]
         return tuple(sorted(matching_sales, key=lambda sale: (sale.started_at, sale.id)))
 
+    def has_any_for_merchant(self, merchant_id: str) -> bool:
+        """Tells whether the merchant has any sale."""
+        return any(sale.merchant_id == merchant_id for sale in self._sales_by_id.values())
+
     def list_open_session_codes_for_merchant(self, merchant_id: str) -> frozenset[str]:
         """Gives the session codes on the merchant's open sales."""
         return frozenset(

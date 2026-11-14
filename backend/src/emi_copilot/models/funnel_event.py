@@ -20,8 +20,9 @@ from emi_copilot.models.base import Base, sql_value_list
 class FunnelEventModel(Base):
     """One row per (sale, stage); append-only, so there is no updated_at column.
 
-    The (sale_id, stage) unique constraint also indexes sale_id, and (merchant_id, occurred_at)
-    indexes merchant_id for the report queries.
+    The (sale_id, stage) unique constraint also indexes sale_id, which the report's cohort
+    queries join on; (merchant_id, occurred_at) and (merchant_id, stage, occurred_at) index
+    merchant_id for queries by moment and by stage.
     """
 
     __tablename__ = "funnel_event"
@@ -34,6 +35,7 @@ class FunnelEventModel(Base):
         CheckConstraint("monthly_budget_in_paise > 0", name="monthly_budget_in_paise_positive"),
         UniqueConstraint("sale_id", "stage"),
         Index(None, "merchant_id", "occurred_at"),
+        Index(None, "merchant_id", "stage", "occurred_at"),
     )
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True)

@@ -22,6 +22,7 @@ APPLICATION_TABLES = {
     "product",
     "sale",
     "funnel_event",
+    "weekly_message",
 }
 MERCHANT_TABLES = ("merchant", "device_pairing", "product")
 CARD_FIELD_WORDS = ("card", "cvv", "expiry", "bin")
