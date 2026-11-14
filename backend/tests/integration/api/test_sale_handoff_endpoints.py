@@ -12,8 +12,9 @@ from emi_copilot.adapters.payment_gateway.mock_adapter import (
     MockPaymentGatewayAdapter,
 )
 from emi_copilot.config.settings import ApplicationSettings
+from emi_copilot.domain.errors import PaymentGatewayTimeoutError
 from emi_copilot.domain.money import Money
-from emi_copilot.domain.payments import GatewayPaymentStatus
+from emi_copilot.domain.payments import GatewayPaymentStatus, PaymentLink, PaymentLinkRequest
 from tests.fixed_clock import FixedClock
 from tests.integration.api.api_harness import ApiHarness, open_api_harness
 from tests.integration.api.sale_api_helpers import (
@@ -249,6 +250,51 @@ def test_a_new_key_while_the_sales_link_awaits_payment_answers_409_already_activ
     assert refused.status_code == 409
     assert refused.json()["code"] == "PAYMENT_LINK_ALREADY_ACTIVE"
     assert replayed["orderId"] == first_link["orderId"]
+
+
+def test_a_timed_out_link_the_gateway_never_made_frees_the_sale_once_past_the_stale_limit(
+    mock_api: ApiHarness,
+    mock_gateway: MockPaymentGatewayAdapter,
+    shops: TwoShops,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A timed-out create blocks new keys only until the stale limit, if the link was never made.
+
+    Past the limit the Mock reports NOT_FOUND, so a new key makes a new link. The old key never
+    re-sends: it still answers outcome unknown.
+    """
+    sale_id = _start_agreed_sale(mock_api, mock_gateway, shops.first_shop_headers)
+    links_path = f"{SALES_PATH}/{sale_id}/payment-links"
+    monkeypatch.setattr(mock_gateway, "create_payment_link", _raise_gateway_timeout, raising=True)
+    timed_out = mock_api.client.post(
+        links_path, headers={**shops.first_shop_headers, "Idempotency-Key": "sale-link-key-0001"}
+    )
+    monkeypatch.undo()
+    too_early = mock_api.client.post(
+        links_path, headers={**shops.first_shop_headers, "Idempotency-Key": "sale-link-key-0002"}
+    )
+    mock_api.clock.advance(ApplicationSettings().payment_link_creation_stale_after)
+    refreshed = mock_api.client.get(
+        f"{SALES_PATH}/{sale_id}/payment-status", headers=shops.first_shop_headers
+    )
+    new_link = _create_link(mock_api, shops.first_shop_headers, sale_id, "sale-link-key-0002")
+    old_key = mock_api.client.post(
+        links_path, headers={**shops.first_shop_headers, "Idempotency-Key": "sale-link-key-0001"}
+    )
+    assert timed_out.status_code == 504
+    assert too_early.json()["code"] == "PAYMENT_LINK_ALREADY_ACTIVE"
+    assert refreshed.json()["paymentStatus"] == "WAITING"
+    assert new_link["paymentUrl"].startswith("https://")
+    assert old_key.json()["code"] == "PAYMENT_LINK_OUTCOME_UNKNOWN"
+    assert (
+        _read_handoff(mock_api, shops.first_shop_headers, sale_id)["latestPaymentLink"]["orderId"]
+        == new_link["orderId"]
+    )
+
+
+def _raise_gateway_timeout(request: PaymentLinkRequest) -> PaymentLink:
+    """Stands in for the Mock's create-link call: the gateway never answered."""
+    raise PaymentGatewayTimeoutError(f"No answer for order {request.order_id} (test).")
 
 
 @pytest.fixture

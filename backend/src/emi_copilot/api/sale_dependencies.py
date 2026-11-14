@@ -127,6 +127,7 @@ IssueQrTokenServiceDependency = Annotated[
 
 def provide_sale_handoff_service(  # noqa: PLR0913 - one parameter per injected component
     *,
+    components: ComponentsDependency,
     unit_of_work_factory: UnitOfWorkFactoryDependency,
     clock: ClockDependency,
     event_bus: EventBusDependency,
@@ -134,7 +135,7 @@ def provide_sale_handoff_service(  # noqa: PLR0913 - one parameter per injected 
     payment_handoff_service: PaymentHandoffServiceDependency,
     payment_status_service: PaymentStatusServiceDependency,
 ) -> SaleHandoffService:
-    """Assembles the M4 hand-off service on the two Layer 1 payment services."""
+    """Assembles the M4 hand-off service on the two Layer 1 payment services and the stale limit."""
     return SaleHandoffService(
         unit_of_work_factory=unit_of_work_factory,
         clock=clock,
@@ -142,6 +143,7 @@ def provide_sale_handoff_service(  # noqa: PLR0913 - one parameter per injected 
         sale_expiry=sale_expiry,
         payment_handoff_service=payment_handoff_service,
         payment_status_service=payment_status_service,
+        link_creation_stale_after=components.settings.payment_link_creation_stale_after,
     )
 
 

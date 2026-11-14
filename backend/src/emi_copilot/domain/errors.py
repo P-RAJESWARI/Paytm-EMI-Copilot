@@ -325,7 +325,8 @@ class PaymentLinkAlreadyActiveError(DomainError):
 
     The latest attempt is in progress, created, pending or has an unknown outcome, so a second
     link could let the customer pay twice. A known key still replays; a new link is allowed only
-    once the latest attempt failed or was refused.
+    once the latest attempt failed or was refused, or once the gateway reported an old
+    outcome-unknown attempt NOT_FOUND.
     """
 
     code: ClassVar[str] = "PAYMENT_LINK_ALREADY_ACTIVE"

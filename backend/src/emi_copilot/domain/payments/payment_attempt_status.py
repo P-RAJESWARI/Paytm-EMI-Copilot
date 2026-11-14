@@ -25,5 +25,7 @@ STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK = frozenset(
 """Only after an attempt in one of these may its sale take a new link: nothing can be paid.
 
 Every other status may still be paid (in progress, created, pending, outcome unknown) or was
-paid, so a second link could let the customer pay twice.
+paid, so a second link could let the customer pay twice. The services settle the two that could
+otherwise last for ever (a stale in-progress attempt, and an outcome-unknown one the gateway
+reports NOT_FOUND once its create call has surely ended); see LatestSaleAttemptCheck.
 """

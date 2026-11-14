@@ -10,6 +10,7 @@ from emi_copilot.domain.events import SaleStatusChanged
 from emi_copilot.domain.payments import (
     STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK,
     PaymentAttempt,
+    PaymentAttemptStatus,
     PricedEmiOffer,
 )
 from emi_copilot.domain.sales import ChosenPlan, Sale, SaleStatus
@@ -26,17 +27,27 @@ class SalePaymentLinkIntent:
     stores the attempt, the sale is locked: READY_TO_PAY goes ahead, PAYMENT_NOT_COMPLETED is
     first moved back to READY_TO_PAY (RETRY_PAYMENT), and any other status is a 409 conflict.
     Under the same lock, a sale whose latest attempt may still be paid takes no second link
-    (PAYMENT_LINK_ALREADY_ACTIVE), so two keys can never leave two payable links.
+    (PAYMENT_LINK_ALREADY_ACTIVE), so two keys can never leave two payable links. The one
+    exception is the OUTCOME_UNKNOWN attempt the gateway has just reported NOT_FOUND
+    (LatestSaleAttemptCheck): it goes ahead only if that attempt is still the latest and still
+    OUTCOME_UNKNOWN under the lock, so a report or another key arriving meanwhile still refuses.
     """
 
     def __init__(
-        self, sale: Sale, chosen_plan: ChosenPlan, clock: Clock, event_bus: DomainEventBus
+        self,
+        sale: Sale,
+        chosen_plan: ChosenPlan,
+        clock: Clock,
+        event_bus: DomainEventBus,
+        *,
+        attempt_proven_without_link_id: str | None = None,
     ) -> None:
-        """Keeps the sale as read before the quote, its agreed plan, the clock and the bus."""
+        """Keeps the sale as read before the quote, its plan, the clock, the bus and any proof."""
         self._sale = sale
         self._chosen_plan = chosen_plan
         self._clock = clock
         self._event_bus = event_bus
+        self._attempt_proven_without_link_id = attempt_proven_without_link_id
 
     def check_quoted_offer(self, priced_offer: PricedEmiOffer | None) -> None:
         """Refuses the link unless the gateway still quotes the agreed plan exactly as shown."""
@@ -52,7 +63,9 @@ class SalePaymentLinkIntent:
         )
         if locked_sale is None:
             raise SaleNotFoundError(SALE_NOT_FOUND_DETAIL)
-        _refuse_while_the_latest_link_may_be_paid(unit_of_work, locked_sale.id)
+        _refuse_while_the_latest_link_may_be_paid(
+            unit_of_work, locked_sale.id, self._attempt_proven_without_link_id
+        )
         if locked_sale.status is SaleStatus.READY_TO_PAY:
             return
         retried_sale = unit_of_work.sales.update(locked_sale.retry_payment(self._clock.now()))
@@ -70,13 +83,18 @@ class SalePaymentLinkIntent:
         )
 
 
-def _refuse_while_the_latest_link_may_be_paid(unit_of_work: UnitOfWork, sale_id: str) -> None:
-    """Refuses a new link while the sale's latest attempt is not failed or refused."""
+def _refuse_while_the_latest_link_may_be_paid(
+    unit_of_work: UnitOfWork, sale_id: str, attempt_proven_without_link_id: str | None
+) -> None:
+    """Refuses a new link while the latest attempt is not failed, refused or proven linkless."""
     latest_attempt = unit_of_work.payment_attempts.find_latest_for_sale(sale_id)
-    if (
-        latest_attempt is not None
-        and latest_attempt.status not in STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK
-    ):
+    if latest_attempt is None or latest_attempt.status in STATUSES_ENDED_WITHOUT_A_PAYABLE_LINK:
+        return
+    is_proven_without_link = (
+        latest_attempt.id == attempt_proven_without_link_id
+        and latest_attempt.status is PaymentAttemptStatus.OUTCOME_UNKNOWN
+    )
+    if not is_proven_without_link:
         raise PaymentLinkAlreadyActiveError(
             f"The sale's latest payment link is {latest_attempt.status.value}; "
             "check its payment status before making another."

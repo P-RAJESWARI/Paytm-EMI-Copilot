@@ -1,13 +1,16 @@
 """SaleHandoffService: M4's hand-off of an agreed sale to the payment gateway, and its status."""
 
+from datetime import timedelta
+
 from emi_copilot.core.clock import Clock
 from emi_copilot.domain.catalogue import CatalogueProduct
 from emi_copilot.domain.errors import IllegalSaleTransitionError, ProductNotFoundError
 from emi_copilot.domain.merchants import MerchantPrincipal
 from emi_copilot.domain.payments import PaymentAttempt
-from emi_copilot.domain.sales import Sale, SaleStatus
+from emi_copilot.domain.sales import ChosenPlan, Sale, SaleStatus
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork, UnitOfWorkFactory
+from emi_copilot.services.latest_sale_attempt_check import LatestSaleAttemptCheck
 from emi_copilot.services.payment_handoff_service import PaymentHandoffService
 from emi_copilot.services.payment_handoff_types import CreatePaymentLinkCommand, PaymentLinkHandoff
 from emi_copilot.services.payment_status_service import PaymentStatusService
@@ -34,13 +37,29 @@ def _require_product(unit_of_work: UnitOfWork, sale: Sale) -> CatalogueProduct:
     return product
 
 
+def _build_link_command(
+    sale: Sale, product: CatalogueProduct, chosen_plan: ChosenPlan, idempotency_key: str
+) -> CreatePaymentLinkCommand:
+    """Gives the create-link command for the sale's agreed offer on its catalogue item."""
+    return CreatePaymentLinkCommand(
+        idempotency_key=idempotency_key,
+        offer_id=chosen_plan.offer_id,
+        price=sale.price,
+        product_id=product.gateway_product_id,
+        brand_id=product.gateway_brand_id,
+        category_id=product.gateway_category_id,
+        sale_id=sale.id,
+    )
+
+
 class SaleHandoffService:
     """Hands an agreed sale's plan to the gateway as a link and reports the payment, per shop.
 
     Every idempotency, gateway and outcome rule is PaymentHandoffService's and every status
-    rule PaymentStatusService's; this class adds only the sale's rules (SalePaymentLinkIntent)
-    and the merchant scope: another shop's sale is not found (404). There is no way to mark a
-    sale paid here (plan Q5): PAID comes only from a verified gateway report.
+    rule PaymentStatusService's; this class adds only the sale's rules (SalePaymentLinkIntent,
+    LatestSaleAttemptCheck) and the merchant scope: another shop's sale is not found (404).
+    There is no way to mark a sale paid here (plan Q5): PAID comes only from a verified gateway
+    report.
     """
 
     def __init__(  # noqa: PLR0913 - one parameter per collaborator
@@ -52,6 +71,7 @@ class SaleHandoffService:
         sale_expiry: SaleExpiryStep,
         payment_handoff_service: PaymentHandoffService,
         payment_status_service: PaymentStatusService,
+        link_creation_stale_after: timedelta,
     ) -> None:
         """Keeps the collaborators; the two payment services do all of the gateway work."""
         self._unit_of_work_factory = unit_of_work_factory
@@ -60,6 +80,13 @@ class SaleHandoffService:
         self._sale_expiry = sale_expiry
         self._payment_handoff_service = payment_handoff_service
         self._payment_status_service = payment_status_service
+        self._latest_attempt_check = LatestSaleAttemptCheck(
+            unit_of_work_factory=unit_of_work_factory,
+            clock=clock,
+            event_bus=event_bus,
+            payment_status_service=payment_status_service,
+            link_creation_stale_after=link_creation_stale_after,
+        )
 
     def get_handoff(self, principal: MerchantPrincipal, sale_id: str) -> SaleHandoffView:
         """Gives M4's view of the shop's agreed sale; CHOOSING or EXPIRED is SALE_STATE_CONFLICT."""
@@ -69,30 +96,34 @@ class SaleHandoffService:
     def create_payment_link(
         self, principal: MerchantPrincipal, sale_id: str, idempotency_key: str
     ) -> PaymentLinkHandoff:
-        """Makes a link for the agreed plan once per key; a known key replays in any status."""
+        """Makes a link for the agreed plan once per key; a known key replays in any status.
+
+        A new key first settles the sale's latest attempt (LatestSaleAttemptCheck), so neither a
+        crash mid-creation nor a timed-out create whose link never existed blocks the sale.
+        """
         with self._unit_of_work_factory() as unit_of_work:
             sale = self._sale_expiry.load_current_sale_for_update(
                 unit_of_work, principal.merchant_id, sale_id, self._clock.now()
             )
             product = _require_product(unit_of_work, sale)
         chosen_plan = require_agreed_plan(sale)
-        command = CreatePaymentLinkCommand(
-            idempotency_key=idempotency_key,
-            offer_id=chosen_plan.offer_id,
-            price=sale.price,
-            product_id=product.gateway_product_id,
-            brand_id=product.gateway_brand_id,
-            category_id=product.gateway_category_id,
-            sale_id=sale.id,
-        )
+        command = _build_link_command(sale, product, chosen_plan, idempotency_key)
+        replayed_handoff = self._payment_handoff_service.replay_if_known(command)
+        if replayed_handoff is not None:
+            return replayed_handoff
         if sale.status not in STATUSES_ACCEPTING_A_NEW_LINK:
-            replayed_handoff = self._payment_handoff_service.replay_if_known(command)
-            if replayed_handoff is not None:
-                return replayed_handoff
             raise IllegalSaleTransitionError(
                 f"A sale that is {sale.status.value} takes no new payment link."
             )
-        intent = SalePaymentLinkIntent(sale, chosen_plan, self._clock, self._event_bus)
+        intent = SalePaymentLinkIntent(
+            sale,
+            chosen_plan,
+            self._clock,
+            self._event_bus,
+            attempt_proven_without_link_id=(
+                self._latest_attempt_check.find_attempt_proven_without_link(sale.id)
+            ),
+        )
         return self._payment_handoff_service.create_payment_link(command, intent)
 
     def check_payment_status(self, principal: MerchantPrincipal, sale_id: str) -> SaleHandoffView:

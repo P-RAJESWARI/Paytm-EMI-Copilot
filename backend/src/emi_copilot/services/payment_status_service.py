@@ -35,14 +35,16 @@ from emi_copilot.services.merchant_payment_scope import find_merchant_payment_at
 class PaymentStatusView:
     """Where one of our payments stands: order, status, link amount and the amount paid.
 
-    amount_paid is what the gateway reported as paid in this check, if anything. The view holds
-    no card or personal data.
+    amount_paid is what the gateway reported as paid in this check, if anything, and
+    reported_status is the gateway's own answer (NOT_FOUND when it holds no link for the order).
+    The view holds no card or personal data.
     """
 
     order_id: str
     status: PaymentAttemptStatus
     amount: Money
     amount_paid: Money | None
+    reported_status: GatewayPaymentStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +124,7 @@ class PaymentStatusService:
             status=current_attempt.status,
             amount=current_attempt.amount,
             amount_paid=status_result.amount_paid,
+            reported_status=status_result.status,
         )
 
     def get_payment_status_for_merchant(self, merchant_id: str, order_id: str) -> PaymentStatusView:

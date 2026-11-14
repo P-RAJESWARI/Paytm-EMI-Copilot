@@ -1,5 +1,6 @@
 """SaleHandoffService: links only for agreed sales, the agreed plan only, the shop's sales only."""
 
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -17,11 +18,13 @@ from emi_copilot.domain.payments import (
     EmiOffer,
     EmiType,
     GatewayPaymentStatus,
+    PaymentAttempt,
     PaymentAttemptStatus,
     PaymentLinkFailureCode,
     PaymentStatusResult,
 )
 from emi_copilot.domain.sales import EdcEmiProgramme, Sale, SaleStatus
+from emi_copilot.services.create_link_outcome import STALE_LINK_CREATION_CAUSE_CODE
 from emi_copilot.services.payment_handoff_service import PaymentHandoffService
 from emi_copilot.services.payment_status_service import PaymentStatusService
 from emi_copilot.services.sale_expiry import SaleExpiryStep
@@ -35,6 +38,7 @@ from tests.unit.services.sale_service_wiring import CHOOSING_LIFETIME, OTHER_PRI
 
 KEY = "sale-handoff-key-0001"
 OTHER_KEY = "sale-handoff-key-0002"
+STALE_AFTER = timedelta(seconds=26)
 
 
 def _build_service(kit: ServiceTestKit) -> SaleHandoffService:
@@ -46,9 +50,10 @@ def _build_service(kit: ServiceTestKit) -> SaleHandoffService:
         event_bus=kit.event_bus,
         sale_expiry=SaleExpiryStep(kit.event_bus, CHOOSING_LIFETIME),
         payment_handoff_service=PaymentHandoffService(
-            *payment_services, kit.event_bus, link_creation_stale_after=timedelta(seconds=26)
+            *payment_services, kit.event_bus, link_creation_stale_after=STALE_AFTER
         ),
         payment_status_service=PaymentStatusService(*payment_services, kit.event_bus),
+        link_creation_stale_after=STALE_AFTER,
     )
 
 
@@ -337,6 +342,138 @@ def test_create_payment_link_with_a_new_key_while_the_latest_link_may_be_paid_is
     assert len(kit.database.payment_attempts_by_id) == 1
     assert kit.payment_gateway.create_link_calls == []
     assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.READY_TO_PAY
+
+
+def _store_earlier_attempt_created(
+    kit: ServiceTestKit, status: PaymentAttemptStatus, age: timedelta
+) -> PaymentAttempt:
+    """Stores an earlier attempt of the sale created `age` before now, under another key."""
+    earlier_attempt = build_payment_attempt(
+        9,
+        sale_id=SALE_ID,
+        status=status,
+        idempotency_key=OTHER_KEY,
+        created_at=kit.clock.now() - age,
+        updated_at=kit.clock.now() - age,
+    )
+    kit.store_attempt(earlier_attempt)
+    return earlier_attempt
+
+
+def test_create_payment_link_with_a_new_key_after_a_stale_creation_records_it_unknown_then_links(
+    kit: ServiceTestKit,
+) -> None:
+    """A crash mid-creation: whatever key asks, the stale attempt is stored OUTCOME_UNKNOWN.
+
+    It is audited LINK_CREATION_STALE; the gateway then holds no link for it, so a new one is made.
+    """
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    stale_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS, STALE_AFTER
+    )
+    handoff = _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    stored_stale_attempt = kit.database.payment_attempts_by_id[stale_attempt.id]
+    assert stored_stale_attempt.status is PaymentAttemptStatus.OUTCOME_UNKNOWN
+    assert kit.audit_event_types()[0] is AuditEventType.PAYMENT_LINK_OUTCOME_UNKNOWN
+    assert kit.database.audit_events[0].details["cause_error_code"] == (
+        STALE_LINK_CREATION_CAUSE_CODE
+    )
+    assert kit.payment_gateway.status_check_calls == [stale_attempt.order_id]
+    assert handoff.order_id != stale_attempt.order_id
+    assert len(kit.payment_gateway.create_link_calls) == 1
+
+
+def test_create_payment_link_with_a_new_key_while_a_creation_is_fresh_is_refused(
+    kit: ServiceTestKit,
+) -> None:
+    """Just under the limit the first create may still be running: refused, gateway not asked."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.LINK_CREATION_IN_PROGRESS, STALE_AFTER - timedelta(seconds=1)
+    )
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="LINK_CREATION_IN_PROGRESS"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.payment_gateway.status_check_calls == []
+    assert kit.database.audit_events == []
+
+
+def test_create_payment_link_with_a_new_key_while_an_unknown_outcome_is_young_is_refused(
+    kit: ServiceTestKit,
+) -> None:
+    """A timed-out create younger than the limit is not asked about yet: refused."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER - timedelta(seconds=1)
+    )
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="OUTCOME_UNKNOWN"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.payment_gateway.status_check_calls == []
+    assert kit.payment_gateway.create_link_calls == []
+
+
+def test_create_payment_link_with_a_new_key_after_an_old_unknown_outcome_not_found_links(
+    kit: ServiceTestKit,
+) -> None:
+    """The gateway holds no link for an old timed-out create: a new link, the old row untouched."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    unknown_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER
+    )
+    handoff = _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.database.payment_attempts_by_id[unknown_attempt.id] == unknown_attempt
+    assert kit.payment_gateway.status_check_calls == [unknown_attempt.order_id]
+    assert handoff.is_replay is False
+    assert len(kit.payment_gateway.create_link_calls) == 1
+    assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.READY_TO_PAY
+
+
+def test_create_payment_link_with_a_new_key_after_an_old_unknown_outcome_pending_is_refused(
+    kit: ServiceTestKit,
+) -> None:
+    """The old create did make a link: the PENDING report is applied and no second link made."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    unknown_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER
+    )
+    _script_status(kit, unknown_attempt.order_id, GatewayPaymentStatus.PENDING)
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="PAYMENT_PENDING"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    stored_attempt = kit.database.payment_attempts_by_id[unknown_attempt.id]
+    assert stored_attempt.status is PaymentAttemptStatus.PAYMENT_PENDING
+    assert kit.payment_gateway.create_link_calls == []
+
+
+def test_create_payment_link_with_a_new_key_after_an_old_unknown_outcome_paid_pays_the_sale(
+    kit: ServiceTestKit,
+) -> None:
+    """The customer paid on the old link: the sale becomes PAID and no new link is made."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    unknown_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER
+    )
+    _script_status(kit, unknown_attempt.order_id, GatewayPaymentStatus.PAID)
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="PAID"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.database.payment_attempts_by_id[unknown_attempt.id].status is (
+        PaymentAttemptStatus.PAID
+    )
+    assert kit.database.sales_by_id[SALE_ID].status is SaleStatus.PAID
+    assert kit.payment_gateway.create_link_calls == []
+
+
+def test_create_payment_link_when_a_report_moves_the_proven_attempt_before_the_lock_is_refused(
+    kit: ServiceTestKit,
+) -> None:
+    """NOT_FOUND counts only while the attempt is still OUTCOME_UNKNOWN under the sale's lock."""
+    _store_sale(kit, SaleStatus.READY_TO_PAY)
+    unknown_attempt = _store_earlier_attempt_created(
+        kit, PaymentAttemptStatus.OUTCOME_UNKNOWN, STALE_AFTER
+    )
+    pending_attempt = replace(unknown_attempt, status=PaymentAttemptStatus.PAYMENT_PENDING)
+    kit.payment_gateway.before_discover_offers = lambda: kit.store_attempt(pending_attempt)
+    with pytest.raises(PaymentLinkAlreadyActiveError, match="PAYMENT_PENDING"):
+        _build_service(kit).create_payment_link(PRINCIPAL, SALE_ID, KEY)
+    assert kit.payment_gateway.create_link_calls == []
 
 
 @pytest.mark.parametrize(
