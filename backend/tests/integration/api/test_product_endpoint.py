@@ -27,13 +27,6 @@ FIRST_SHOP_PRODUCT_PREFIX = "01JCPRODUCTFIRSTSHOP0000"
 SECOND_SHOP_PRODUCT_PREFIX = "01JCPRODUCTSECONDSHOP000"
 EXPECTED_FIRST_SHOP_PRODUCTS = [
     {
-        "productId": f"{FIRST_SHOP_PRODUCT_PREFIX}02",
-        "name": "Example earbuds",
-        "listPriceInPaise": 249_900,
-        "planCount": 1,
-        "noExtraCostPlanCount": 0,
-    },
-    {
         "productId": f"{FIRST_SHOP_PRODUCT_PREFIX}00",
         "name": "Example phone, 128 GB",
         "listPriceInPaise": 2_200_000,
@@ -46,6 +39,13 @@ EXPECTED_FIRST_SHOP_PRODUCTS = [
         "listPriceInPaise": 1_800_000,
         "planCount": 2,
         "noExtraCostPlanCount": 1,
+    },
+    {
+        "productId": f"{FIRST_SHOP_PRODUCT_PREFIX}02",
+        "name": "Example earbuds",
+        "listPriceInPaise": 249_900,
+        "planCount": 1,
+        "noExtraCostPlanCount": 0,
     },
 ]
 

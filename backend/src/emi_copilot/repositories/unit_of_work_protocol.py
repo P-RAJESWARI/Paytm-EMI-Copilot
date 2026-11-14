@@ -94,7 +94,7 @@ class ProductStore(Protocol):
     def list_for_merchant(
         self, merchant_id: str, name_search_text: str | None = None
     ) -> tuple[CatalogueProduct, ...]:
-        """Lists the merchant's products by name; a search keeps names containing it."""
+        """Lists the merchant's products dearest first, then by name; a search narrows them."""
         ...
 
     def find_by_id_for_merchant(self, merchant_id: str, product_id: str) -> CatalogueProduct | None:

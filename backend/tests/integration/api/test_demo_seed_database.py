@@ -36,7 +36,7 @@ def test_seed_demo_merchant_run_twice_stores_one_shop_and_three_products(
 def test_seeded_demo_shop_pairs_with_the_pin_and_lists_the_m2_offer_counts(
     mock_api: ApiHarness,
 ) -> None:
-    """RAVI-0193 pairs with DEMO_MERCHANT_PIN and its products show 1, 3 and 2 plans."""
+    """RAVI-0193 pairs with DEMO_MERCHANT_PIN; its products, dearest first, show 3, 2, 1 plans."""
     seed_demo_merchant(
         partial(SqlAlchemyUnitOfWork, mock_api.session_factory, mock_api.clock), SYNTHETIC_PIN
     )
@@ -53,7 +53,7 @@ def test_seeded_demo_shop_pairs_with_the_pin_and_lists_the_m2_offer_counts(
         (product["name"], product["listPriceInPaise"], product["planCount"])
         for product in products_response.json()["products"]
     ] == [
-        ("Example earbuds", 249_900, 1),
         ("Example phone, 128 GB", 2_200_000, 3),
         ("Example phone, 64 GB", 1_800_000, 2),
+        ("Example earbuds", 249_900, 1),
     ]

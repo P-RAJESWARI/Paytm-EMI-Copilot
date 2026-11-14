@@ -131,11 +131,14 @@ def test_device_pairing_with_duplicate_token_hash_is_refused_by_the_database(
         unit_of_work.device_pairings.add(second_pairing)
 
 
-def test_product_list_for_merchant_returns_only_that_merchants_products_by_name(
+def test_product_list_for_merchant_returns_only_that_merchants_products_dearest_first(
     unit_of_work: SqlAlchemyUnitOfWork,
 ) -> None:
-    """Products are sorted by name and another shop's product never appears."""
+    """Products come highest list price first, ties by name; another shop's never appears."""
     phone = build_catalogue_product()
+    same_price_phone = build_catalogue_product(
+        id="01JCPRODUCT000000000000004", name="An example phone"
+    )
     earbuds = build_catalogue_product(
         id="01JCPRODUCT000000000000002",
         name="Example earbuds",
@@ -144,9 +147,13 @@ def test_product_list_for_merchant_returns_only_that_merchants_products_by_name(
     other_shops_product = build_catalogue_product(
         id="01JCPRODUCT000000000000003", merchant_id=OTHER_MERCHANT_ID, name="Example phone, 64 GB"
     )
-    for product in (phone, earbuds, other_shops_product):
+    for product in (earbuds, phone, same_price_phone, other_shops_product):
         unit_of_work.products.add(product)
-    assert unit_of_work.products.list_for_merchant(MERCHANT_ID) == (earbuds, phone)
+    assert unit_of_work.products.list_for_merchant(MERCHANT_ID) == (
+        same_price_phone,
+        phone,
+        earbuds,
+    )
     assert unit_of_work.products.list_for_merchant(OTHER_MERCHANT_ID) == (other_shops_product,)
 
 

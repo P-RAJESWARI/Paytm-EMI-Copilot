@@ -21,18 +21,18 @@ product_router = APIRouter(tags=["products"])
 PRODUCTS_RESPONSE_EXAMPLE = {
     "products": [
         {
-            "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
-            "name": "Example earbuds",
-            "listPriceInPaise": 249_900,
-            "planCount": 1,
-            "noExtraCostPlanCount": 0,
-        },
-        {
             "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
             "name": "Example phone, 128 GB",
             "listPriceInPaise": 2_200_000,
             "planCount": 3,
             "noExtraCostPlanCount": 1,
+        },
+        {
+            "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+            "name": "Example earbuds",
+            "listPriceInPaise": 249_900,
+            "planCount": 1,
+            "noExtraCostPlanCount": 0,
         },
     ]
 }
@@ -42,12 +42,13 @@ PRODUCTS_RESPONSE_EXAMPLE = {
     "/products",
     summary="List the shop's products with their EMI offer counts",
     description=(
-        "Lists the signed-in shop's products by name, optionally narrowed by a name search, "
+        "Lists the signed-in shop's products, highest list price first and then by name, "
+        "optionally narrowed by a name search, "
         "each at its list price with how many EMI plans the gateway quotes now and how many of "
         "those cost nothing extra. The counts come from the same offer discovery as GET "
         "/api/v1/offers; a gateway failure on any product fails the list. " + MERCHANT_BEARER_NOTE
     ),
-    response_description="The shop's products, by name.",
+    response_description="The shop's products, highest list price first.",
     responses={
         200: {"content": {"application/json": {"example": PRODUCTS_RESPONSE_EXAMPLE}}},
         **describe_problem_responses(

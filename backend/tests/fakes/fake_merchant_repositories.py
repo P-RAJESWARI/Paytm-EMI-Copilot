@@ -85,14 +85,19 @@ class FakeProductRepository:
     def list_for_merchant(
         self, merchant_id: str, name_search_text: str | None = None
     ) -> tuple[CatalogueProduct, ...]:
-        """Lists the merchant's products by name then id; the search ignores case."""
+        """Lists the merchant's products dearest first, then by name and id; search ignores case."""
         matching_products = [
             product
             for product in self._products_by_id.values()
             if product.merchant_id == merchant_id
             and (not name_search_text or name_search_text.lower() in product.name.lower())
         ]
-        return tuple(sorted(matching_products, key=lambda product: (product.name, product.id)))
+        return tuple(
+            sorted(
+                matching_products,
+                key=lambda product: (-product.list_price.to_paise(), product.name, product.id),
+            )
+        )
 
     def find_by_id_for_merchant(self, merchant_id: str, product_id: str) -> CatalogueProduct | None:
         """Returns the product only if it belongs to the merchant."""

@@ -41,7 +41,7 @@ class ProductCatalogueService:
     def list_products(
         self, principal: MerchantPrincipal, name_search_text: str | None = None
     ) -> tuple[CatalogueProductWithOffers, ...]:
-        """Lists the shop's products by name, each with its offer counts; gateway errors propagate.
+        """Lists the shop's products dearest first, each with its offer counts; errors propagate.
 
         The products are read and the transaction closed before any gateway call is made.
         """

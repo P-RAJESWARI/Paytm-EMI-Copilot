@@ -47,12 +47,12 @@ def service(kit: ServiceTestKit) -> ProductCatalogueService:
     return ProductCatalogueService(kit.unit_of_work_factory, offer_discovery_service)
 
 
-def test_list_products_gives_the_shops_products_by_name_with_offer_counts(
+def test_list_products_gives_the_shops_products_dearest_first_with_offer_counts(
     service: ProductCatalogueService,
 ) -> None:
     """Design plans A and B are quoted: two plans, one with no extra cost, per product."""
     listed_products = service.list_products(PRINCIPAL)
-    assert [listed.product for listed in listed_products] == [EARBUDS, PHONE]
+    assert [listed.product for listed in listed_products] == [PHONE, EARBUDS]
     assert {listed.offer_summary for listed in listed_products} == {
         ProductOfferSummary(plan_count=2, no_extra_cost_plan_count=1)
     }
@@ -64,8 +64,8 @@ def test_list_products_asks_the_gateway_about_each_product_at_its_list_price(
     """Discovery runs once per listed product, never for another shop's product."""
     service.list_products(PRINCIPAL)
     assert kit.payment_gateway.discover_offers_calls == [
-        EARBUDS.to_offer_discovery_query(),
         PHONE.to_offer_discovery_query(),
+        EARBUDS.to_offer_discovery_query(),
     ]
 
 

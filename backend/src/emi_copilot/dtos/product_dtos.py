@@ -49,7 +49,7 @@ class CatalogueProductResponse(CamelCaseResponseModel):
 
 
 class ProductsResponse(CamelCaseResponseModel):
-    """The merchant's products, sorted by name; another shop's products never appear."""
+    """The merchant's products, dearest first then by name; another shop's never appear."""
 
     products: list[CatalogueProductResponse]
 

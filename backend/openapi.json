@@ -1271,7 +1271,7 @@
           "products"
         ],
         "summary": "List the shop's products with their EMI offer counts",
-        "description": "Lists the signed-in shop's products by name, optionally narrowed by a name search, each at its list price with how many EMI plans the gateway quotes now and how many of those cost nothing extra. The counts come from the same offer discovery as GET /api/v1/offers; a gateway failure on any product fails the list. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "description": "Lists the signed-in shop's products, highest list price first and then by name, optionally narrowed by a name search, each at its list price with how many EMI plans the gateway quotes now and how many of those cost nothing extra. The counts come from the same offer discovery as GET /api/v1/offers; a gateway failure on any product fails the list. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
         "operationId": "list_products_api_v1_products_get",
         "security": [
           {
@@ -1304,7 +1304,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The shop's products, by name.",
+            "description": "The shop's products, highest list price first.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1313,18 +1313,18 @@
                 "example": {
                   "products": [
                     {
-                      "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
-                      "name": "Example earbuds",
-                      "listPriceInPaise": 249900,
-                      "planCount": 1,
-                      "noExtraCostPlanCount": 0
-                    },
-                    {
                       "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
                       "name": "Example phone, 128 GB",
                       "listPriceInPaise": 2200000,
                       "planCount": 3,
                       "noExtraCostPlanCount": 1
+                    },
+                    {
+                      "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+                      "name": "Example earbuds",
+                      "listPriceInPaise": 249900,
+                      "planCount": 1,
+                      "noExtraCostPlanCount": 0
                     }
                   ]
                 }
@@ -2117,7 +2117,7 @@
           "products"
         ],
         "title": "ProductsResponse",
-        "description": "The merchant's products, sorted by name; another shop's products never appear."
+        "description": "The merchant's products, dearest first then by name; another shop's never appear."
       },
       "PublicPaymentStatus": {
         "type": "string",

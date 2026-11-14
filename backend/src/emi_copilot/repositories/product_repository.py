@@ -52,7 +52,9 @@ class ProductRepository:
     def list_for_merchant(
         self, merchant_id: str, name_search_text: str | None = None
     ) -> tuple[CatalogueProduct, ...]:
-        """Lists the merchant's products by name, then id; a search keeps names containing it.
+        """Lists the merchant's products dearest first, then by name and id, as M2 shows them.
+
+        A search keeps names containing it.
 
         The search ignores case and treats % and _ as plain characters, not SQL wildcards.
         """
@@ -62,7 +64,9 @@ class ProductRepository:
                 ProductModel.display_name.icontains(name_search_text, autoescape=True)
             )
         product_models = self._session.scalars(
-            statement.order_by(ProductModel.display_name, ProductModel.id)
+            statement.order_by(
+                ProductModel.list_price_in_paise.desc(), ProductModel.display_name, ProductModel.id
+            )
         ).all()
         return tuple(_to_domain(product_model) for product_model in product_models)
 
