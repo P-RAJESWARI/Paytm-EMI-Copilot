@@ -49,6 +49,38 @@ def _budget_event_of_sale(merchant_id: str) -> ColumnElement[bool]:
     )
 
 
+def _is_missed_sale(budget_thresholds_by_product_id: Mapping[str, Money]) -> ColumnElement[bool]:
+    """Selects missed sales: a budget told below the product's threshold, and never AGREED.
+
+    The threshold is the product's cheapest no-extra-cost monthly amount.
+    """
+    product_threshold_in_paise = case(
+        {
+            product_id: threshold.to_paise()
+            for product_id, threshold in budget_thresholds_by_product_id.items()
+        },
+        value=SaleModel.product_id,
+    )
+    has_agreed = exists().where(
+        (_AgreedEvent.sale_id == SaleModel.id) & (_AgreedEvent.stage == FunnelStage.AGREED.value)
+    )
+    return (
+        SaleModel.product_id.in_(list(budget_thresholds_by_product_id))
+        & (_BudgetEvent.monthly_budget_in_paise < product_threshold_in_paise)
+        & ~has_agreed
+    )
+
+
+def _to_missed_sales_tally(
+    missed_count: int, highest_budget_in_paise: int | None
+) -> MissedSalesTally:
+    """Turns one product's aggregate row into its tally, the highest budget as Money."""
+    return MissedSalesTally(
+        missed_count,
+        None if highest_budget_in_paise is None else Money.from_paise(highest_budget_in_paise),
+    )
+
+
 # Pattern: Repository. Report SQL lives here, so services and the domain never build queries.
 class ReportQueryRepository:
     """Counts one shop's funnel stages, budget ranges and missed sales in the unit of work."""
@@ -109,25 +141,12 @@ class ReportQueryRepository:
         ends_at: datetime,
         budget_thresholds_by_product_id: Mapping[str, Money],
     ) -> Mapping[str, MissedSalesTally]:
-        """Tallies the period's missed sales per product (domain rule is_missed_sale).
+        """Tallies the period's missed sales per product (domain rule is_missed_sale, in SQL).
 
-        A sale is missed when it told a budget below its product's threshold (the cheapest
-        no-extra-cost monthly amount) and never reached AGREED. Products without a threshold,
-        and products with no missed sale, are absent.
+        Products without a threshold, and products with no missed sale, are absent.
         """
         if not budget_thresholds_by_product_id:
             return {}
-        product_threshold = case(
-            {
-                product_id: threshold.to_paise()
-                for product_id, threshold in budget_thresholds_by_product_id.items()
-            },
-            value=SaleModel.product_id,
-        )
-        has_agreed = exists().where(
-            (_AgreedEvent.sale_id == SaleModel.id)
-            & (_AgreedEvent.stage == FunnelStage.AGREED.value)
-        )
         statement = (
             select(
                 SaleModel.product_id,
@@ -135,21 +154,12 @@ class ReportQueryRepository:
                 func.max(_BudgetEvent.monthly_budget_in_paise),
             )
             .join(_BudgetEvent, _budget_event_of_sale(merchant_id))
-            .where(
-                _sale_in_period(merchant_id, starts_at, ends_at)
-                & SaleModel.product_id.in_(list(budget_thresholds_by_product_id))
-                & (_BudgetEvent.monthly_budget_in_paise < product_threshold)
-                & ~has_agreed
-            )
+            .where(_sale_in_period(merchant_id, starts_at, ends_at))
+            .where(_is_missed_sale(budget_thresholds_by_product_id))
             .group_by(SaleModel.product_id)
         )
         return {
-            product_id: MissedSalesTally(
-                missed_count,
-                None
-                if highest_budget_in_paise is None
-                else Money.from_paise(highest_budget_in_paise),
-            )
+            product_id: _to_missed_sales_tally(missed_count, highest_budget_in_paise)
             for product_id, missed_count, highest_budget_in_paise in self._session.execute(
                 statement
             ).all()

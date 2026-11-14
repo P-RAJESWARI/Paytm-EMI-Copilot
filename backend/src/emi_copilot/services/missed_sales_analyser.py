@@ -1,8 +1,10 @@
 """MissedSalesAnalyser: one period's missed sales and budget counts, for three report services."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from emi_copilot.domain.merchants import MerchantPrincipal
+from emi_copilot.domain.money import Money
 from emi_copilot.domain.reports.budget_buckets import BUDGET_BUCKET_BOUNDARIES
 from emi_copilot.domain.reports.missed_sales import (
     MissedSalesAnalysis,
@@ -51,20 +53,8 @@ class MissedSalesAnalyser:
     def analyse(self, principal: MerchantPrincipal, period: ReportingPeriod) -> MissedSalesFindings:
         """Gives the shop's missed sales per product and its budget counts for the period."""
         merchant_id = principal.merchant_id
-        with self._unit_of_work_factory() as unit_of_work:
-            products = unit_of_work.products.list_for_merchant(merchant_id)
-        products_offers = [
-            ProductOffers(
-                product,
-                self._offer_discovery_service.discover_offers(product.to_offer_discovery_query()),
-            )
-            for product in products
-        ]
-        thresholds_by_product_id = {
-            product_offers.product.id: lowest_offer.quoted_monthly_installment
-            for product_offers in products_offers
-            if (lowest_offer := product_offers.lowest_no_extra_cost_offer) is not None
-        }
+        products_offers = self._quote_shop_products(merchant_id)
+        thresholds_by_product_id = _find_budget_thresholds(products_offers)
         with self._unit_of_work_factory() as unit_of_work:
             tallies = unit_of_work.report_queries.tally_missed_sales(
                 merchant_id, period.starts_at, period.ends_at, thresholds_by_product_id
@@ -81,3 +71,24 @@ class MissedSalesAnalyser:
             ]
         ).without_suppressed_details(self._policy)
         return MissedSalesFindings(analysis=analysis, budget_counts=budget_counts)
+
+    def _quote_shop_products(self, merchant_id: str) -> list[ProductOffers]:
+        """Reads the shop's products, then, with the transaction closed, quotes each one."""
+        with self._unit_of_work_factory() as unit_of_work:
+            products = unit_of_work.products.list_for_merchant(merchant_id)
+        return [
+            ProductOffers(
+                product,
+                self._offer_discovery_service.discover_offers(product.to_offer_discovery_query()),
+            )
+            for product in products
+        ]
+
+
+def _find_budget_thresholds(products_offers: Sequence[ProductOffers]) -> dict[str, Money]:
+    """Gives each product's cheapest no-extra-cost monthly figure, the missed-sale threshold."""
+    return {
+        product_offers.product.id: lowest_offer.quoted_monthly_installment
+        for product_offers in products_offers
+        if (lowest_offer := product_offers.lowest_no_extra_cost_offer) is not None
+    }

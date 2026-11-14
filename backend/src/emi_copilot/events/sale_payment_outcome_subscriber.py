@@ -25,6 +25,21 @@ SALE_PAYMENT_OUTCOME_BY_ATTEMPT_STATUS: Mapping[PaymentAttemptStatus, SalePaymen
 """Attempt statuses that settle a sale's payment; PENDING and link states settle nothing."""
 
 
+def _describe_status_change(
+    sale: Sale, updated_sale: Sale, event: PaymentStatusChanged
+) -> SaleStatusChanged:
+    """Describes the sale's move caused by the payment report, at the report's moment."""
+    return SaleStatusChanged(
+        occurred_at=event.occurred_at,
+        sale_id=sale.id,
+        merchant_id=sale.merchant_id,
+        previous_status=sale.status,
+        new_status=updated_sale.status,
+        chosen_offer_id=None if sale.chosen_plan is None else sale.chosen_plan.offer_id,
+        payment_attempt_id=event.payment_attempt_id,
+    )
+
+
 # Pattern: Observer. The payment status service knows nothing of sales; this subscriber turns
 # a confirmed payment report into the sale's move, in the same transaction.
 class SalePaymentOutcomeSubscriber:
@@ -72,16 +87,7 @@ class SalePaymentOutcomeSubscriber:
         if effect is PaymentOutcomeEffect.STATUS_CHANGED:
             unit_of_work.sales.update(updated_sale)
             self._event_bus.publish(
-                SaleStatusChanged(
-                    occurred_at=event.occurred_at,
-                    sale_id=sale.id,
-                    merchant_id=sale.merchant_id,
-                    previous_status=sale.status,
-                    new_status=updated_sale.status,
-                    chosen_offer_id=None if sale.chosen_plan is None else sale.chosen_plan.offer_id,
-                    payment_attempt_id=event.payment_attempt_id,
-                ),
-                unit_of_work,
+                _describe_status_change(sale, updated_sale, event), unit_of_work
             )
         elif effect is PaymentOutcomeEffect.IGNORED_NOT_AWAITING_PAYMENT:
             self._event_bus.publish(

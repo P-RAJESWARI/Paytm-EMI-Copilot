@@ -10,10 +10,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from emi_copilot.domain.catalogue import CatalogueProduct
 from emi_copilot.domain.emi import NoCostStrategy
 from emi_copilot.domain.errors import EmiScheduleNotRepresentableError
 from emi_copilot.domain.money import Money
-from emi_copilot.domain.reports.missed_sales import MissedSalesAnalysis
+from emi_copilot.domain.payments import PricedEmiOffer
+from emi_copilot.domain.reports.missed_sales import MissedSalesAnalysis, ProductMissedSales
 from emi_copilot.domain.reports.small_count_suppression import (
     ReportedCount,
     SmallCountSuppressionPolicy,
@@ -104,14 +106,8 @@ class LongerNoCostPlanSuggestion(SuggestedActionStrategy):
         if lowest_offer is None:
             return ()
         product = insight.product_offers.product
-        suggested_tenures = tuple(
-            tenure
-            for tenure in (
-                _find_no_cost_tenure(product.list_price, tenure_in_months)
-                for tenure_in_months in LONGER_NO_COST_TENURES_IN_MONTHS
-                if tenure_in_months > lowest_offer.offer.tenure_in_months
-            )
-            if tenure is not None
+        suggested_tenures = _find_longer_no_cost_tenures(
+            product.list_price, lowest_offer.offer.tenure_in_months
         )
         if not suggested_tenures:
             return ()
@@ -126,6 +122,21 @@ class LongerNoCostPlanSuggestion(SuggestedActionStrategy):
                 budget_ceiling=insight.budget_ceiling,
             ),
         )
+
+
+def _find_longer_no_cost_tenures(
+    list_price: Money, current_tenure_in_months: int
+) -> tuple[SuggestedNoCostTenure, ...]:
+    """Gives the no-cost installments of each suggested tenure longer than the current one."""
+    return tuple(
+        tenure
+        for tenure in (
+            _find_no_cost_tenure(list_price, tenure_in_months)
+            for tenure_in_months in LONGER_NO_COST_TENURES_IN_MONTHS
+            if tenure_in_months > current_tenure_in_months
+        )
+        if tenure is not None
+    )
 
 
 def _find_no_cost_tenure(list_price: Money, tenure_in_months: int) -> SuggestedNoCostTenure | None:
@@ -149,25 +160,14 @@ class CheaperModelSuggestion(SuggestedActionStrategy):
         insight = context.analysis.insight
         if insight is None or insight.budget_ceiling is None:
             return ()
-        insight_product = insight.product_offers.product
-        fitting_models = [
-            (candidate.product_offers.product, lowest_offer)
-            for candidate in context.analysis.products_missed_sales
-            for lowest_offer in (candidate.product_offers.lowest_no_extra_cost_offer,)
-            if lowest_offer is not None
-            and lowest_offer.quoted_monthly_installment <= insight.budget_ceiling
-            and candidate.product_offers.product.id != insight_product.id
-            and candidate.product_offers.product.list_price < insight_product.list_price
-        ]
-        if not fitting_models:
-            return ()
-        product, lowest_offer = min(
-            fitting_models,
-            key=lambda fitting_model: (
-                -fitting_model[0].list_price.to_paise(),
-                fitting_model[0].name,
-            ),
+        closest_model = _find_closest_cheaper_model(
+            context.analysis.products_missed_sales,
+            insight.product_offers.product,
+            insight.budget_ceiling,
         )
+        if closest_model is None:
+            return ()
+        product, lowest_offer = closest_model
         return (
             CheaperModelAction(
                 product_id=product.id,
@@ -177,6 +177,31 @@ class CheaperModelSuggestion(SuggestedActionStrategy):
                 tenure_in_months=lowest_offer.offer.tenure_in_months,
             ),
         )
+
+
+def _find_closest_cheaper_model(
+    products_missed_sales: Sequence[ProductMissedSales],
+    insight_product: CatalogueProduct,
+    budget_ceiling: Money,
+) -> tuple[CatalogueProduct, PricedEmiOffer] | None:
+    """Gives the dearest cheaper product whose no-extra-cost monthly fits under the ceiling.
+
+    Ties go to the name; None when no other, cheaper product has such a plan.
+    """
+    fitting_models = [
+        (candidate.product_offers.product, lowest_offer)
+        for candidate in products_missed_sales
+        for lowest_offer in (candidate.product_offers.lowest_no_extra_cost_offer,)
+        if lowest_offer is not None
+        and lowest_offer.quoted_monthly_installment <= budget_ceiling
+        and candidate.product_offers.product.id != insight_product.id
+        and candidate.product_offers.product.list_price < insight_product.list_price
+    ]
+    return min(
+        fitting_models,
+        key=lambda fitting_model: (-fitting_model[0].list_price.to_paise(), fitting_model[0].name),
+        default=None,
+    )
 
 
 SUGGESTED_ACTION_STRATEGIES: tuple[SuggestedActionStrategy, ...] = (

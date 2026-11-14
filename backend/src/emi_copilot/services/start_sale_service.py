@@ -108,6 +108,15 @@ class StartSaleService:
             idempotency=idempotency,
         )
         unit_of_work.sales.add(sale)
+        self._announce_sale_started(unit_of_work, sale)
+        return StartedSale(
+            counter_sale=CounterSale(sale=sale, product_name=product.name),
+            qr_link=issued_qr.link,
+            is_replay=False,
+        )
+
+    def _announce_sale_started(self, unit_of_work: UnitOfWork, sale: Sale) -> None:
+        """Publishes SaleStarted in the sale's transaction (audit row and STARTED funnel row)."""
         self._event_bus.publish(
             SaleStarted(
                 occurred_at=sale.started_at,
@@ -117,11 +126,6 @@ class StartSaleService:
                 price_in_paise=sale.price.to_paise(),
             ),
             unit_of_work,
-        )
-        return StartedSale(
-            counter_sale=CounterSale(sale=sale, product_name=product.name),
-            qr_link=issued_qr.link,
-            is_replay=False,
         )
 
     def _pick_free_session_code(self, unit_of_work: UnitOfWork, merchant_id: str) -> SessionCode:

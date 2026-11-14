@@ -115,7 +115,13 @@ class SaleHandoffService:
             raise IllegalSaleTransitionError(
                 f"A sale that is {sale.status.value} takes no new payment link."
             )
-        intent = SalePaymentLinkIntent(
+        return self._payment_handoff_service.create_payment_link(
+            command, self._build_new_link_intent(sale, chosen_plan)
+        )
+
+    def _build_new_link_intent(self, sale: Sale, chosen_plan: ChosenPlan) -> SalePaymentLinkIntent:
+        """Settles the sale's latest attempt for a new key, then gives the sale's link intent."""
+        return SalePaymentLinkIntent(
             sale,
             chosen_plan,
             self._clock,
@@ -124,7 +130,6 @@ class SaleHandoffService:
                 self._latest_attempt_check.find_attempt_proven_without_link(sale.id)
             ),
         )
-        return self._payment_handoff_service.create_payment_link(command, intent)
 
     def check_payment_status(self, principal: MerchantPrincipal, sale_id: str) -> SaleHandoffView:
         """Confirms the latest attempt's payment with the gateway, applies it, gives the view.
