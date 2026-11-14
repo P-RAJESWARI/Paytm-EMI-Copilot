@@ -1,0 +1,25 @@
+{
+  "head": {},
+  "body": {
+    "resultInfo": {
+      "resultStatus": "TXN_SUCCESS",
+      "resultCode": "01",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "txnId": "SYNTHETIC-TXN-0001",
+    "bankTxnId": "SYNTHETIC-BANK-TXN-0001",
+    "orderId": "ORDER-SAMPLE-0001",
+    "txnAmount": "22000.00",
+    "txnType": "SYNTHETIC-TXN-TYPE",
+    "gatewayName": "DEMOA",
+    "bankName": "Demo Bank A",
+    "mid": "SYNTHETICMID00000001",
+    "paymentMode": "SYNTHETIC-PAYMENT-MODE",
+    "refundAmt": "0.00",
+    "txnDate": "SYNTHETIC-TXN-DATE",
+    "cardScheme": "SYNTHETIC-CARD-SCHEME",
+    "lastFourDigit": "0000",
+    "authCode": "SYNTHETIC-AUTH-CODE",
+    "rrnCode": "SYNTHETIC-RRN-CODE"
+  }
+}

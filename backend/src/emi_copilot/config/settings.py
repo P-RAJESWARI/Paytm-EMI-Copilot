@@ -3,8 +3,14 @@
 from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from emi_copilot.adapters.payment_gateway.paytm_api_definitions import (
+    STAGING_EMI_SUBVENTION_BASE_URL,
+    STAGING_PAYMENT_LINK_BASE_URL,
+    STAGING_TRANSACTION_STATUS_BASE_URL,
+)
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
@@ -37,7 +43,26 @@ class ApplicationSettings(BaseSettings):
     payment_gateway_retry_max_delay_in_seconds: float = Field(default=2.0, gt=0)
     payment_gateway_circuit_breaker_failure_threshold: int = Field(default=5, ge=1)
     payment_gateway_circuit_breaker_open_duration_in_seconds: float = Field(default=30.0, gt=0)
+    # Paytm adapter (PAYMENT_GATEWAY_MODE=paytm). No credentials exist yet (CLAUDE.md D2); the
+    # factory refuses to start without them (ADR 0004). Base URLs default to the staging hosts;
+    # production hosts are not documented, so they must be set explicitly (ADR 0002).
+    paytm_merchant_id: SecretStr | None = None
+    paytm_merchant_key: SecretStr | None = None
+    paytm_emi_subvention_base_url: str = STAGING_EMI_SUBVENTION_BASE_URL
+    paytm_payment_link_base_url: str = STAGING_PAYMENT_LINK_BASE_URL
+    paytm_transaction_status_base_url: str = STAGING_TRANSACTION_STATUS_BASE_URL
+    paytm_webhook_callback_url: str | None = None
     log_level: LogLevel = "INFO"
+
+    @field_validator(
+        "paytm_merchant_id", "paytm_merchant_key", "paytm_webhook_callback_url", mode="before"
+    )
+    @classmethod
+    def treat_blank_value_as_unset(cls, value: object) -> object:
+        """Reads an empty or blank variable, as copied from .env.example, as not set at all."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @model_validator(mode="after")
     def check_retry_delays_are_ordered(self) -> Self:

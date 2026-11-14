@@ -1,0 +1,37 @@
+{
+  "body": {
+    "resultInfo": {
+      "resultStatus": "S",
+      "resultCode": "SYNTHETIC-SUCCESS-CODE",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "emiTypes": [
+      {
+        "type": "Subvention",
+        "label": "Synthetic no cost EMI label",
+        "info": "Synthetic info text",
+        "cardTypes": [
+          {"cardLabel": "Synthetic credit card label", "cardType": "CREDIT_CARD"}
+        ],
+        "bankDetails": {
+          "bankName": "Demo Bank A",
+          "bankCode": "DEMOA",
+          "bankLogoUrl": "https://logos.example.test/demo-bank-a.png"
+        }
+      },
+      {
+        "type": "Standard",
+        "label": "Synthetic standard EMI label",
+        "info": "Synthetic info text",
+        "cardTypes": [
+          {"cardLabel": "Synthetic credit card label", "cardType": "CREDIT_CARD"}
+        ],
+        "bankDetails": {
+          "bankName": "Demo Bank A",
+          "bankCode": "DEMOA",
+          "bankLogoUrl": "https://logos.example.test/demo-bank-a.png"
+        }
+      }
+    ]
+  }
+}

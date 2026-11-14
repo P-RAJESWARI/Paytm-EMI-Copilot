@@ -1,0 +1,13 @@
+{
+  "head": {},
+  "body": {
+    "resultInfo": {
+      "resultStatus": "PENDING",
+      "resultCode": "402",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "orderId": "ORDER-SAMPLE-0001",
+    "txnAmount": "22000.00",
+    "mid": "SYNTHETICMID00000001"
+  }
+}

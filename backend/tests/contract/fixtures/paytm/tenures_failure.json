@@ -1,0 +1,9 @@
+{
+  "body": {
+    "resultInfo": {
+      "resultStatus": "F",
+      "resultCode": "SYNTHETIC-FAILURE-CODE",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    }
+  }
+}

@@ -3,6 +3,11 @@
 import pytest
 from pydantic import ValidationError
 
+from emi_copilot.adapters.payment_gateway.paytm_api_definitions import (
+    STAGING_EMI_SUBVENTION_BASE_URL,
+    STAGING_PAYMENT_LINK_BASE_URL,
+    STAGING_TRANSACTION_STATUS_BASE_URL,
+)
 from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
 
 SETTINGS_ENVIRONMENT_VARIABLES = (
@@ -15,8 +20,16 @@ SETTINGS_ENVIRONMENT_VARIABLES = (
     "PAYMENT_GATEWAY_RETRY_MAX_DELAY_IN_SECONDS",
     "PAYMENT_GATEWAY_CIRCUIT_BREAKER_FAILURE_THRESHOLD",
     "PAYMENT_GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_IN_SECONDS",
+    "PAYTM_MERCHANT_ID",
+    "PAYTM_MERCHANT_KEY",
+    "PAYTM_EMI_SUBVENTION_BASE_URL",
+    "PAYTM_PAYMENT_LINK_BASE_URL",
+    "PAYTM_TRANSACTION_STATUS_BASE_URL",
+    "PAYTM_WEBHOOK_CALLBACK_URL",
     "LOG_LEVEL",
 )
+SYNTHETIC_MERCHANT_ID = "SYNTHETICMID00000001"
+SYNTHETIC_MERCHANT_KEY = "0123456789abcdef"  # pragma: allowlist secret
 
 
 @pytest.fixture(autouse=True)
@@ -104,3 +117,47 @@ def test_application_settings_with_unusable_resilience_value_raises_validation_e
     monkeypatch.setenv(variable_name, unusable_value)
     with pytest.raises(ValidationError):
         ApplicationSettings()
+
+
+def test_application_settings_without_environment_has_no_paytm_credentials_and_staging_urls() -> (
+    None
+):
+    """No Paytm credential exists by default; the base URLs are the staging hosts (ADR 0002)."""
+    settings = ApplicationSettings()
+    assert settings.paytm_merchant_id is None
+    assert settings.paytm_merchant_key is None
+    assert settings.paytm_webhook_callback_url is None
+    assert settings.paytm_emi_subvention_base_url == STAGING_EMI_SUBVENTION_BASE_URL
+    assert settings.paytm_payment_link_base_url == STAGING_PAYMENT_LINK_BASE_URL
+    assert settings.paytm_transaction_status_base_url == STAGING_TRANSACTION_STATUS_BASE_URL
+
+
+def test_application_settings_reads_paytm_values_and_hides_the_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Paytm values come from the environment; the merchant id and key never print."""
+    monkeypatch.setenv("PAYTM_MERCHANT_ID", SYNTHETIC_MERCHANT_ID)
+    monkeypatch.setenv("PAYTM_MERCHANT_KEY", SYNTHETIC_MERCHANT_KEY)
+    monkeypatch.setenv("PAYTM_PAYMENT_LINK_BASE_URL", "https://links.example.test")
+    monkeypatch.setenv("PAYTM_WEBHOOK_CALLBACK_URL", "https://emi-copilot.example.test/webhooks")
+    settings = ApplicationSettings()
+    assert settings.paytm_merchant_id is not None
+    assert settings.paytm_merchant_id.get_secret_value() == SYNTHETIC_MERCHANT_ID
+    assert settings.paytm_merchant_key is not None
+    assert settings.paytm_merchant_key.get_secret_value() == SYNTHETIC_MERCHANT_KEY
+    assert settings.paytm_payment_link_base_url == "https://links.example.test"
+    assert settings.paytm_webhook_callback_url == "https://emi-copilot.example.test/webhooks"
+    assert SYNTHETIC_MERCHANT_ID not in repr(settings)
+    assert SYNTHETIC_MERCHANT_KEY not in repr(settings)
+
+
+@pytest.mark.parametrize(
+    "variable_name", ["PAYTM_MERCHANT_ID", "PAYTM_MERCHANT_KEY", "PAYTM_WEBHOOK_CALLBACK_URL"]
+)
+def test_application_settings_reads_a_blank_paytm_value_as_not_set(
+    monkeypatch: pytest.MonkeyPatch, variable_name: str
+) -> None:
+    """The empty placeholders copied from .env.example mean "not set", never an empty secret."""
+    monkeypatch.setenv(variable_name, "  ")
+    settings = ApplicationSettings()
+    assert getattr(settings, variable_name.lower()) is None

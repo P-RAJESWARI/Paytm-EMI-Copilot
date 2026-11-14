@@ -8,10 +8,14 @@ from tests.contract.payment_gateway.gateway_contract_harness import GatewayContr
 from tests.contract.payment_gateway.mock_gateway_contract_harness import (
     MockGatewayContractHarness,
 )
+from tests.contract.payment_gateway.paytm_gateway_contract_harness import (
+    PaytmGatewayContractHarness,
+)
 
-# One entry per gateway implementation; the real adapter's fixture-fed harness joins here.
+# One entry per gateway implementation; the real adapter runs on documented-shape fixtures.
 GATEWAY_CONTRACT_HARNESS_FACTORIES: dict[str, Callable[[], GatewayContractHarness]] = {
     "mock": MockGatewayContractHarness,
+    "paytm": PaytmGatewayContractHarness,
 }
 
 

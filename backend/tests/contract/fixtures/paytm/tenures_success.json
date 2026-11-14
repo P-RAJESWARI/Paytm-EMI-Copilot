@@ -1,0 +1,58 @@
+{
+  "body": {
+    "resultInfo": {
+      "resultStatus": "S",
+      "resultCode": "SYNTHETIC-SUCCESS-CODE",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "bankName": "Demo Bank A",
+    "bankCode": "DEMOA",
+    "cardType": "CREDIT_CARD",
+    "planDetails": [
+      {
+        "planId": "SYNTHETIC-PLAN-NO-COST-6M",
+        "pgPlanId": "SYNTHETIC-PG-PLAN-0001",
+        "emiType": "SUBVENTION",
+        "emiLabel": "Synthetic 6 month no cost label",
+        "interval": 6,
+        "rate": 14.00,
+        "emi": 3666.67,
+        "interest": 1100.00,
+        "effectivePrice": 20900.00,
+        "gratifications": {
+          "value": 1100.00,
+          "type": "DISCOUNT",
+          "label": "Synthetic instant discount label"
+        }
+      },
+      {
+        "planId": "SYNTHETIC-PLAN-CASHBACK-12M",
+        "pgPlanId": "SYNTHETIC-PG-PLAN-0002",
+        "emiType": "SUBVENTION",
+        "emiLabel": "Synthetic 12 month cashback label",
+        "interval": 12,
+        "rate": 21.14,
+        "emi": "2050.00",
+        "interest": "2600.00",
+        "effectivePrice": 24600.00,
+        "gratifications": {
+          "value": 10.00,
+          "type": "CASHBACK",
+          "label": "Synthetic cashback label"
+        }
+      },
+      {
+        "planId": "SYNTHETIC-PLAN-STANDARD-6M",
+        "pgPlanId": "SYNTHETIC-PG-PLAN-0003",
+        "emiType": "STANDARD",
+        "emiLabel": "Synthetic 6 month standard label",
+        "interval": 6,
+        "rate": 16.94,
+        "emi": 3850.00,
+        "interest": 1100.00,
+        "effectivePrice": 23100.00
+      }
+    ],
+    "finalTransactionAmount": "22000.00"
+  }
+}

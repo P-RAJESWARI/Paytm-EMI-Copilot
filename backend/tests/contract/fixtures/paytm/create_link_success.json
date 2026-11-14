@@ -1,0 +1,14 @@
+{
+  "body": {
+    "resultInfo": {
+      "resultStatus": "SUCCESS",
+      "resultCode": "200",
+      "resultMessage": "Synthetic vendor message that must never be logged"
+    },
+    "linkId": 90000001,
+    "linkType": "FIXED",
+    "amount": 22000.00,
+    "shortUrl": "https://short-link.example.test/SYNTHLINK0001",
+    "longUrl": "https://long-link.example.test/synthetic/long/link/0001"
+  }
+}

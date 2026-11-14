@@ -1,0 +1,9 @@
+{
+  "body": {
+    "resultInfo": {
+      "resultStatus": "FAILED",
+      "resultCode": "5028",
+      "resultMessage": "Synthetic vendor message that must never be logged"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "head": {},
+  "body": {
+    "resultInfo": {
+      "resultStatus": "TXN_FAILURE",
+      "resultCode": "227",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "txnId": "SYNTHETIC-TXN-0002",
+    "orderId": "ORDER-SAMPLE-0001",
+    "txnAmount": "22000.00",
+    "mid": "SYNTHETICMID00000001"
+  }
+}

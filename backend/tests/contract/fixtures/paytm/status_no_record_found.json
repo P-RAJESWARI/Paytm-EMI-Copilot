@@ -1,0 +1,12 @@
+{
+  "head": {},
+  "body": {
+    "resultInfo": {
+      "resultStatus": "NO_RECORD_FOUND",
+      "resultCode": "331",
+      "resultMsg": "Synthetic vendor message that must never be logged"
+    },
+    "orderId": "ORDER-SAMPLE-0001",
+    "mid": "SYNTHETICMID00000001"
+  }
+}

@@ -6,9 +6,11 @@ import logging
 import sys
 from collections.abc import Iterator
 
+import httpx
 import pytest
 
 from emi_copilot.core.logging import (
+    HTTP_CLIENT_LOGGER_NAMES,
     JSON_HANDLER_NAME,
     UVICORN_ACCESS_LOGGER_NAME,
     UVICORN_LOGGER_NAMES,
@@ -175,6 +177,19 @@ def test_configure_logging_silences_uvicorn_access_log_in_favour_of_request_even
     uvicorn_access_logger = logging.getLogger(UVICORN_ACCESS_LOGGER_NAME)
     assert uvicorn_access_logger.handlers == []
     assert uvicorn_access_logger.propagate is False
+
+
+def test_configure_logging_keeps_http_client_request_lines_with_query_strings_out(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The httpx INFO request line holds the full URL and query, so it is never emitted."""
+    configure_logging("DEBUG")
+    http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
+    with caplog.at_level(logging.DEBUG), http_client:
+        http_client.get("https://gateway.example.test/path?merchantRef=SYNTHETIC-REF-0001")
+    assert "SYNTHETIC-REF-0001" not in caplog.text
+    for http_client_logger_name in HTTP_CLIENT_LOGGER_NAMES:
+        assert logging.getLogger(http_client_logger_name).level == logging.WARNING
 
 
 def test_json_log_formatter_without_redaction_filter_still_renders_exception() -> None:

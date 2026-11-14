@@ -15,6 +15,9 @@ MASKED_PHONE_PREFIX = "*" * 8
 UVICORN_LOGGER_NAMES = ("uvicorn", "uvicorn.error")
 # Replaced by the request-completed event, which logs the path without the query string.
 UVICORN_ACCESS_LOGGER_NAME = "uvicorn.access"
+# httpx logs every request's full URL at INFO, query string included, and a gateway query may
+# carry a merchant identifier. The resilient client logs host and path events instead.
+HTTP_CLIENT_LOGGER_NAMES = ("httpx", "httpcore")
 
 # Key words whose values are never logged (security-and-compliance.md section 3).
 SENSITIVE_KEY_WORDS = (
@@ -128,3 +131,5 @@ def configure_logging(log_level: str) -> None:
     uvicorn_access_logger = logging.getLogger(UVICORN_ACCESS_LOGGER_NAME)
     uvicorn_access_logger.handlers.clear()
     uvicorn_access_logger.propagate = False
+    for http_client_logger_name in HTTP_CLIENT_LOGGER_NAMES:
+        logging.getLogger(http_client_logger_name).setLevel(logging.WARNING)
