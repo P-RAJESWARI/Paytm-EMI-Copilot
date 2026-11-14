@@ -134,6 +134,21 @@ class PaymentGatewayRejectionReason(StrEnum):
     """
 
 
+class PaymentLinkFailureCode(StrEnum):
+    """Why a create-link call ended with no link; stored on a LINK_CREATION_FAILED attempt.
+
+    Stored by value, so a rename or a new member needs a migration. GATEWAY_UNAVAILABLE means the
+    request provably never left (ADR 0010 section 3); every other code is the gateway's refusal
+    reason, named exactly as in PaymentGatewayRejectionReason.
+    """
+
+    GATEWAY_UNAVAILABLE = "GATEWAY_UNAVAILABLE"
+    INVALID_REQUEST = "INVALID_REQUEST"
+    DUPLICATE_ORDER_ID = "DUPLICATE_ORDER_ID"
+    OPERATION_NOT_PERMITTED = "OPERATION_NOT_PERMITTED"
+    GATEWAY_INTERNAL_ERROR = "GATEWAY_INTERNAL_ERROR"
+
+
 class PaymentGatewayRequestRejectedError(PaymentGatewayError):
     """Raised when the gateway answered that it did not do what was asked, giving a reason.
 
@@ -180,3 +195,27 @@ class PaymentLinkOutcomeUnknownError(DomainError):
     """
 
     code: ClassVar[str] = "PAYMENT_LINK_OUTCOME_UNKNOWN"
+
+
+class PaymentLinkCreationFailedError(DomainError):
+    """Raised when a key is replayed whose create-link call certainly made no link.
+
+    It carries the stored failure code. Nothing is re-sent; the caller must start again with a
+    new Idempotency-Key, as for an unknown outcome (ADR 0005).
+    """
+
+    code: ClassVar[str] = "PAYMENT_LINK_CREATION_FAILED"
+
+    def __init__(self, failure_code: PaymentLinkFailureCode, detail: str) -> None:
+        """Stores the failure code recorded on the attempt with an English explanation."""
+        super().__init__(detail)
+        self.failure_code = failure_code
+
+
+class PaymentLinkCreationInProgressError(DomainError):
+    """Raised when a key is replayed while its first create-link call has not finished yet.
+
+    The first request owns the attempt; the caller may replay the same key once it has finished.
+    """
+
+    code: ClassVar[str] = "PAYMENT_LINK_CREATION_IN_PROGRESS"

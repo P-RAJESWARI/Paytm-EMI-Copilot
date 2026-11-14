@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
 from emi_copilot.domain.money import Money
-from emi_copilot.domain.payments import PaymentAttemptStatus
+from emi_copilot.domain.payments import PaymentAttemptStatus, PaymentLinkFailureCode
 from emi_copilot.repositories.payment_attempt_repository import PaymentAttemptRepository
 from tests.fixed_clock import FixedClock
 from tests.payment_builders import (
@@ -158,3 +158,48 @@ def test_update_of_unknown_attempt_raises_payment_attempt_not_found_error(
     """Updating an attempt that was never stored is a typed error, not a silent insert."""
     with pytest.raises(PaymentAttemptNotFoundError):
         repository.update(build_payment_attempt())
+
+
+def test_update_saves_the_failure_code_of_a_failed_attempt(
+    repository: PaymentAttemptRepository, session: Session
+) -> None:
+    """LINK_CREATION_FAILED and its code are stored and read back as the domain enum."""
+    payment_attempt = build_payment_attempt()
+    repository.add(payment_attempt)
+    failed_attempt = replace(
+        payment_attempt,
+        status=PaymentAttemptStatus.LINK_CREATION_FAILED,
+        failure_code=PaymentLinkFailureCode.GATEWAY_INTERNAL_ERROR,
+    )
+    repository.update(failed_attempt)
+    session.expunge_all()
+    stored_attempt = repository.find_by_order_id(payment_attempt.order_id)
+    assert stored_attempt is not None
+    assert stored_attempt.failure_code is PaymentLinkFailureCode.GATEWAY_INTERNAL_ERROR
+    stored_code = session.execute(
+        text("SELECT failure_code FROM payment_attempt WHERE id = :id"), {"id": payment_attempt.id}
+    ).scalar_one()
+    assert stored_code == "GATEWAY_INTERNAL_ERROR"
+
+
+def test_failure_code_check_constraint_rejects_an_unknown_code(
+    repository: PaymentAttemptRepository, session: Session
+) -> None:
+    """The database refuses a failure code the code base does not know."""
+    payment_attempt = build_payment_attempt()
+    repository.add(payment_attempt)
+    with pytest.raises(IntegrityError, match="ck_payment_attempt_failure_code_known"):
+        session.execute(
+            text("UPDATE payment_attempt SET failure_code = 'SOMETHING_ELSE' WHERE id = :id"),
+            {"id": payment_attempt.id},
+        )
+
+
+def test_find_by_order_id_for_update_returns_the_attempt_or_none(
+    repository: PaymentAttemptRepository,
+) -> None:
+    """The locking lookup finds the same attempt as the plain one, and None for an unknown id."""
+    payment_attempt = build_payment_attempt()
+    repository.add(payment_attempt)
+    assert repository.find_by_order_id_for_update(payment_attempt.order_id) == payment_attempt
+    assert repository.find_by_order_id_for_update("ORDER-NOT-STORED") is None

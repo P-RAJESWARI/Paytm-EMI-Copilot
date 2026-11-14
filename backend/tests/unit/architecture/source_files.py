@@ -8,6 +8,7 @@ APPLICATION_SOURCE_ROOT = Path(emi_copilot.__file__).parent
 DOMAIN_DIRECTORY = APPLICATION_SOURCE_ROOT / "domain"
 CORE_DIRECTORY = APPLICATION_SOURCE_ROOT / "core"
 CONFIG_DIRECTORY = APPLICATION_SOURCE_ROOT / "config"
+SERVICES_DIRECTORY = APPLICATION_SOURCE_ROOT / "services"
 PAYMENT_GATEWAY_PORT_FILE = APPLICATION_SOURCE_ROOT / "adapters" / "payment_gateway" / "port.py"
 
 
@@ -24,6 +25,11 @@ def list_core_modules() -> list[Path]:
 def list_config_modules() -> list[Path]:
     """Lists every Python module under config/, sorted so test ids are stable."""
     return sorted(CONFIG_DIRECTORY.rglob("*.py"))
+
+
+def list_services_modules() -> list[Path]:
+    """Lists every Python module under services/, sorted so test ids are stable."""
+    return sorted(SERVICES_DIRECTORY.rglob("*.py"))
 
 
 def describe_source_file(source_file: Path) -> str:

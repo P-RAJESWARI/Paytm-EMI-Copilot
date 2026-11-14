@@ -1,4 +1,4 @@
-"""Integration tests for the 0001 migration: reversibility, constraints, indexes and no drift."""
+"""Integration tests for the migrations: reversibility, constraints, indexes and no drift."""
 
 from collections.abc import Iterator
 
@@ -109,6 +109,7 @@ def test_payment_attempt_lookup_columns_are_unique_and_therefore_indexed(
                 "ck_payment_attempt_amount_in_paise_positive",
                 "ck_payment_attempt_status_known",
                 "ck_payment_attempt_request_fingerprint_length",
+                "ck_payment_attempt_failure_code_known",
             },
         ),
         ("audit_event", {"ck_audit_event_event_type_known"}),
@@ -140,3 +141,38 @@ def test_tables_hold_money_as_bigint_paise_and_no_card_fields(
     assert "updated_at" not in audit_event_column_names
     for column_name in {*payment_attempt_columns, *audit_event_column_names}:
         assert not any(card_word in column_name for card_word in CARD_FIELD_WORDS)
+
+
+def _scratch_payment_attempt_column_names(connection: Connection) -> set[str]:
+    """Lists the payment_attempt columns currently in the scratch schema."""
+    return {
+        column["name"]
+        for column in inspect(connection).get_columns("payment_attempt", schema=SCRATCH_SCHEMA)
+    }
+
+
+def test_migration_0002_adds_and_removes_the_failure_code_column(
+    scratch_schema_connection: Connection,
+) -> None:
+    """0002 adds the nullable failure_code with its check; downgrading to 0001 removes both."""
+    alembic_config = build_alembic_config(scratch_schema_connection)
+    command.upgrade(alembic_config, "0001")
+    assert "failure_code" not in _scratch_payment_attempt_column_names(scratch_schema_connection)
+    command.upgrade(alembic_config, "0002")
+    failure_code_column = next(
+        column
+        for column in inspect(scratch_schema_connection).get_columns(
+            "payment_attempt", schema=SCRATCH_SCHEMA
+        )
+        if column["name"] == "failure_code"
+    )
+    assert failure_code_column["nullable"] is True
+    check_constraint_names = {
+        constraint["name"]
+        for constraint in inspect(scratch_schema_connection).get_check_constraints(
+            "payment_attempt", schema=SCRATCH_SCHEMA
+        )
+    }
+    assert "ck_payment_attempt_failure_code_known" in check_constraint_names
+    command.downgrade(alembic_config, "0001")
+    assert "failure_code" not in _scratch_payment_attempt_column_names(scratch_schema_connection)

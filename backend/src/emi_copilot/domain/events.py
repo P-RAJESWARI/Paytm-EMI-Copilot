@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from emi_copilot.domain.errors import PaymentLinkFailureCode
 from emi_copilot.domain.payments.gateway_payment_status import GatewayPaymentStatus
 from emi_copilot.domain.payments.payment_attempt_status import PaymentAttemptStatus
-from emi_copilot.domain.payments.payment_link_failure_code import PaymentLinkFailureCode
 
 
 class StatusReportSource(StrEnum):

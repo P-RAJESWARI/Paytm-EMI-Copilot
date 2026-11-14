@@ -26,6 +26,10 @@ class PaymentAttemptStore(Protocol):
         """Returns the attempt for one gateway order id, or None."""
         ...
 
+    def find_by_order_id_for_update(self, order_id: str) -> PaymentAttempt | None:
+        """Returns the attempt for one order id, locked until the transaction ends, or None."""
+        ...
+
     def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
         """Saves the mutable fields of a stored attempt and returns the stored attempt."""
         ...

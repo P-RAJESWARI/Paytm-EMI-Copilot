@@ -64,6 +64,10 @@ class FakePaymentAttemptRepository:
             None,
         )
 
+    def find_by_order_id_for_update(self, order_id: str) -> PaymentAttempt | None:
+        """Returns the attempt for the order id; a single-threaded fake needs no lock."""
+        return self.find_by_order_id(order_id)
+
     def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
         """Saves only the mutable fields and stamps updated_at, as the real repository does."""
         stored_attempt = self._payment_attempts_by_id.get(payment_attempt.id)
@@ -75,6 +79,7 @@ class FakePaymentAttemptRepository:
             gateway_link_id=payment_attempt.gateway_link_id,
             payment_link_url=payment_attempt.payment_link_url,
             gateway_transaction_id=payment_attempt.gateway_transaction_id,
+            failure_code=payment_attempt.failure_code,
             updated_at=self._clock.now(),
         )
         self._payment_attempts_by_id[payment_attempt.id] = updated_attempt

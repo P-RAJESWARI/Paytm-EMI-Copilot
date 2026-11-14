@@ -1,25 +1,10 @@
-"""Why a create-link call ended with no link, as stored on a LINK_CREATION_FAILED attempt."""
-
-from enum import StrEnum
+"""Which failure code to store when a create-link call certainly made no link."""
 
 from emi_copilot.domain.errors import (
     PaymentGatewayRequestRejectedError,
     PaymentGatewayUnavailableError,
+    PaymentLinkFailureCode,
 )
-
-
-class PaymentLinkFailureCode(StrEnum):
-    """A stable failure code; stored by value, so a rename or a new member needs a migration.
-
-    GATEWAY_UNAVAILABLE means the request provably never left (ADR 0010 section 3). Every other
-    code is the gateway's refusal reason, named exactly as in PaymentGatewayRejectionReason.
-    """
-
-    GATEWAY_UNAVAILABLE = "GATEWAY_UNAVAILABLE"
-    INVALID_REQUEST = "INVALID_REQUEST"
-    DUPLICATE_ORDER_ID = "DUPLICATE_ORDER_ID"
-    OPERATION_NOT_PERMITTED = "OPERATION_NOT_PERMITTED"
-    GATEWAY_INTERNAL_ERROR = "GATEWAY_INTERNAL_ERROR"
 
 
 def find_payment_link_failure_code(

@@ -1,0 +1,88 @@
+"""Services depend on the gateway port, repositories, domain, events and two core types only.
+
+They never import a concrete adapter (the Mock, any Paytm module or the factory), a web
+framework, the database library or the API layer (backend.md section 2, ADR 0008).
+"""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+from tests.unit.architecture.source_files import describe_source_file, list_services_modules
+from tests.unit.architecture.test_import_boundaries import (
+    is_inside_package,
+    list_imported_module_names,
+)
+
+ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
+    "emi_copilot.adapters.payment_gateway.port",
+    "emi_copilot.core.clock",
+    "emi_copilot.core.id_generator",
+    "emi_copilot.domain",
+    "emi_copilot.events",
+    "emi_copilot.repositories.unit_of_work_protocol",
+    "emi_copilot.services",
+)
+CONCRETE_ADAPTER_WORDS = ("mock_adapter", "paytm", "factory")
+
+
+def is_allowed_in_services(module_name: str) -> bool:
+    """Tells whether a service may import the module: stdlib or an allowed application module."""
+    top_level_package = module_name.split(".", maxsplit=1)[0]
+    return top_level_package in sys.stdlib_module_names or any(
+        is_inside_package(module_name, allowed_module)
+        for allowed_module in ALLOWED_APPLICATION_MODULES_IN_SERVICES
+    )
+
+
+def find_imports_forbidden_in_services(source_file: Path) -> list[str]:
+    """Lists the imports of a service module that are not allowed or name a concrete adapter."""
+    return [
+        module_name
+        for module_name in list_imported_module_names(source_file)
+        if not is_allowed_in_services(module_name)
+        or any(word in module_name for word in CONCRETE_ADAPTER_WORDS)
+    ]
+
+
+def test_services_has_modules_to_check() -> None:
+    """Guards the services boundary test against silently checking nothing."""
+    assert len(list_services_modules()) >= 4
+
+
+@pytest.mark.parametrize("services_module", list_services_modules(), ids=describe_source_file)
+def test_services_module_imports_only_ports_repositories_domain_and_events(
+    services_module: Path,
+) -> None:
+    """A service sees the gateway only through PaymentGatewayPort."""
+    assert find_imports_forbidden_in_services(services_module) == []
+
+
+def test_find_imports_forbidden_in_services_reports_adapters_frameworks_and_layers(
+    tmp_path: Path,
+) -> None:
+    """The rule rejects the Mock, Paytm modules, the factory, FastAPI, SQLAlchemy and the API."""
+    sample_module = tmp_path / "sample_module.py"
+    sample_module.write_text(
+        "import json\n"
+        "from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort\n"
+        "from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter\n"
+        "from emi_copilot.adapters.payment_gateway.paytm_adapter import PaytmAdapter\n"
+        "from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayFactory\n"
+        "from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork\n"
+        "from emi_copilot.domain.payments import PaymentAttempt\n"
+        "import fastapi\n"
+        "import sqlalchemy\n"
+        "from emi_copilot.api.controllers import health_controller\n",
+        encoding="utf-8",
+    )
+    assert find_imports_forbidden_in_services(sample_module) == [
+        "emi_copilot.adapters.payment_gateway.mock_adapter",
+        "emi_copilot.adapters.payment_gateway.paytm_adapter",
+        "emi_copilot.adapters.payment_gateway.factory",
+        "emi_copilot.repositories.unit_of_work",
+        "fastapi",
+        "sqlalchemy",
+        "emi_copilot.api.controllers",
+    ]

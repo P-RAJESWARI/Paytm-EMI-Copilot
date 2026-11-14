@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, CheckConstraint, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from emi_copilot.domain.payments import PaymentAttemptStatus
+from emi_copilot.domain.payments import PaymentAttemptStatus, PaymentLinkFailureCode
 from emi_copilot.models.base import Base, sql_value_list
 
 
@@ -18,6 +18,9 @@ class PaymentAttemptModel(Base):
         CheckConstraint("amount_in_paise > 0", name="amount_in_paise_positive"),
         CheckConstraint(f"status IN ({sql_value_list(PaymentAttemptStatus)})", name="status_known"),
         CheckConstraint("char_length(request_fingerprint) = 64", name="request_fingerprint_length"),
+        CheckConstraint(
+            f"failure_code IN ({sql_value_list(PaymentLinkFailureCode)})", name="failure_code_known"
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True)
@@ -33,3 +36,4 @@ class PaymentAttemptModel(Base):
     gateway_transaction_id: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    failure_code: Mapped[str | None] = mapped_column(String(32))

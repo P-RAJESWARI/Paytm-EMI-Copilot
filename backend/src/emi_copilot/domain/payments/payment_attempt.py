@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
-from emi_copilot.domain.errors import InvalidPaymentAttemptError
+from emi_copilot.domain.errors import InvalidPaymentAttemptError, PaymentLinkFailureCode
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments.field_validation import (
     require_non_empty_text,
@@ -26,7 +26,8 @@ class PaymentAttempt:
     It is immutable: a status or gateway-reference change produces a new instance (for example
     with dataclasses.replace) that the repository saves. Status transitions are not checked here.
     The gateway mode is the adapter name of the gateway that served the attempt (for example
-    "mock"), as reported by the gateway port.
+    "mock"), as reported by the gateway port. The failure code is set exactly when the status is
+    LINK_CREATION_FAILED, so a replay can tell why no link was made.
     """
 
     id: str
@@ -42,6 +43,7 @@ class PaymentAttempt:
     gateway_transaction_id: str | None
     created_at: datetime
     updated_at: datetime
+    failure_code: PaymentLinkFailureCode | None = None
 
     def __post_init__(self) -> None:
         """Rejects missing identifiers, a malformed fingerprint, a zero amount or bad timestamps."""
@@ -66,7 +68,20 @@ class PaymentAttempt:
             raise InvalidPaymentAttemptError("The status must be a PaymentAttemptStatus.")
         if not isinstance(self.offer_snapshot, OfferSnapshot):
             raise InvalidPaymentAttemptError("The offer snapshot must be an OfferSnapshot.")
+        self._require_failure_code_only_on_failure()
         self._require_valid_timestamps()
+
+    def _require_failure_code_only_on_failure(self) -> None:
+        """Raises unless a failed attempt has a PaymentLinkFailureCode and no other attempt has."""
+        if self.failure_code is not None and not isinstance(
+            self.failure_code, PaymentLinkFailureCode
+        ):
+            raise InvalidPaymentAttemptError("The failure code must be a PaymentLinkFailureCode.")
+        has_failed = self.status is PaymentAttemptStatus.LINK_CREATION_FAILED
+        if has_failed != (self.failure_code is not None):
+            raise InvalidPaymentAttemptError(
+                "A failure code is set exactly when link creation has failed."
+            )
 
     def _require_valid_fingerprint(self) -> None:
         """Raises unless the request fingerprint is 64 lowercase hexadecimal characters."""

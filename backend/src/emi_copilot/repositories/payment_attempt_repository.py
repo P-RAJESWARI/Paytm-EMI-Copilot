@@ -10,8 +10,18 @@ from sqlalchemy.orm import Session
 from emi_copilot.core.clock import Clock
 from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
 from emi_copilot.domain.money import Money
-from emi_copilot.domain.payments import OfferSnapshot, PaymentAttempt, PaymentAttemptStatus
+from emi_copilot.domain.payments import (
+    OfferSnapshot,
+    PaymentAttempt,
+    PaymentAttemptStatus,
+    PaymentLinkFailureCode,
+)
 from emi_copilot.models import PaymentAttemptModel
+
+
+def _failure_code_value(failure_code: PaymentLinkFailureCode | None) -> str | None:
+    """Gives the stored word of a failure code, or None when the attempt has not failed."""
+    return None if failure_code is None else failure_code.value
 
 
 def _to_model(payment_attempt: PaymentAttempt) -> PaymentAttemptModel:
@@ -30,6 +40,7 @@ def _to_model(payment_attempt: PaymentAttempt) -> PaymentAttemptModel:
         gateway_transaction_id=payment_attempt.gateway_transaction_id,
         created_at=payment_attempt.created_at,
         updated_at=payment_attempt.updated_at,
+        failure_code=_failure_code_value(payment_attempt.failure_code),
     )
 
 
@@ -49,6 +60,11 @@ def _to_domain(payment_attempt_model: PaymentAttemptModel) -> PaymentAttempt:
         gateway_transaction_id=payment_attempt_model.gateway_transaction_id,
         created_at=payment_attempt_model.created_at.astimezone(UTC),
         updated_at=payment_attempt_model.updated_at.astimezone(UTC),
+        failure_code=(
+            None
+            if payment_attempt_model.failure_code is None
+            else PaymentLinkFailureCode(payment_attempt_model.failure_code)
+        ),
     )
 
 
@@ -87,7 +103,7 @@ class PaymentAttemptRepository:
         return self._find_one_where(PaymentAttemptModel.order_id == order_id)
 
     def update(self, payment_attempt: PaymentAttempt) -> PaymentAttempt:
-        """Saves the mutable fields (status and gateway references) and stamps updated_at.
+        """Saves the mutable fields (status, gateway references, failure code); stamps updated_at.
 
         Identity, keys, fingerprint, amount, snapshot and gateway mode never change after
         insertion, so their values on the given attempt are ignored. Returns the stored attempt.
@@ -101,13 +117,27 @@ class PaymentAttemptRepository:
         payment_attempt_model.gateway_link_id = payment_attempt.gateway_link_id
         payment_attempt_model.payment_link_url = payment_attempt.payment_link_url
         payment_attempt_model.gateway_transaction_id = payment_attempt.gateway_transaction_id
+        payment_attempt_model.failure_code = _failure_code_value(payment_attempt.failure_code)
         payment_attempt_model.updated_at = self._clock.now()
         self._session.flush()
         return _to_domain(payment_attempt_model)
 
-    def _find_one_where(self, condition: ColumnElement[bool]) -> PaymentAttempt | None:
-        """Loads at most one attempt matching a condition on a unique column."""
-        payment_attempt_model = self._session.scalars(
-            select(PaymentAttemptModel).where(condition)
-        ).one_or_none()
+    def find_by_order_id_for_update(self, order_id: str) -> PaymentAttempt | None:
+        """Returns the attempt for one order id, locking its row until the transaction ends.
+
+        Two reports about one order (a webhook and a status check) then apply one after the
+        other, so a status change is recorded once.
+        """
+        return self._find_one_where(
+            PaymentAttemptModel.order_id == order_id, is_locked_for_update=True
+        )
+
+    def _find_one_where(
+        self, condition: ColumnElement[bool], *, is_locked_for_update: bool = False
+    ) -> PaymentAttempt | None:
+        """Loads at most one attempt matching a condition on a unique column, maybe locking it."""
+        statement = select(PaymentAttemptModel).where(condition)
+        if is_locked_for_update:
+            statement = statement.with_for_update()
+        payment_attempt_model = self._session.scalars(statement).one_or_none()
         return None if payment_attempt_model is None else _to_domain(payment_attempt_model)
