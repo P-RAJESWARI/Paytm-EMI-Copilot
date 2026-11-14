@@ -7,9 +7,12 @@ export function findTamilLinesWithoutDraftMarker(
   const tamilObjectStart = source.indexOf(`export const ${tamilObjectName}`);
   if (tamilObjectStart === -1) throw new Error(`${tamilObjectName} was not found in the source`);
   const tamilObjectEnd = source.indexOf('\n};', tamilObjectStart);
-  return source
-    .slice(tamilObjectStart, tamilObjectEnd === -1 ? undefined : tamilObjectEnd)
-    .split('\n')
-    .filter((line) => /:\s*['"`]/.test(line))
-    .filter((line) => !line.includes('// draft: needs native review'));
+  return (
+    source
+      .slice(tamilObjectStart, tamilObjectEnd === -1 ? undefined : tamilObjectEnd)
+      .split('\n')
+      // A string line is `key: 'text',` or, when Prettier wraps a long value, just `'text',`.
+      .filter((line) => /^\s*([\w$]+:\s*)?['"`]/.test(line))
+      .filter((line) => !line.includes('// draft: needs native review'))
+  );
 }

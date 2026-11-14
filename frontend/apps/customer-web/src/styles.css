@@ -1,0 +1,4 @@
+/* The customer app's stylesheet: the ui-kit (Tailwind, fonts, tokens) plus this app's files. */
+@import '@emi-copilot/ui-kit/styles.css';
+
+@source '.';

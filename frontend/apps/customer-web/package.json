@@ -1,0 +1,23 @@
+{
+  "name": "@emi-copilot/customer-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@emi-copilot/shared-i18n": "workspace:*",
+    "@emi-copilot/ui-kit": "workspace:*",
+    "i18next": "26.5.12",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-i18next": "17.1.9"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7"
+  }
+}

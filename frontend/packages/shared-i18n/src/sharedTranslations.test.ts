@@ -24,6 +24,22 @@ describe('shared translations', () => {
     ).toEqual([]);
   });
 
+  it('the draft check reports unmarked Tamil lines, including wrapped values', () => {
+    const exampleSource = [
+      'export const EXAMPLE_TAMIL = {',
+      "  marked: 'குறி', // draft: needs native review",
+      "  unmarked: 'குறியில்லை',",
+      '  wrapped:',
+      "    'நீண்ட உரை',",
+      '};',
+    ].join('\n');
+
+    expect(findTamilLinesWithoutDraftMarker(exampleSource, 'EXAMPLE_TAMIL')).toEqual([
+      "  unmarked: 'குறியில்லை',",
+      "    'நீண்ட உரை',",
+    ]);
+  });
+
   it('labels every merchant-visible sale status from the API', () => {
     expect(Object.keys(SHARED_ENGLISH_TRANSLATIONS.saleStatus)).toEqual(API_SALE_STATUSES);
   });
