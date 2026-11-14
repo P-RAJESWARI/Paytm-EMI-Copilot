@@ -22,7 +22,6 @@ from emi_copilot.dtos.wire_types import MAXIMUM_IDENTIFIER_LENGTH, VISIBLE_ASCII
 
 payment_status_router = APIRouter(tags=["payments"])
 
-GET_PAYMENT_STATUS_ROUTE_NAME = "get_payment_status"
 PAYMENT_STATUS_RESPONSE_EXAMPLE = {
     "orderId": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
     "status": "PAID",
@@ -40,7 +39,6 @@ PAYMENT_NOT_FOUND_PROBLEM = ProblemExample(
 
 @payment_status_router.get(
     "/payments/{orderId}/status",
-    name=GET_PAYMENT_STATUS_ROUTE_NAME,
     dependencies=[Depends(enforce_merchant_payment_rate_limit)],
     summary="Get a payment's status",
     description=(

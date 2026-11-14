@@ -54,8 +54,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a payment link for the chosen plan
-         * @description Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a payment link exactly once per Idempotency-Key; the call is never retried. The same key and body return the original 201 response. A gateway timeout answers 504 and the key then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). Location points at the payment's status, which answers only for a payment of one of the shop's sales: for a counter sale use POST /api/v1/sales/{saleId}/payment-links. Layer 1 gateway endpoint that needs the merchant bearer token since Layer 2 (plan Q16) and is limited per shop (429 with Retry-After). Money is integer paise; errors are application/problem+json.
+         * Create a payment link for an item, without a sale (deprecated)
+         * @deprecated
+         * @description Deprecated: use POST /api/v1/sales/{saleId}/payment-links, which links only the plan the customer agreed to on one of the shop's sales. This Layer 1 operation makes a payable link with no sale and no customer agreement, and its payment status cannot be read back (GET /api/v1/payments/{orderId}/status answers only for a sale's payment), so it sends no Location header. It stays until the owner decides to remove it. Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a payment link exactly once per Idempotency-Key; the call is never retried. The same key and body return the original 201 response. A gateway timeout answers 504 and the key then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). Layer 1 gateway endpoint that needs the merchant bearer token since Layer 2 (plan Q16) and is limited per shop (429 with Retry-After). Money is integer paise; errors are application/problem+json.
          */
         post: operations["create_payment_link_api_v1_payment_links_post"];
         delete?: never;
@@ -1594,8 +1595,6 @@ export interface operations {
             /** @description The link was created (or this is the replay of its creation). */
             201: {
                 headers: {
-                    /** @description The status URL of this payment. */
-                    Location?: string;
                     [name: string]: unknown;
                 };
                 content: {

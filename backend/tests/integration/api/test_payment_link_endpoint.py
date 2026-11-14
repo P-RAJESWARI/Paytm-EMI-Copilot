@@ -1,4 +1,4 @@
-"""POST /api/v1/payment-links: idempotency, Location, audit and unknown outcomes (ADR 0005)."""
+"""POST /api/v1/payment-links (deprecated): idempotency, audit and unknown outcomes (ADR 0005)."""
 
 import pytest
 
@@ -30,10 +30,10 @@ def mock_api(mock_api: ApiHarness) -> ApiHarness:
     return mock_api
 
 
-def test_post_payment_link_returns_201_with_location_snapshot_and_audit_row(
+def test_post_payment_link_returns_201_with_snapshot_and_audit_row_and_no_location(
     mock_api: ApiHarness,
 ) -> None:
-    """A new key makes the link, points Location at its status and audits the creation."""
+    """A new key makes the link and audits it; no Location, as its status cannot be read back."""
     response = mock_api.client.post(
         "/api/v1/payment-links",
         json=MOCK_PLAN_B_REQUEST,
@@ -42,7 +42,7 @@ def test_post_payment_link_returns_201_with_location_snapshot_and_audit_row(
     assert response.status_code == 201
     body = response.json()
     order_id = body["orderId"]
-    assert response.headers["Location"] == f"/api/v1/payments/{order_id}/status"
+    assert "Location" not in response.headers
     assert body["paymentUrl"].startswith(MOCK_PAYMENT_URL_PREFIX)
     assert body["status"] == "AWAITING_PAYMENT"
     assert body["offer"] == {
@@ -103,7 +103,6 @@ def test_post_payment_link_replay_with_same_body_returns_identical_response_and_
     )
     assert first_response.status_code == replay_response.status_code == 201
     assert replay_response.json() == first_response.json()
-    assert replay_response.headers["Location"] == first_response.headers["Location"]
     assert len(fake_gateway.create_link_calls) == 1
 
 

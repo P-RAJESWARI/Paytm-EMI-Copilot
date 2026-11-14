@@ -86,11 +86,12 @@ def test_get_payment_status_of_a_payment_made_for_no_sale_returns_404_without_a_
         json={**SAMPLE_ITEM_QUERY, "offerId": "mock-offer-card-6m"},
         headers={**shops.first_shop_headers, "Idempotency-Key": "idempotency-key-bare-0001"},
     )
+    order_id = link_response.json()["orderId"]
     mock_api.clock.advance(DEFAULT_PAYMENT_COMPLETION_DELAY)
     response = mock_api.client.get(
-        link_response.headers["Location"], headers=shops.first_shop_headers
+        f"/api/v1/payments/{order_id}/status", headers=shops.first_shop_headers
     )
-    stored_attempt = mock_api.read_attempt(link_response.json()["orderId"])
+    stored_attempt = mock_api.read_attempt(order_id)
     assert response.status_code == 404
     assert stored_attempt is not None
     assert stored_attempt.status is PaymentAttemptStatus.LINK_CREATED

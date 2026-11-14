@@ -2,9 +2,8 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Header, Request, Response
+from fastapi import APIRouter, Body, Depends, Header
 
-from emi_copilot.api.controllers.payment_status_controller import GET_PAYMENT_STATUS_ROUTE_NAME
 from emi_copilot.api.dependencies import PaymentHandoffServiceDependency
 from emi_copilot.api.openapi_documentation import (
     GATEWAY_FAILURE_PROBLEMS,
@@ -96,27 +95,23 @@ PAYMENT_LINK_PROBLEMS = (
     "/payment-links",
     status_code=201,
     dependencies=[Depends(enforce_merchant_payment_rate_limit)],
-    summary="Create a payment link for the chosen plan",
+    deprecated=True,
+    summary="Create a payment link for an item, without a sale (deprecated)",
     description=(
+        "Deprecated: use POST /api/v1/sales/{saleId}/payment-links, which links only the plan "
+        "the customer agreed to on one of the shop's sales. This Layer 1 operation makes a "
+        "payable link with no sale and no customer agreement, and its payment status cannot be "
+        "read back (GET /api/v1/payments/{orderId}/status answers only for a sale's payment), so "
+        "it sends no Location header. It stays until the owner decides to remove it. "
         "Re-quotes the chosen offer server-side, freezes its plan and asks the gateway for a "
         "payment link exactly once per Idempotency-Key; the call is never retried. The same key "
         "and body return the original 201 response. A gateway timeout answers 504 and the key "
         "then answers 409 PAYMENT_LINK_OUTCOME_UNKNOWN: start again with a new key (ADR 0005). "
-        "Location points at the payment's status, which answers only for a payment of one of "
-        "the shop's sales: for a counter sale use POST /api/v1/sales/{saleId}/payment-links. "
         + PAYMENT_MERCHANT_BEARER_NOTE
     ),
     response_description="The link was created (or this is the replay of its creation).",
     responses={
-        201: {
-            "content": {"application/json": {"example": PAYMENT_LINK_RESPONSE_EXAMPLE}},
-            "headers": {
-                "Location": {
-                    "description": "The status URL of this payment.",
-                    "schema": {"type": "string"},
-                }
-            },
-        },
+        201: {"content": {"application/json": {"example": PAYMENT_LINK_RESPONSE_EXAMPLE}}},
         **describe_problem_responses(
             MALFORMED_REQUEST_PROBLEM,
             REQUEST_VALIDATION_PROBLEM,
@@ -151,15 +146,10 @@ def create_payment_link(
             examples=["5f0c2a2e-6d1b-4c55-9a43-3f1b2f7f8e11"],
         ),
     ],
-    request: Request,
-    response: Response,
     payment_handoff_service: PaymentHandoffServiceDependency,
 ) -> PaymentLinkResponse:
-    """Runs the hand-off for the body and key, and points Location at the payment's status."""
+    """Runs the hand-off for the body and key; deprecated in favour of the sale's own links."""
     handoff = payment_handoff_service.create_payment_link(
         payment_link_request.to_command(idempotency_key)
-    )
-    response.headers["Location"] = str(
-        request.app.url_path_for(GET_PAYMENT_STATUS_ROUTE_NAME, orderId=handoff.order_id)
     )
     return PaymentLinkResponse.from_handoff(handoff)

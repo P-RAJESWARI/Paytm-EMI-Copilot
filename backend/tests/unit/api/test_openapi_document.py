@@ -229,3 +229,19 @@ def test_sale_event_stream_documents_its_payload_under_text_event_stream_only(
     assert success_content["text/event-stream"]["schema"] == {
         "$ref": "#/components/schemas/SaleStatusEventPayload"
     }
+
+
+def test_only_the_sale_less_payment_link_operation_is_deprecated_and_it_sends_no_location(
+    openapi_document: dict[str, Any],
+) -> None:
+    """The bare Layer 1 link points callers to the sale's own links and promises no Location."""
+    deprecated_operations = [
+        (path, method)
+        for path, path_item in openapi_document["paths"].items()
+        for method, operation in path_item.items()
+        if operation.get("deprecated")
+    ]
+    assert deprecated_operations == [("/api/v1/payment-links", "post")]
+    operation = openapi_document["paths"]["/api/v1/payment-links"]["post"]
+    assert "/api/v1/sales/{saleId}/payment-links" in operation["description"]
+    assert "headers" not in operation["responses"]["201"]
