@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from tests.unit.architecture.source_files import (
+    ADAPTERS_DIRECTORY,
     PAYMENT_GATEWAY_PORT_FILE,
     describe_source_file,
     list_config_modules,
@@ -89,6 +90,20 @@ def test_mock_payment_simulator_port_imports_only_standard_library_and_domain() 
     simulator_port_file = PAYMENT_GATEWAY_PORT_FILE.with_name("mock_payment_simulator_port.py")
     assert simulator_port_file.is_file()
     assert find_disallowed_imports(simulator_port_file) == []
+
+
+@pytest.mark.parametrize(
+    "port_file",
+    [
+        ADAPTERS_DIRECTORY / "settlement" / "port.py",
+        ADAPTERS_DIRECTORY / "weekly_message_delivery" / "port.py",
+    ],
+    ids=describe_source_file,
+)
+def test_report_ports_import_only_standard_library_and_domain(port_file: Path) -> None:
+    """The settlement and weekly message ports are in domain terms, like the gateway port."""
+    assert port_file.is_file()
+    assert find_disallowed_imports(port_file) == []
 
 
 @pytest.mark.parametrize(

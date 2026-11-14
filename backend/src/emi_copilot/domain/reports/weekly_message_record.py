@@ -1,7 +1,9 @@
-"""WeeklyMessageSentRecord: when a shop's weekly message was marked sent, and whether just now."""
+"""The weekly message's sent record, and the delivery handed to the port that sends it."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+
+from emi_copilot.domain.reports.weekly_message_template import WeeklyMessages
 
 
 # Pattern: Value Object. The outcome of marking one week's message sent, exactly once.
@@ -11,3 +13,12 @@ class WeeklyMessageSentRecord:
 
     sent_at: datetime
     was_sent_now: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WeeklyMessageDelivery:
+    """One shop's weekly message for one week, handed to the delivery port to send."""
+
+    merchant_id: str
+    period_start_date: date
+    messages: WeeklyMessages
