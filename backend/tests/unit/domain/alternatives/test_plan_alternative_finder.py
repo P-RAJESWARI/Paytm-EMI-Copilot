@@ -52,9 +52,7 @@ def build_cheaper_model(
 def find_design_alternatives() -> PlanAlternatives:
     """Finds C6's alternatives for no-cost 6 months on ₹22,000 with a ₹3,000 budget."""
     chosen_plan = build_no_cost_plan_a()
-    down_payment = DownPaymentRule().suggest_down_payment(
-        SAMPLE_PRICE, THREE_THOUSAND_RUPEES, chosen_plan.offer.tenure_in_months
-    )
+    down_payment = DownPaymentRule().suggest_down_payment(chosen_plan, THREE_THOUSAND_RUPEES)
     assert down_payment is not None
     return PlanAlternativeFinder().find_alternatives(
         chosen_plan,

@@ -98,9 +98,7 @@ class PlanAdviceService:
         require_valid_monthly_budget(monthly_budget)
         item_offers = self._offer_source.discover_offers(item)
         chosen_plan = _find_chosen_plan(item_offers, chosen_offer_id)
-        down_payment = self._down_payment_rule.suggest_down_payment(
-            item.price, monthly_budget, chosen_plan.offer.tenure_in_months
-        )
+        down_payment = self._down_payment_rule.suggest_down_payment(chosen_plan, monthly_budget)
         plan_alternatives = self._alternative_finder.find_alternatives(
             chosen_plan,
             item_offers=item_offers,

@@ -258,3 +258,20 @@ def test_suggest_alternatives_with_zero_budget_raises_before_asking_the_gateway(
             build_offer_discovery_query(), NO_COST_OFFER_ID, Money.from_paise(0), None, []
         )
     assert offer_source.queries == []
+
+
+def test_suggest_alternatives_plan_b_above_budget_gets_a_down_payment_from_its_total(
+    service: PlanAdviceService,
+) -> None:
+    """Plan B at ₹3,700: ₹1,000 down, re-quoted on ₹21,000 with 5% extra, gives ₹3,675."""
+    advice = service.suggest_alternatives(
+        build_offer_discovery_query(), CARD_OFFER_ID, Money.from_rupees("3700"), None, []
+    )
+    down_payment_alternative = advice.advised_alternatives[0].alternative
+    schedule = down_payment_alternative.priced_offer.schedule
+    assert down_payment_alternative.kind is AlternativeKind.DOWN_PAYMENT
+    assert down_payment_alternative.down_payment == Money.from_rupees("1000")
+    assert schedule.principal == Money.from_rupees("21000")
+    assert schedule.total_payable == Money.from_rupees("22050")
+    assert down_payment_alternative.monthly_commitment == Money.from_rupees("3675")
+    assert down_payment_alternative.budget_fit.is_within_budget
