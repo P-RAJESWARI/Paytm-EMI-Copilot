@@ -15,16 +15,24 @@ def clear_settings_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_application_settings_without_environment_uses_documented_live_feed_defaults() -> None:
-    """A live stream holds at most 100 unread messages by default."""
-    assert ApplicationSettings().sale_event_stream_maximum_queued_messages == 100
+    """A live stream holds 100 unread messages; a shop makes 60 payment calls a minute."""
+    settings = ApplicationSettings()
+    assert settings.sale_event_stream_maximum_queued_messages == 100
+    assert settings.merchant_payment_rate_limit_max_requests == 60
+    assert settings.merchant_payment_rate_limit_window_in_seconds == 60
 
 
 def test_application_settings_reads_live_feed_values_from_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The stream bound is configurable."""
+    """The stream bound and the payment limits are configurable."""
     monkeypatch.setenv("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "5")
-    assert ApplicationSettings().sale_event_stream_maximum_queued_messages == 5
+    monkeypatch.setenv("MERCHANT_PAYMENT_RATE_LIMIT_MAX_REQUESTS", "7")
+    monkeypatch.setenv("MERCHANT_PAYMENT_RATE_LIMIT_WINDOW_IN_SECONDS", "30")
+    settings = ApplicationSettings()
+    assert settings.sale_event_stream_maximum_queued_messages == 5
+    assert settings.merchant_payment_rate_limit_max_requests == 7
+    assert settings.merchant_payment_rate_limit_window_in_seconds == 30
 
 
 @pytest.mark.parametrize(
@@ -32,6 +40,8 @@ def test_application_settings_reads_live_feed_values_from_environment(
     [
         ("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "0"),
         ("SALE_EVENT_STREAM_MAXIMUM_QUEUED_MESSAGES", "10001"),
+        ("MERCHANT_PAYMENT_RATE_LIMIT_MAX_REQUESTS", "0"),
+        ("MERCHANT_PAYMENT_RATE_LIMIT_WINDOW_IN_SECONDS", "0"),
     ],
 )
 def test_application_settings_with_unusable_live_feed_value_raises_validation_error(

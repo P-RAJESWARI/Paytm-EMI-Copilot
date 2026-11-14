@@ -15,6 +15,8 @@ from emi_copilot.api.dependencies import (
     ComponentsDependency,
     EventBusDependency,
     IdGeneratorDependency,
+    PaymentHandoffServiceDependency,
+    PaymentStatusServiceDependency,
     UnitOfWorkFactoryDependency,
 )
 from emi_copilot.core.qr_token_signer import QrTokenSigner
@@ -23,6 +25,7 @@ from emi_copilot.services.get_sale_service import GetSaleService
 from emi_copilot.services.issue_qr_token_service import IssueQrTokenService
 from emi_copilot.services.list_counter_sales_service import ListCounterSalesService
 from emi_copilot.services.sale_expiry import SaleExpiryStep
+from emi_copilot.services.sale_handoff_service import SaleHandoffService
 from emi_copilot.services.start_sale_service import StartSaleService
 
 
@@ -112,3 +115,26 @@ GetSaleServiceDependency = Annotated[GetSaleService, Depends(provide_get_sale_se
 IssueQrTokenServiceDependency = Annotated[
     IssueQrTokenService, Depends(provide_issue_qr_token_service)
 ]
+
+
+def provide_sale_handoff_service(  # noqa: PLR0913 - one parameter per injected component
+    *,
+    unit_of_work_factory: UnitOfWorkFactoryDependency,
+    clock: ClockDependency,
+    event_bus: EventBusDependency,
+    sale_expiry: SaleExpiryDependency,
+    payment_handoff_service: PaymentHandoffServiceDependency,
+    payment_status_service: PaymentStatusServiceDependency,
+) -> SaleHandoffService:
+    """Assembles the M4 hand-off service on the two Layer 1 payment services."""
+    return SaleHandoffService(
+        unit_of_work_factory=unit_of_work_factory,
+        clock=clock,
+        event_bus=event_bus,
+        sale_expiry=sale_expiry,
+        payment_handoff_service=payment_handoff_service,
+        payment_status_service=payment_status_service,
+    )
+
+
+SaleHandoffServiceDependency = Annotated[SaleHandoffService, Depends(provide_sale_handoff_service)]

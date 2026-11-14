@@ -14,6 +14,7 @@ from emi_copilot.api.dependencies import (
     provide_clock,
     provide_event_bus,
     provide_id_generator,
+    provide_merchant_payment_rate_limiter,
     provide_pairing_rate_limiter,
     provide_payment_gateway,
     provide_pin_hasher,
@@ -65,6 +66,10 @@ def test_merchant_providers_give_the_startup_hasher_limiter_and_token_lifetime()
         components = application.state.application_components
         assert provide_pin_hasher(components) is components.pin_hasher
         assert provide_pairing_rate_limiter(components) is components.pairing_rate_limiter
+        assert (
+            provide_merchant_payment_rate_limiter(components)
+            is components.merchant_payment_rate_limiter
+        )
         assert provide_access_token_lifetime(components) == timedelta(hours=1)
 
 

@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.api.dependencies import (
+    build_merchant_payment_rate_limiter,
     build_pairing_rate_limiter,
     provide_clock,
+    provide_merchant_payment_rate_limiter,
     provide_pairing_rate_limiter,
     provide_payment_gateway,
     provide_unit_of_work_factory,
@@ -57,20 +59,27 @@ class ApiHarness:
 
 @contextmanager
 def open_api_harness(
-    session_factory: sessionmaker[Session], clock: FixedClock, payment_gateway: PaymentGatewayPort
+    session_factory: sessionmaker[Session],
+    clock: FixedClock,
+    payment_gateway: PaymentGatewayPort,
+    settings: ApplicationSettings | None = None,
 ) -> Iterator[ApiHarness]:
     """Starts the application, lifespan included, with gateway, database and clock overridden.
 
-    The pairing rate limiter is rebuilt on the test clock, so its windows move with the test.
+    The rate limiters are rebuilt on the test clock, so their windows move with the test.
     """
-    settings = ApplicationSettings()
+    settings = settings or ApplicationSettings()
     application = create_application(settings, id_generator=SequentialIdGenerator())
     pairing_rate_limiter = build_pairing_rate_limiter(settings, clock)
+    merchant_payment_rate_limiter = build_merchant_payment_rate_limiter(settings, clock)
     application.dependency_overrides[provide_payment_gateway] = lambda: payment_gateway
     application.dependency_overrides[provide_unit_of_work_factory] = lambda: partial(
         SqlAlchemyUnitOfWork, session_factory, clock
     )
     application.dependency_overrides[provide_clock] = lambda: clock
     application.dependency_overrides[provide_pairing_rate_limiter] = lambda: pairing_rate_limiter
+    application.dependency_overrides[provide_merchant_payment_rate_limiter] = lambda: (
+        merchant_payment_rate_limiter
+    )
     with TestClient(application) as test_client:
         yield ApiHarness(client=test_client, clock=clock, session_factory=session_factory)

@@ -30,6 +30,7 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | SaleNotFoundError                       | 404    | not the merchant's sale (hidden)          |
 | IllegalSaleTransitionError              | 409    | SALE_STATE_CONFLICT: not in this status   |
 | SessionCodesExhaustedError              | 409    | every session code is on an open sale     |
+| ChosenPlanNoLongerOfferedError          | 409    | the agreed plan is no longer quoted as is |
 | InvalidSaleDataError                    | 422    | a sale record would be inconsistent       |
 | every other DomainError                 | 422    | a business rule refused the request       |
 | any unexpected exception                | 500    | unexpected_error_middleware.py            |
@@ -132,6 +133,9 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
                 409, "Not possible in the sale's current status"
             ),
             errors.SessionCodesExhaustedError: ProblemMapping(409, "No free session code"),
+            errors.ChosenPlanNoLongerOfferedError: ProblemMapping(
+                409, "Agreed plan no longer offered"
+            ),
         }
     )
 )

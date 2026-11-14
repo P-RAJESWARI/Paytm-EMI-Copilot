@@ -87,16 +87,23 @@ class PaymentHandoffService:
         An intent, when given, checks the fresh quote and joins the transaction that stores the
         new attempt; a replay never consults it, so it returns the original result.
         """
+        replayed_handoff = self.replay_if_known(command)
+        if replayed_handoff is not None:
+            return replayed_handoff
         request_fingerprint = command.calculate_request_fingerprint()
-        stored_attempt = self._find_attempt_by_key(command.idempotency_key)
-        if stored_attempt is not None:
-            return self._replay(stored_attempt, request_fingerprint)
         link_request = self._build_payment_link_request(command, intent)
         new_attempt = self._build_attempt(command, request_fingerprint, link_request)
         concurrent_attempt = self._insert_attempt(new_attempt, intent)
         if concurrent_attempt is not None:
             return self._replay(concurrent_attempt, request_fingerprint)
         return self._call_gateway_and_record_outcome(new_attempt, link_request)
+
+    def replay_if_known(self, command: CreatePaymentLinkCommand) -> PaymentLinkHandoff | None:
+        """Gives the stored result of a known key (or raises its outcome); None for a new key."""
+        stored_attempt = self._find_attempt_by_key(command.idempotency_key)
+        if stored_attempt is None:
+            return None
+        return self._replay(stored_attempt, command.calculate_request_fingerprint())
 
     def _replay(
         self, stored_attempt: PaymentAttempt, request_fingerprint: str

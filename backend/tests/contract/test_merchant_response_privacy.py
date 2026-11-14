@@ -161,7 +161,7 @@ def test_every_api_path_is_classified_as_merchant_or_layer_1_gateway(
 def test_merchant_operations_include_pairing_profile_products_and_sales(
     committed_document: dict[str, Any],
 ) -> None:
-    """The check really covers every merchant endpoint of step 2.2."""
+    """The check really covers every merchant endpoint of steps 2.2 and 2.3."""
     assert {operation_id for operation_id, _ in list_merchant_operations(committed_document)} == {
         "POST /api/v1/merchants/pairing",
         "GET /api/v1/merchants/me",
@@ -170,6 +170,9 @@ def test_merchant_operations_include_pairing_profile_products_and_sales(
         "GET /api/v1/sales",
         "GET /api/v1/sales/{saleId}",
         "POST /api/v1/sales/{saleId}/qr-tokens",
+        "GET /api/v1/sales/{saleId}/handoff",
+        "POST /api/v1/sales/{saleId}/payment-links",
+        "GET /api/v1/sales/{saleId}/payment-status",
     }
 
 

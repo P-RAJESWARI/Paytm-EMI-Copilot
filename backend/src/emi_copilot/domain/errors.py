@@ -308,3 +308,13 @@ class SessionCodesExhaustedError(DomainError):
     """Raised when every 4-digit session code is already shown on one of the shop's open sales."""
 
     code: ClassVar[str] = "SESSION_CODES_EXHAUSTED"
+
+
+class ChosenPlanNoLongerOfferedError(DomainError):
+    """Raised when the gateway no longer quotes the agreed plan exactly as the customer saw it.
+
+    The payment link would otherwise carry different figures from the ones agreed to, so the
+    hand-off is refused (409) and the customer has to choose again.
+    """
+
+    code: ClassVar[str] = "CHOSEN_PLAN_NO_LONGER_OFFERED"

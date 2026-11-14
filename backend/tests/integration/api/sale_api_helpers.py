@@ -2,9 +2,18 @@
 
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from typing import Any
 
+from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
+from emi_copilot.api.dependencies import ApplicationComponents
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
+from emi_copilot.services.mark_sale_ready_to_pay_service import (
+    MarkSaleReadyToPayCommand,
+    MarkSaleReadyToPayService,
+)
+from emi_copilot.services.offer_discovery_service import OfferDiscoveryService
+from emi_copilot.services.sale_expiry import SaleExpiryStep
 from tests.integration.api.api_harness import ApiHarness
 from tests.integration.api.merchant_api_helpers import (
     pair_and_get_bearer_headers,
@@ -33,6 +42,8 @@ SALE_DETAIL_KEYS = {
     "startedAt",
     "qr",
 }
+NO_COST_OFFER_ID = "mock-offer-no-cost-6m"
+CARD_OFFER_ID = "mock-offer-card-6m"
 QR_EXPIRES_AT = (CREATED_AT + timedelta(minutes=15)).replace(microsecond=0)
 
 
@@ -74,3 +85,23 @@ def mark_ready_to_pay_in_the_database(harness: ApiHarness, sale_id: str) -> None
         unit_of_work.sales.update(
             sale.agree_to_plan(build_no_cost_chosen_plan(), harness.clock.now())
         )
+
+
+def agree_to_offer_in_the_service(
+    harness: ApiHarness,
+    payment_gateway: PaymentGatewayPort,
+    sale_id: str,
+    offer_id: str = NO_COST_OFFER_ID,
+) -> None:
+    """Agrees a plan through MarkSaleReadyToPayService on the application's own event bus."""
+    components: ApplicationComponents = harness.client.app.state.application_components  # type: ignore[attr-defined]
+    unit_of_work_factory = partial(SqlAlchemyUnitOfWork, harness.session_factory, harness.clock)
+    MarkSaleReadyToPayService(
+        unit_of_work_factory,
+        OfferDiscoveryService(
+            payment_gateway, unit_of_work_factory, harness.clock, components.event_bus
+        ),
+        harness.clock,
+        components.event_bus,
+        SaleExpiryStep(components.event_bus, timedelta(hours=1)),
+    ).mark_ready_to_pay(MarkSaleReadyToPayCommand(sale_id=sale_id, offer_id=offer_id))

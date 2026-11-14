@@ -59,6 +59,10 @@ class ApplicationSettings(BaseSettings):
     merchant_access_token_lifetime_in_seconds: int = Field(default=43_200, ge=60, le=604_800)
     merchant_pairing_rate_limit_max_requests: int = Field(default=10, ge=1)
     merchant_pairing_rate_limit_window_in_seconds: int = Field(default=60, ge=1)
+    # Gateway-backed merchant calls (payment links and status checks, plan Q16): each shop may
+    # make this many per window (in-memory, per process).
+    merchant_payment_rate_limit_max_requests: int = Field(default=60, ge=1)
+    merchant_payment_rate_limit_window_in_seconds: int = Field(default=60, ge=1)
     # Customer QR codes (plan Q18). HMAC-SHA256 key, at least 32 bytes; when unset in Mock gateway
     # mode a random per-process key is drawn (QR codes then stop working after a restart), and
     # Paytm mode refuses to start without it. A QR token lasts 15 minutes and can be re-issued.

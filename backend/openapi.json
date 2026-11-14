@@ -2219,6 +2219,835 @@
           }
         }
       }
+    },
+    "/api/v1/sales/{saleId}/handoff": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Read an agreed sale's payment hand-off",
+        "description": "M4: the sale with its agreed plan (monthly, extra in total and total), the steps to key into the card machine (EDC; instructions only, nothing here can mark it paid), the latest payment link (null until one exists) and where the payment stands: WAITING, PAID or NOT_COMPLETED. paymentConfirmedAt is set only once PAID. A sale still CHOOSING, or EXPIRED, answers 409 SALE_STATE_CONFLICT. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_sale_handoff_api_v1_sales__saleId__handoff_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The sale id returned by POST /api/v1/sales.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+              ],
+              "title": "Saleid"
+            },
+            "description": "The sale id returned by POST /api/v1/sales."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hand-off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleHandoffResponse"
+                },
+                "example": {
+                  "paymentStatus": "WAITING",
+                  "sale": {
+                    "saleId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                    "sessionCode": "4821",
+                    "productName": "Example phone, 128 GB",
+                    "priceInPaise": 2200000,
+                    "status": "READY_TO_PAY",
+                    "statusChangedAt": "2026-11-15T09:36:00Z",
+                    "chosenPlan": {
+                      "offerId": "mock-offer-no-cost-6m",
+                      "planKind": "NO_COST",
+                      "lenderLabel": "Brand",
+                      "tenureInMonths": 6,
+                      "monthlyInstallmentInPaise": 366667,
+                      "extraInTotalInPaise": 0,
+                      "totalPayableInPaise": 2200000
+                    }
+                  },
+                  "edcInstructions": {
+                    "emiProgramme": "BRAND_EMI",
+                    "productName": "Example phone, 128 GB",
+                    "tenureInMonths": 6,
+                    "isNoExtraCost": true,
+                    "amountInPaise": 2200000
+                  },
+                  "latestPaymentLink": {
+                    "orderId": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
+                    "paymentUrl": "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123",
+                    "status": "AWAITING_PAYMENT"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The sale is not one of the signed-in shop's sales (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_NOT_FOUND": {
+                    "summary": "Sale not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-not-found",
+                      "title": "Sale not found",
+                      "status": 404,
+                      "detail": "No sale with this id belongs to the shop.",
+                      "code": "SALE_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The customer has not agreed to a plan yet (CHOOSING), or the sale EXPIRED.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_STATE_CONFLICT": {
+                    "summary": "Not possible in the sale's current status",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-state-conflict",
+                      "title": "Not possible in the sale's current status",
+                      "status": 409,
+                      "detail": "A sale that is CHOOSING has no agreed plan to hand off.",
+                      "code": "SALE_STATE_CONFLICT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/{saleId}/payment-links": {
+      "post": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Create a payment link for an agreed sale",
+        "description": "Re-quotes the agreed plan server-side; if any figure differs from what the customer agreed to, answers 409 CHOSEN_PLAN_NO_LONGER_OFFERED. Allowed while READY_TO_PAY, or PAYMENT_NOT_COMPLETED (the sale first goes back to READY_TO_PAY). The gateway is asked exactly once per Idempotency-Key, never retried; the same key returns the original 201 body, a gateway timeout answers 504 and the key then answers 409 (ADR 0005). Show the link on the tablet as a QR code and a copy button: nothing is sent to anyone. Limited per shop (429 with Retry-After). Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "create_sale_payment_link_api_v1_sales__saleId__payment_links_post",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The sale id returned by POST /api/v1/sales.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+              ],
+              "title": "Saleid"
+            },
+            "description": "The sale id returned by POST /api/v1/sales."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 255,
+              "pattern": "^[!-~]+$",
+              "description": "Required. 8 to 255 visible ASCII characters, no spaces (a UUID or ULID is ideal). The same key with the same body returns the original 201 response; with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED (ADR 0005).",
+              "examples": [
+                "5f0c2a2e-6d1b-4c55-9a43-3f1b2f7f8e11"
+              ],
+              "title": "Idempotency-Key"
+            },
+            "description": "Required. 8 to 255 visible ASCII characters, no spaces (a UUID or ULID is ideal). The same key with the same body returns the original 201 response; with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED (ADR 0005)."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The link was created (or this is the replay of its creation).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalePaymentLinkResponse"
+                },
+                "example": {
+                  "orderId": "01JD5Z0Q8M6X3V2N7B4C9K1T0A",
+                  "paymentUrl": "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123",
+                  "amountInPaise": 2200000,
+                  "status": "AWAITING_PAYMENT"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "The sale's hand-off URL.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Always no-store.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The sale is not one of the signed-in shop's sales (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_NOT_FOUND": {
+                    "summary": "Sale not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-not-found",
+                      "title": "Sale not found",
+                      "status": 404,
+                      "detail": "No sale with this id belongs to the shop.",
+                      "code": "SALE_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The sale is CHOOSING, EXPIRED or already PAID, and the key is new. The fresh quote differs from the agreed plan in any figure, or the plan is gone; the customer has to choose again. A replay of a key whose first call has no usable link; start again with a new key, or wait while the first call is still running.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_STATE_CONFLICT": {
+                    "summary": "Not possible in the sale's current status",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-state-conflict",
+                      "title": "Not possible in the sale's current status",
+                      "status": 409,
+                      "detail": "A sale that is PAID takes no new payment link.",
+                      "code": "SALE_STATE_CONFLICT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "CHOSEN_PLAN_NO_LONGER_OFFERED": {
+                    "summary": "Agreed plan no longer offered",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/chosen-plan-no-longer-offered",
+                      "title": "Agreed plan no longer offered",
+                      "status": 409,
+                      "detail": "The gateway no longer quotes the agreed plan with the figures that were shown.",
+                      "code": "CHOSEN_PLAN_NO_LONGER_OFFERED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_OUTCOME_UNKNOWN": {
+                    "summary": "Payment link outcome unknown",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-outcome-unknown",
+                      "title": "Payment link outcome unknown",
+                      "status": 409,
+                      "detail": "This key's payment link call has an unknown outcome; start again with a new key.",
+                      "code": "PAYMENT_LINK_OUTCOME_UNKNOWN",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_CREATION_FAILED": {
+                    "summary": "Payment link was not created",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-creation-failed",
+                      "title": "Payment link was not created",
+                      "status": 409,
+                      "detail": "This key's payment link was not created.",
+                      "code": "PAYMENT_LINK_CREATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_LINK_CREATION_IN_PROGRESS": {
+                    "summary": "Payment link creation in progress",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-link-creation-in-progress",
+                      "title": "Payment link creation in progress",
+                      "status": 409,
+                      "detail": "The first request with this key is running.",
+                      "code": "PAYMENT_LINK_CREATION_IN_PROGRESS",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. The Idempotency-Key was already used with a different body.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "IDEMPOTENCY_KEY_REUSED": {
+                    "summary": "Idempotency key reused",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/idempotency-key-reused",
+                      "title": "Idempotency key reused",
+                      "status": 422,
+                      "detail": "The Idempotency-Key was used with a different body.",
+                      "code": "IDEMPOTENCY_KEY_REUSED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The shop made too many payment link or status calls in this minute.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many payment requests from this shop; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/{saleId}/payment-status": {
+      "get": {
+        "tags": [
+          "sales"
+        ],
+        "summary": "Check an agreed sale's payment with the gateway",
+        "description": "Asks the gateway server-side about the sale's latest payment link, applies the answer (a PAID answer moves the sale to PAID and the live stream announces it) and returns WAITING, PAID or NOT_COMPLETED. A client's word is never taken as a status. Limited per shop (429 with Retry-After). Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "check_sale_payment_status_api_v1_sales__saleId__payment_status_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The sale id returned by POST /api/v1/sales.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+              ],
+              "title": "Saleid"
+            },
+            "description": "The sale id returned by POST /api/v1/sales."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Where the payment stands now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalePaymentStatusResponse"
+                },
+                "example": {
+                  "paymentStatus": "PAID",
+                  "paymentConfirmedAt": "2026-11-15T09:41:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The sale is not one of the signed-in shop's sales (another shop's looks the same).",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_NOT_FOUND": {
+                    "summary": "Sale not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-not-found",
+                      "title": "Sale not found",
+                      "status": 404,
+                      "detail": "No sale with this id belongs to the shop.",
+                      "code": "SALE_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The customer has not agreed to a plan yet (CHOOSING), or the sale EXPIRED.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SALE_STATE_CONFLICT": {
+                    "summary": "Not possible in the sale's current status",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/sale-state-conflict",
+                      "title": "Not possible in the sale's current status",
+                      "status": 409,
+                      "detail": "A sale that is CHOOSING has no agreed plan to hand off.",
+                      "code": "SALE_STATE_CONFLICT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The shop made too many payment link or status calls in this minute.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many payment requests from this shop; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2488,6 +3317,62 @@
         "title": "DevicePairingResponse",
         "description": "A new device token, shown once: send it as `Authorization: Bearer <accessToken>`."
       },
+      "EdcEmiProgramme": {
+        "type": "string",
+        "enum": [
+          "BRAND_EMI",
+          "BANK_EMI"
+        ],
+        "title": "EdcEmiProgramme",
+        "description": "Which EMI menu to choose on the card machine."
+      },
+      "EdcInstructionsResponse": {
+        "properties": {
+          "emiProgramme": {
+            "$ref": "#/components/schemas/EdcEmiProgramme"
+          },
+          "productName": {
+            "type": "string",
+            "title": "Productname",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "tenureInMonths": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Tenureinmonths",
+            "examples": [
+              6
+            ]
+          },
+          "isNoExtraCost": {
+            "type": "boolean",
+            "title": "Isnoextracost",
+            "description": "True when the customer pays no extra."
+          },
+          "amountInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amountinpaise",
+            "description": "The item price to check on the machine.",
+            "examples": [
+              2200000
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "emiProgramme",
+          "productName",
+          "tenureInMonths",
+          "isNoExtraCost",
+          "amountInPaise"
+        ],
+        "title": "EdcInstructionsResponse",
+        "description": "What to key into the card machine: the EMI menu, product, tenure and amount to check."
+      },
       "EmiOfferResponse": {
         "properties": {
           "offerId": {
@@ -2610,6 +3495,16 @@
         "title": "FieldErrorResponse",
         "description": "One invalid request field, named as on the wire, with an English message."
       },
+      "HandoffPaymentStatus": {
+        "type": "string",
+        "enum": [
+          "WAITING",
+          "PAID",
+          "NOT_COMPLETED"
+        ],
+        "title": "HandoffPaymentStatus",
+        "description": "Where an agreed sale's payment stands, as M4 shows it; never \"declined\" (spec 7.5)."
+      },
       "HealthResponse": {
         "properties": {
           "status": {
@@ -2624,6 +3519,39 @@
         ],
         "title": "HealthResponse",
         "description": "Body returned by GET /health while the process is able to serve requests."
+      },
+      "LatestPaymentLinkResponse": {
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "title": "Orderid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0A"
+            ]
+          },
+          "paymentUrl": {
+            "type": "string",
+            "title": "Paymenturl",
+            "description": "Show it on the tablet as a QR code with a copy button; it is never sent anywhere by us.",
+            "examples": [
+              "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicPaymentStatus",
+            "examples": [
+              "AWAITING_PAYMENT"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderId",
+          "paymentUrl",
+          "status"
+        ],
+        "title": "LatestPaymentLinkResponse",
+        "description": "The sale's newest payment link and where its payment stands."
       },
       "MerchantProfileResponse": {
         "properties": {
@@ -3080,6 +4008,122 @@
         ],
         "title": "SaleDetailResponse",
         "description": "One sale with its product id and start; qr is set only in the answer that issued it."
+      },
+      "SaleHandoffResponse": {
+        "properties": {
+          "paymentStatus": {
+            "$ref": "#/components/schemas/HandoffPaymentStatus"
+          },
+          "paymentConfirmedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paymentconfirmedat",
+            "description": "When the gateway's confirmed payment moved the sale to PAID, UTC."
+          },
+          "sale": {
+            "$ref": "#/components/schemas/SaleSummaryResponse"
+          },
+          "edcInstructions": {
+            "$ref": "#/components/schemas/EdcInstructionsResponse"
+          },
+          "latestPaymentLink": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestPaymentLinkResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "paymentStatus",
+          "paymentConfirmedAt",
+          "sale",
+          "edcInstructions",
+          "latestPaymentLink"
+        ],
+        "title": "SaleHandoffResponse",
+        "description": "M4: the sale with its agreed plan (monthly, extra and total), EDC steps and latest link."
+      },
+      "SalePaymentLinkResponse": {
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "title": "Orderid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0A"
+            ]
+          },
+          "paymentUrl": {
+            "type": "string",
+            "title": "Paymenturl",
+            "description": "Show it on the tablet as a QR code with a copy button; it is never sent anywhere by us.",
+            "examples": [
+              "https://mock-payments.invalid/pay/mock-link-0123456789abcdef0123"
+            ]
+          },
+          "amountInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amountinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicPaymentStatus",
+            "examples": [
+              "AWAITING_PAYMENT"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderId",
+          "paymentUrl",
+          "amountInPaise",
+          "status"
+        ],
+        "title": "SalePaymentLinkResponse",
+        "description": "The link made for the agreed plan; a replay of its Idempotency-Key gives the same body.\n\nstatus is the status the link had when made (AWAITING_PAYMENT), so a replay is identical;\nthe current status is served by GET /api/v1/sales/{saleId}/payment-status."
+      },
+      "SalePaymentStatusResponse": {
+        "properties": {
+          "paymentStatus": {
+            "$ref": "#/components/schemas/HandoffPaymentStatus"
+          },
+          "paymentConfirmedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paymentconfirmedat",
+            "description": "When the gateway's confirmed payment moved the sale to PAID, UTC."
+          }
+        },
+        "type": "object",
+        "required": [
+          "paymentStatus",
+          "paymentConfirmedAt"
+        ],
+        "title": "SalePaymentStatusResponse",
+        "description": "Where an agreed sale's payment stands; the confirmation time is set only once PAID."
       },
       "SaleStatus": {
         "type": "string",

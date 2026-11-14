@@ -48,7 +48,7 @@ from emi_copilot.services.product_catalogue_service import ProductCatalogueServi
 class ApplicationComponents:
     """Everything built once per process: settings, time, ids, gateway, events and database.
 
-    The PIN hasher (with its decoy hash), the pairing rate limiter, the customer QR signing key,
+    The PIN hasher (with its decoy hash), the rate limiters, the customer QR signing key,
     the session code generator and the live sale status broadcaster live here too, because they
     must outlive one request. The key is kept out of repr.
     """
@@ -62,6 +62,7 @@ class ApplicationComponents:
     unit_of_work_factory: UnitOfWorkFactory
     pin_hasher: ScryptPinHasher
     pairing_rate_limiter: FixedWindowRateLimiter
+    merchant_payment_rate_limiter: FixedWindowRateLimiter
     customer_qr_signing_key: bytes = field(repr=False)
     session_code_generator: SessionCodeGenerator
     sale_status_broadcaster: SaleStatusBroadcaster
@@ -109,6 +110,7 @@ def build_application_components(
         unit_of_work_factory=partial(SqlAlchemyUnitOfWork, session_factory, clock),
         pin_hasher=ScryptPinHasher(),
         pairing_rate_limiter=build_pairing_rate_limiter(settings, clock),
+        merchant_payment_rate_limiter=build_merchant_payment_rate_limiter(settings, clock),
         customer_qr_signing_key=customer_qr_signing_key,
         session_code_generator=RandomSessionCodeGenerator(),
         sale_status_broadcaster=sale_status_broadcaster,
@@ -123,6 +125,17 @@ def build_pairing_rate_limiter(
         clock,
         settings.merchant_pairing_rate_limit_max_requests,
         timedelta(seconds=settings.merchant_pairing_rate_limit_window_in_seconds),
+    )
+
+
+def build_merchant_payment_rate_limiter(
+    settings: ApplicationSettings, clock: Clock
+) -> FixedWindowRateLimiter:
+    """Builds the per-shop limiter for payment links and status checks from the settings."""
+    return FixedWindowRateLimiter(
+        clock,
+        settings.merchant_payment_rate_limit_max_requests,
+        timedelta(seconds=settings.merchant_payment_rate_limit_window_in_seconds),
     )
 
 
@@ -188,6 +201,13 @@ def provide_pairing_rate_limiter(components: ComponentsDependency) -> FixedWindo
     return components.pairing_rate_limiter
 
 
+def provide_merchant_payment_rate_limiter(
+    components: ComponentsDependency,
+) -> FixedWindowRateLimiter:
+    """Gives the one per-shop limiter of gateway-backed merchant calls."""
+    return components.merchant_payment_rate_limiter
+
+
 def provide_access_token_lifetime(components: ComponentsDependency) -> timedelta:
     """Gives how long a paired device's bearer token lasts."""
     return timedelta(seconds=components.settings.merchant_access_token_lifetime_in_seconds)
@@ -201,6 +221,9 @@ EventBusDependency = Annotated[DomainEventBus, Depends(provide_event_bus)]
 PinHasherDependency = Annotated[ScryptPinHasher, Depends(provide_pin_hasher)]
 PairingRateLimiterDependency = Annotated[
     FixedWindowRateLimiter, Depends(provide_pairing_rate_limiter)
+]
+MerchantPaymentRateLimiterDependency = Annotated[
+    FixedWindowRateLimiter, Depends(provide_merchant_payment_rate_limiter)
 ]
 AccessTokenLifetimeDependency = Annotated[timedelta, Depends(provide_access_token_lifetime)]
 

@@ -3,6 +3,7 @@
 import pytest
 
 from emi_copilot.domain.errors import (
+    ChosenPlanNoLongerOfferedError,
     DomainError,
     IllegalSaleTransitionError,
     InvalidSaleDataError,
@@ -18,6 +19,7 @@ from emi_copilot.domain.errors import (
         (SaleNotFoundError, "SALE_NOT_FOUND"),
         (IllegalSaleTransitionError, "SALE_STATE_CONFLICT"),
         (SessionCodesExhaustedError, "SESSION_CODES_EXHAUSTED"),
+        (ChosenPlanNoLongerOfferedError, "CHOSEN_PLAN_NO_LONGER_OFFERED"),
     ],
 )
 def test_sale_errors_are_domain_errors_with_stable_codes(

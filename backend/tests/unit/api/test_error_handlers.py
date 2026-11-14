@@ -59,6 +59,7 @@ def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:
         (errors.SaleNotFoundError, 404),
         (errors.IllegalSaleTransitionError, 409),
         (errors.SessionCodesExhaustedError, 409),
+        (errors.ChosenPlanNoLongerOfferedError, 409),
         (errors.InvalidSaleDataError, 422),
         (errors.DomainError, 422),
     ],

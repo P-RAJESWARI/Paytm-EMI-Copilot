@@ -2,6 +2,11 @@
 
 from emi_copilot.domain.sales.chosen_plan import ChosenPlan, ChosenPlanDictionary
 from emi_copilot.domain.sales.counter_day import CounterDay
+from emi_copilot.domain.sales.edc_instructions import (
+    EDC_EMI_PROGRAMME_BY_PLAN_KIND,
+    EdcEmiProgramme,
+    EdcInstructions,
+)
 from emi_copilot.domain.sales.sale import CustomerQrTokenState, Sale, SaleIdempotency
 from emi_copilot.domain.sales.sale_state_machine import (
     PaymentOutcomeEffect,
@@ -17,6 +22,7 @@ from emi_copilot.domain.sales.sale_status import (
 from emi_copilot.domain.sales.session_code import SESSION_CODE_DIGIT_COUNT, SessionCode
 
 __all__ = [
+    "EDC_EMI_PROGRAMME_BY_PLAN_KIND",
     "OPEN_SALE_STATUSES",
     "SESSION_CODE_DIGIT_COUNT",
     "STATUSES_WITH_CHOSEN_PLAN",
@@ -24,6 +30,8 @@ __all__ = [
     "ChosenPlanDictionary",
     "CounterDay",
     "CustomerQrTokenState",
+    "EdcEmiProgramme",
+    "EdcInstructions",
     "PaymentOutcomeEffect",
     "Sale",
     "SaleCommand",

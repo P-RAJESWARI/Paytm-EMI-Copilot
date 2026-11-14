@@ -57,8 +57,20 @@ ALLOWED_PROPERTIES_BY_SCHEMA: Mapping[str, frozenset[str]] = MappingProxyType(
             }
         ),
         "CustomerQrResponse": frozenset({"customerUrl", "expiresAt"}),
+        "SaleHandoffResponse": frozenset(
+            {"sale", "edcInstructions", "latestPaymentLink", "paymentStatus", "paymentConfirmedAt"}
+        ),
+        "EdcInstructionsResponse": frozenset(
+            {"emiProgramme", "productName", "tenureInMonths", "isNoExtraCost", "amountInPaise"}
+        ),
+        "LatestPaymentLinkResponse": frozenset({"orderId", "paymentUrl", "status"}),
+        "SalePaymentLinkResponse": frozenset({"orderId", "paymentUrl", "amountInPaise", "status"}),
+        "SalePaymentStatusResponse": frozenset({"paymentStatus", "paymentConfirmedAt"}),
         "SaleStatus": frozenset(),
         "EmiType": frozenset(),
+        "EdcEmiProgramme": frozenset(),
+        "HandoffPaymentStatus": frozenset(),
+        "PublicPaymentStatus": frozenset(),
         "ProblemDetailsResponse": frozenset(
             {"type", "title", "status", "detail", "code", "correlationId", "fieldErrors"}
         ),

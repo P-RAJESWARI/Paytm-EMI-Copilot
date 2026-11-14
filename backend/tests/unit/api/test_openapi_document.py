@@ -185,9 +185,11 @@ def test_every_too_many_requests_answer_documents_retry_after(
         for operation_id, operation in list_operations(openapi_document)
         if "429" in operation["responses"]
     ]
-    assert [operation_id for operation_id, _ in too_many_requests_answers] == [
-        "POST /api/v1/merchants/pairing"
-    ]
+    assert {operation_id for operation_id, _ in too_many_requests_answers} == {
+        "POST /api/v1/merchants/pairing",
+        "POST /api/v1/sales/{saleId}/payment-links",
+        "GET /api/v1/sales/{saleId}/payment-status",
+    }
     for _, response in too_many_requests_answers:
         assert response["headers"]["Retry-After"]["schema"] == {"type": "integer", "minimum": 1}
 
