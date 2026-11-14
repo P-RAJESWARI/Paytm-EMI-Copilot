@@ -7,7 +7,14 @@ import typescriptEslint from 'typescript-eslint';
 
 export default typescriptEslint.config(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/src/generated/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/src/generated/**',
+      'e2e/test-results/**',
+      'e2e/playwright-report/**',
+    ],
   },
   javascript.configs.recommended,
   ...typescriptEslint.configs.strictTypeChecked,

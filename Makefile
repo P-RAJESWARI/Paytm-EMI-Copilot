@@ -22,6 +22,20 @@ GENERATED_API_SCHEMA := $(FRONTEND_DIRECTORY)/packages/api-client/src/generated/
 # openapi-check writes its fresh exports here (git-ignored) and overwrites them on every run.
 OPENAPI_CHECK_DIRECTORY := $(FRONTEND_DIRECTORY)/node_modules/.openapi-check
 
+# End-to-end run (make e2e): its own database in the Compose PostgreSQL and its own ports, so it
+# never touches the development database or the servers on 8000/5173 (and 8001/5174 for Layer 3).
+E2E_DATABASE_NAME := emi_copilot_e2e
+E2E_BACKEND_PORT := 8010
+E2E_MERCHANT_WEB_PORT := 5180
+# A throwaway pairing PIN for the throwaway e2e database only; never a real shop's PIN.
+E2E_MERCHANT_PIN := 123456
+E2E_POSTGRES_USER := $(or $(POSTGRES_USER),emi_copilot)
+# pragma: allowlist nextline secret
+E2E_POSTGRES_PASSWORD := $(or $(POSTGRES_PASSWORD),emi_copilot_local_only)
+E2E_POSTGRES_HOST_PORT := $(or $(POSTGRES_HOST_PORT),55432)
+E2E_DATABASE_URL := postgresql+psycopg://$(E2E_POSTGRES_USER):$(E2E_POSTGRES_PASSWORD)@localhost:$(E2E_POSTGRES_HOST_PORT)/$(E2E_DATABASE_NAME)
+E2E_BACKEND_ENVIRONMENT := DATABASE_URL='$(E2E_DATABASE_URL)' PAYMENT_GATEWAY_MODE=mock
+
 # Per-path coverage gates (testing.md section 5, ADR 0007) as <path under backend/>:<minimum %>.
 # A gate is skipped until its path holds Python modules, so early steps stay green.
 COVERAGE_GATES := \
@@ -33,10 +47,10 @@ COVERAGE_GATES := \
 	src/emi_copilot/adapters:90
 
 .PHONY: help setup dev db-up db-down db-reset lint typecheck test test-with-coverage coverage-gates \
-	check migrate seed demo openapi openapi-check frontend-setup frontend-check
+	check migrate seed demo openapi openapi-check frontend-setup frontend-check e2e-setup e2e
 
 help: ## List the available commands
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
 
 setup: ## Install the locked Python dependencies and the git pre-commit hooks
 	cd $(BACKEND_DIRECTORY) && uv sync --locked
@@ -132,3 +146,19 @@ openapi-check: ## Fail if backend/openapi.json or the generated api-client diffe
 		echo "ERROR: $(GENERATED_API_SCHEMA) is out of date. Run make openapi and commit the result." >&2; \
 		exit 1; }
 	@echo "OpenAPI document and generated api-client are up to date."
+
+e2e-setup: ## Download Playwright's Chromium once (the only network use of the end-to-end tests)
+	$(PNPM) --filter @emi-copilot/e2e exec playwright install chromium
+
+e2e: db-up ## Recreate, migrate and seed the e2e database, then run the Playwright merchant path (ports 8010, 5180)
+	@test -d $(FRONTEND_DIRECTORY)/node_modules || { \
+		echo "ERROR: the frontend dependencies are not installed. Run make frontend-setup first." >&2; \
+		exit 1; }
+	docker compose exec -T postgres dropdb --username=$(E2E_POSTGRES_USER) --if-exists --force $(E2E_DATABASE_NAME)
+	docker compose exec -T postgres createdb --username=$(E2E_POSTGRES_USER) $(E2E_DATABASE_NAME)
+	cd $(BACKEND_DIRECTORY) && $(E2E_BACKEND_ENVIRONMENT) $(UV_RUN) alembic upgrade head
+	cd $(BACKEND_DIRECTORY) && $(E2E_BACKEND_ENVIRONMENT) DEMO_MERCHANT_PIN=$(E2E_MERCHANT_PIN) \
+		$(UV_RUN) python -m scripts.seed_demo_data
+	E2E_DATABASE_URL='$(E2E_DATABASE_URL)' E2E_MERCHANT_PIN=$(E2E_MERCHANT_PIN) \
+		E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) E2E_MERCHANT_WEB_PORT=$(E2E_MERCHANT_WEB_PORT) \
+		$(PNPM) --filter @emi-copilot/e2e run test:e2e

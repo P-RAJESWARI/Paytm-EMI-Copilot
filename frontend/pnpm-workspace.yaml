@@ -2,6 +2,7 @@
 packages:
   - apps/*
   - packages/*
+  - e2e
 
 # security-and-compliance.md section 5: skip releases younger than two weeks (in minutes),
 # including transitive ones, so a freshly published compromise cannot reach the lockfile.
