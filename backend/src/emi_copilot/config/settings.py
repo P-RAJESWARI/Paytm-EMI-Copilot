@@ -50,6 +50,11 @@ class ApplicationSettings(BaseSettings):
     paytm_payment_link_base_url: str | None = None
     paytm_transaction_status_base_url: str | None = None
     paytm_webhook_callback_url: str | None = None
+    # Merchant device pairing (plan Q18): a paired device's bearer token lasts 12 hours, and each
+    # client address may try pairing this many times per window (in-memory, per process).
+    merchant_access_token_lifetime_in_seconds: int = Field(default=43_200, ge=60, le=604_800)
+    merchant_pairing_rate_limit_max_requests: int = Field(default=10, ge=1)
+    merchant_pairing_rate_limit_window_in_seconds: int = Field(default=60, ge=1)
     log_level: LogLevel = "INFO"
 
     @field_validator(

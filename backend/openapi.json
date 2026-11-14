@@ -978,10 +978,561 @@
           }
         }
       }
+    },
+    "/api/v1/merchants/pairing": {
+      "post": {
+        "tags": [
+          "merchants"
+        ],
+        "summary": "Pair a counter device with the shop id and PIN",
+        "description": "Trades the shop id and the shop's 6-digit pairing PIN for a bearer token for this device. The token is shown once and only its hash is stored; it lasts 12 hours by default. This endpoint needs no credentials and is rate-limited per client address. An unknown shop and a wrong PIN get the same 401; 5 wrong PINs in a row lock the shop for 15 minutes (429 with Retry-After). Location points at the signed-in profile. The answer is never cached (Cache-Control: no-store).",
+        "operationId": "pair_device_api_v1_merchants_pairing_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairDeviceRequest"
+              },
+              "examples": {
+                "demo-shop": {
+                  "summary": "The demo shop (PIN set by the seed)",
+                  "value": {
+                    "shopId": "RAVI-0193",
+                    "pin": "<6-digit PIN>"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The device is paired.",
+            "headers": {
+              "Location": {
+                "description": "The signed-in merchant profile.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Always no-store.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePairingResponse"
+                },
+                "example": {
+                  "accessToken": "example-opaque-bearer-token-shown-once",
+                  "tokenType": "Bearer",
+                  "expiresAt": "2026-11-15T09:30:00Z",
+                  "merchant": {
+                    "merchantId": "01JD5Z0Q8M6X3V2N7B4C9K1T0C",
+                    "shopId": "RAVI-0193",
+                    "shopName": "Ravi Electronics",
+                    "deviceLabel": "Counter tablet 1"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The shop id and PIN do not match; an unknown shop and a wrong PIN get this same answer.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INVALID_PAIRING_CREDENTIALS": {
+                    "summary": "Shop id or PIN not recognised",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-pairing-credentials",
+                      "title": "Shop id or PIN not recognised",
+                      "status": 401,
+                      "detail": "The shop id and PIN do not match a shop.",
+                      "code": "INVALID_PAIRING_CREDENTIALS",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "After 5 wrong PINs in a row the shop is locked for 15 minutes, even for the right PIN; or this client sent too many pairing requests (RATE_LIMITED). Retry-After says when.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1.0
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAIRING_TEMPORARILY_LOCKED": {
+                    "summary": "Pairing temporarily locked",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/pairing-temporarily-locked",
+                      "title": "Pairing temporarily locked",
+                      "status": 429,
+                      "detail": "Pairing is locked after repeated wrong PINs; try again after Retry-After.",
+                      "code": "PAIRING_TEMPORARILY_LOCKED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many pairing requests from this client; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/merchants/me": {
+      "get": {
+        "tags": [
+          "merchants"
+        ],
+        "summary": "Read the signed-in shop and device",
+        "description": "Gives the shop and device the bearer token signs in, for the merchant app's header. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "get_current_merchant_api_v1_merchants_me_get",
+        "responses": {
+          "200": {
+            "description": "The signed-in shop and device.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MerchantProfileResponse"
+                },
+                "example": {
+                  "merchantId": "01JD5Z0Q8M6X3V2N7B4C9K1T0C",
+                  "shopId": "RAVI-0193",
+                  "shopName": "Ravi Electronics",
+                  "deviceLabel": "Counter tablet 1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "List the shop's products with their EMI offer counts",
+        "description": "Lists the signed-in shop's products by name, optionally narrowed by a name search, each at its list price with how many EMI plans the gateway quotes now and how many of those cost nothing extra. The counts come from the same offer discovery as GET /api/v1/offers; a gateway failure on any product fails the list. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.",
+        "operationId": "list_products_api_v1_products_get",
+        "security": [
+          {
+            "MerchantBearerToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keeps products whose name contains this text, ignoring case.",
+              "examples": [
+                "phone"
+              ],
+              "title": "Search"
+            },
+            "description": "Keeps products whose name contains this text, ignoring case."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The shop's products, by name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductsResponse"
+                },
+                "example": {
+                  "products": [
+                    {
+                      "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+                      "name": "Example earbuds",
+                      "listPriceInPaise": 249900,
+                      "planCount": 1,
+                      "noExtraCostPlanCount": 0
+                    },
+                    {
+                      "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                      "name": "Example phone, 128 GB",
+                      "listPriceInPaise": 2200000,
+                      "planCount": 3,
+                      "noExtraCostPlanCount": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing, unknown, expired or revoked; the answer carries WWW-Authenticate: Bearer. Pair the device again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MERCHANT_AUTHENTICATION_REQUIRED": {
+                    "summary": "Merchant sign-in required",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/merchant-authentication-required",
+                      "title": "Merchant sign-in required",
+                      "status": 401,
+                      "detail": "A valid merchant bearer token is required; pair the device again.",
+                      "code": "MERCHANT_AUTHENTICATION_REQUIRED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway is unavailable, refused the call or answered unusably.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "PAYMENT_GATEWAY_REQUEST_REJECTED": {
+                    "summary": "Payment gateway refused the request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-request-rejected",
+                      "title": "Payment gateway refused the request",
+                      "status": 502,
+                      "detail": "The gateway refused the request as invalid.",
+                      "code": "PAYMENT_GATEWAY_REQUEST_REJECTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "INVALID_PAYMENT_GATEWAY_VALUE": {
+                    "summary": "Unusable payment gateway answer",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/invalid-payment-gateway-value",
+                      "title": "Unusable payment gateway answer",
+                      "status": 502,
+                      "detail": "The gateway quoted two plans with the same id.",
+                      "code": "INVALID_PAYMENT_GATEWAY_VALUE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CatalogueProductResponse": {
+        "properties": {
+          "productId": {
+            "type": "string",
+            "title": "Productid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0D"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "examples": [
+              "Example phone, 128 GB"
+            ]
+          },
+          "listPriceInPaise": {
+            "type": "integer",
+            "maximum": 9007199254740991.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Listpriceinpaise",
+            "examples": [
+              2200000
+            ]
+          },
+          "planCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Plancount",
+            "examples": [
+              3
+            ]
+          },
+          "noExtraCostPlanCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Noextracostplancount",
+            "examples": [
+              1
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "productId",
+          "name",
+          "listPriceInPaise",
+          "planCount",
+          "noExtraCostPlanCount"
+        ],
+        "title": "CatalogueProductResponse",
+        "description": "One product at its list price with the counts behind \"3 EMI plans, 1 with no extra cost\"."
+      },
       "CreatePaymentLinkRequest": {
         "properties": {
           "offerId": {
@@ -1045,6 +1596,41 @@
         ],
         "title": "CreatePaymentLinkRequest",
         "description": "The plan the customer chose for one item; every figure is re-quoted server-side."
+      },
+      "DevicePairingResponse": {
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "title": "Accesstoken",
+            "description": "Opaque bearer token; only its hash is stored, so it cannot be shown again."
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "Bearer",
+            "title": "Tokentype"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiresat",
+            "description": "When the token stops working, UTC.",
+            "examples": [
+              "2026-11-15T09:30:00Z"
+            ]
+          },
+          "merchant": {
+            "$ref": "#/components/schemas/MerchantProfileResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresAt",
+          "merchant"
+        ],
+        "title": "DevicePairingResponse",
+        "description": "A new device token, shown once: send it as `Authorization: Bearer <accessToken>`."
       },
       "EmiOfferResponse": {
         "properties": {
@@ -1183,6 +1769,47 @@
         "title": "HealthResponse",
         "description": "Body returned by GET /health while the process is able to serve requests."
       },
+      "MerchantProfileResponse": {
+        "properties": {
+          "merchantId": {
+            "type": "string",
+            "title": "Merchantid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0C"
+            ]
+          },
+          "shopId": {
+            "type": "string",
+            "title": "Shopid",
+            "examples": [
+              "RAVI-0193"
+            ]
+          },
+          "shopName": {
+            "type": "string",
+            "title": "Shopname",
+            "examples": [
+              "Ravi Electronics"
+            ]
+          },
+          "deviceLabel": {
+            "type": "string",
+            "title": "Devicelabel",
+            "examples": [
+              "Counter tablet 1"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "merchantId",
+          "shopId",
+          "shopName",
+          "deviceLabel"
+        ],
+        "title": "MerchantProfileResponse",
+        "description": "The signed-in shop and device, as the merchant app shows them in its header."
+      },
       "OfferSnapshotResponse": {
         "properties": {
           "offerId": {
@@ -1287,6 +1914,35 @@
         ],
         "title": "OffersResponse",
         "description": "Every offer the gateway quotes for the item, in the gateway's order; none is hidden."
+      },
+      "PairDeviceRequest": {
+        "properties": {
+          "shopId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,31}$",
+            "title": "Shopid",
+            "description": "The shop's id, as printed for the shop.",
+            "examples": [
+              "RAVI-0193"
+            ]
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "format": "password",
+            "title": "Pin",
+            "description": "The shop's 6-digit pairing PIN, as text so leading zeros survive.",
+            "writeOnly": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "shopId",
+          "pin"
+        ],
+        "title": "PairDeviceRequest",
+        "description": "The shop id and 6-digit pairing PIN typed on the counter device (M1)."
       },
       "PaymentLinkResponse": {
         "properties": {
@@ -1446,6 +2102,23 @@
         "title": "ProblemDetailsResponse",
         "description": "An error: a stable code for the UI to translate and an English detail for developers.\n\nIt never holds a stack trace, SQL, a vendor payload or personal data."
       },
+      "ProductsResponse": {
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogueProductResponse"
+            },
+            "type": "array",
+            "title": "Products"
+          }
+        },
+        "type": "object",
+        "required": [
+          "products"
+        ],
+        "title": "ProductsResponse",
+        "description": "The merchant's products, sorted by name; another shop's products never appear."
+      },
       "PublicPaymentStatus": {
         "type": "string",
         "enum": [
@@ -1459,6 +2132,13 @@
         ],
         "title": "PublicPaymentStatus",
         "description": "Where a payment stands, as the UIs see it; decoupled from the stored attempt status.\n\nThe stored statuses may be renamed or split later without breaking the wire contract."
+      }
+    },
+    "securitySchemes": {
+      "MerchantBearerToken": {
+        "type": "http",
+        "description": "The accessToken from POST /api/v1/merchants/pairing, sent as `Authorization: Bearer <token>`. It lasts 12 hours by default; pair again after.",
+        "scheme": "bearer"
       }
     }
   }

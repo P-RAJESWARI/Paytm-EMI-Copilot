@@ -22,6 +22,9 @@ SETTINGS_ENVIRONMENT_VARIABLES = (
     "PAYTM_PAYMENT_LINK_BASE_URL",
     "PAYTM_TRANSACTION_STATUS_BASE_URL",
     "PAYTM_WEBHOOK_CALLBACK_URL",
+    "MERCHANT_ACCESS_TOKEN_LIFETIME_IN_SECONDS",
+    "MERCHANT_PAIRING_RATE_LIMIT_MAX_REQUESTS",
+    "MERCHANT_PAIRING_RATE_LIMIT_WINDOW_IN_SECONDS",
     "LOG_LEVEL",
 )
 SYNTHETIC_MERCHANT_ID = "SYNTHETICMID00000001"
@@ -180,3 +183,44 @@ def test_application_settings_reads_a_blank_gateway_value_as_not_set(
     monkeypatch.setenv(variable_name, "  ")
     settings = ApplicationSettings()
     assert getattr(settings, variable_name.lower()) is None
+
+
+def test_application_settings_without_environment_uses_documented_merchant_pairing_defaults() -> (
+    None
+):
+    """A device token lasts 12 hours and pairing allows 10 requests a minute per client."""
+    settings = ApplicationSettings()
+    assert settings.merchant_access_token_lifetime_in_seconds == 43_200
+    assert settings.merchant_pairing_rate_limit_max_requests == 10
+    assert settings.merchant_pairing_rate_limit_window_in_seconds == 60
+
+
+def test_application_settings_reads_merchant_pairing_values_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The token lifetime and the pairing rate limit are configurable."""
+    monkeypatch.setenv("MERCHANT_ACCESS_TOKEN_LIFETIME_IN_SECONDS", "3600")
+    monkeypatch.setenv("MERCHANT_PAIRING_RATE_LIMIT_MAX_REQUESTS", "3")
+    monkeypatch.setenv("MERCHANT_PAIRING_RATE_LIMIT_WINDOW_IN_SECONDS", "300")
+    settings = ApplicationSettings()
+    assert settings.merchant_access_token_lifetime_in_seconds == 3600
+    assert settings.merchant_pairing_rate_limit_max_requests == 3
+    assert settings.merchant_pairing_rate_limit_window_in_seconds == 300
+
+
+@pytest.mark.parametrize(
+    ("variable_name", "unusable_value"),
+    [
+        ("MERCHANT_ACCESS_TOKEN_LIFETIME_IN_SECONDS", "59"),
+        ("MERCHANT_ACCESS_TOKEN_LIFETIME_IN_SECONDS", "604801"),
+        ("MERCHANT_PAIRING_RATE_LIMIT_MAX_REQUESTS", "0"),
+        ("MERCHANT_PAIRING_RATE_LIMIT_WINDOW_IN_SECONDS", "0"),
+    ],
+)
+def test_application_settings_with_unusable_merchant_pairing_value_raises_validation_error(
+    monkeypatch: pytest.MonkeyPatch, variable_name: str, unusable_value: str
+) -> None:
+    """A token shorter than a minute or longer than a week, or a zero limit, fails at startup."""
+    monkeypatch.setenv(variable_name, unusable_value)
+    with pytest.raises(ValidationError):
+        ApplicationSettings()

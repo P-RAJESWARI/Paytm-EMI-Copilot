@@ -130,3 +130,36 @@ def test_handle_domain_error_logs_refused_credentials_as_a_warning(
     with caplog.at_level(logging.INFO, logger="emi_copilot.api.error_handlers"):
         handle_domain_error(None, error)  # type: ignore[arg-type]
     assert [record.levelno for record in caplog.records] == [expected_level]
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_headers"),
+    [
+        (errors.PairingTemporarilyLockedError(900, "Locked."), {"retry-after": "900"}),
+        (errors.RequestRateLimitedError(42, "Slow down."), {"retry-after": "42"}),
+        (errors.MerchantAuthenticationRequiredError("Pair again."), {"www-authenticate": "Bearer"}),
+    ],
+)
+def test_handle_domain_error_adds_retry_after_or_bearer_challenge(
+    error: errors.DomainError, expected_headers: dict[str, str]
+) -> None:
+    """A 429 says when to retry; a merchant 401 names the bearer scheme (RFC 6750)."""
+    response = handle_domain_error(None, error)  # type: ignore[arg-type]
+    for header_name, header_value in expected_headers.items():
+        assert response.headers[header_name] == header_value
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        errors.InvalidPairingCredentialsError("Wrong."),
+        errors.OfferNotFoundError("Not quoted."),
+    ],
+)
+def test_handle_domain_error_without_special_headers_adds_neither(
+    error: errors.DomainError,
+) -> None:
+    """A wrong PIN is not a bearer challenge, and ordinary refusals carry no Retry-After."""
+    response = handle_domain_error(None, error)  # type: ignore[arg-type]
+    assert "retry-after" not in response.headers
+    assert "www-authenticate" not in response.headers

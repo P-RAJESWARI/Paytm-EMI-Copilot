@@ -190,8 +190,17 @@ def describe_field_location(location: Sequence[Any]) -> str:
     return ".".join(field_path) if field_path else str(location[0])
 
 
+def build_problem_headers(error: errors.DomainError) -> dict[str, str]:
+    """Gives the headers an error's answer carries: Retry-After, or the bearer challenge."""
+    if isinstance(error, errors.RetryLaterError):
+        return {"Retry-After": str(error.retry_after_in_seconds)}
+    if isinstance(error, errors.MerchantAuthenticationRequiredError):
+        return {"WWW-Authenticate": "Bearer"}
+    return {}
+
+
 def handle_domain_error(_request: Request, error: errors.DomainError) -> JSONResponse:
-    """Answers a typed domain error with its mapped status, its code and its detail."""
+    """Answers a typed domain error with its mapped status, code, detail and any headers."""
     mapping = find_problem_mapping(error)
     # A refused credential (a forged webhook today) is a security event, so it logs louder.
     log_level = logging.WARNING if mapping.status == UNAUTHORISED_STATUS else logging.INFO
@@ -201,7 +210,8 @@ def handle_domain_error(_request: Request, error: errors.DomainError) -> JSONRes
         extra={"error_code": error.code, "http_status_code": mapping.status},
     )
     return build_problem_response(
-        build_problem(mapping.status, error.code, mapping.title, error.detail)
+        build_problem(mapping.status, error.code, mapping.title, error.detail),
+        build_problem_headers(error),
     )
 
 

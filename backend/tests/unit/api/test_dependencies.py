@@ -1,5 +1,7 @@
 """The composition root builds the configured gateway at startup and fails fast (ADR 0004)."""
 
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,10 +9,13 @@ from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayConfigura
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
 from emi_copilot.api.dependencies import (
     ApplicationComponents,
+    provide_access_token_lifetime,
     provide_clock,
     provide_event_bus,
     provide_id_generator,
+    provide_pairing_rate_limiter,
     provide_payment_gateway,
+    provide_pin_hasher,
     provide_unit_of_work_factory,
 )
 from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
@@ -48,3 +53,15 @@ def test_component_providers_give_the_components_built_at_startup() -> None:
         assert provide_clock(components) is components.clock
         assert provide_id_generator(components) is components.id_generator
         assert provide_event_bus(components) is components.event_bus
+
+
+def test_merchant_providers_give_the_startup_hasher_limiter_and_token_lifetime() -> None:
+    """The PIN hasher and pairing limiter are built once; the lifetime comes from settings."""
+    application = create_application(
+        ApplicationSettings(merchant_access_token_lifetime_in_seconds=3600)
+    )
+    with TestClient(application):
+        components = application.state.application_components
+        assert provide_pin_hasher(components) is components.pin_hasher
+        assert provide_pairing_rate_limiter(components) is components.pairing_rate_limiter
+        assert provide_access_token_lifetime(components) == timedelta(hours=1)

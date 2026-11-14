@@ -20,6 +20,18 @@ UNAUTHENTICATED_NOTE = (
     "Layer 1 gateway endpoint: unauthenticated until merchant authentication arrives in Layer 2 "
     "(ADR 0009). Money is integer paise; errors are application/problem+json."
 )
+MERCHANT_BEARER_NOTE = (
+    "Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. "
+    "Only the signed-in shop's own data is returned. Money is integer paise; errors are "
+    "application/problem+json."
+)
+TOO_MANY_REQUESTS_STATUS = 429
+_RETRY_AFTER_HEADER = {
+    "Retry-After": {
+        "description": "Whole seconds to wait before trying again.",
+        "schema": {"type": "integer", "minimum": 1},
+    }
+}
 _PROBLEM_SCHEMA_REFERENCE = "#/components/schemas/" + ProblemDetailsResponse.__name__
 _OPENAPI_DESCRIPTION = (
     "REST contract for the merchant and customer apps. JSON is camelCase, money is integer "
@@ -57,28 +69,35 @@ class ProblemExample:
 def describe_problem_responses(*problem_examples: ProblemExample) -> dict[int | str, Any]:
     """Builds the FastAPI `responses` entry for the given errors, grouped by status code.
 
-    Every operation also documents the generic 500 problem, which any request can meet.
+    Every operation also documents the generic 500 problem, which any request can meet, and a
+    429 answer documents its Retry-After header.
     """
     examples_by_status: dict[int, list[ProblemExample]] = defaultdict(list)
     for problem_example in (*problem_examples, UNEXPECTED_ERROR_PROBLEM):
         examples_by_status[problem_example.status].append(problem_example)
     return {
-        status: {
-            "model": ProblemDetailsResponse,
-            "description": " ".join(
-                example.description for example in examples if example.description
-            ),
-            "content": {
-                PROBLEM_JSON_MEDIA_TYPE: {
-                    "examples": {
-                        example.code: {"summary": example.title, "value": example.to_example_body()}
-                        for example in examples
-                    }
-                }
-            },
-        }
+        status: _describe_problem_status(status, examples)
         for status, examples in sorted(examples_by_status.items())
     }
+
+
+def _describe_problem_status(status: int, examples: list[ProblemExample]) -> dict[str, Any]:
+    """Builds one status entry: the problem model, its joined description and its examples."""
+    response: dict[str, Any] = {
+        "model": ProblemDetailsResponse,
+        "description": " ".join(example.description for example in examples if example.description),
+        "content": {
+            PROBLEM_JSON_MEDIA_TYPE: {
+                "examples": {
+                    example.code: {"summary": example.title, "value": example.to_example_body()}
+                    for example in examples
+                }
+            }
+        },
+    }
+    if status == TOO_MANY_REQUESTS_STATUS:
+        response["headers"] = _RETRY_AFTER_HEADER
+    return response
 
 
 def move_problem_schemas_to_problem_media_type(openapi_schema: dict[str, Any]) -> None:
@@ -168,4 +187,12 @@ GATEWAY_FAILURE_PROBLEMS = (
         "The gateway quoted two plans with the same id.",
         "",
     ),
+)
+MERCHANT_AUTHENTICATION_PROBLEM = ProblemExample(
+    401,
+    "MERCHANT_AUTHENTICATION_REQUIRED",
+    "Merchant sign-in required",
+    "A valid merchant bearer token is required; pair the device again.",
+    "The bearer token is missing, unknown, expired or revoked; the answer carries "
+    "WWW-Authenticate: Bearer. Pair the device again.",
 )

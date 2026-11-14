@@ -17,6 +17,14 @@ COMMITTED_OPENAPI_PATH = Path(__file__).resolve().parents[3] / "openapi.json"
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "patch", "head", "options"})
 CARD_LIKE_WORDS = frozenset({"card", "cvv", "expiry", "pan", "bin"})
 CAMEL_CASE_HUMP = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+# Layer 1 gateway endpoints (ADR 0009) and pairing itself need no merchant bearer token.
+UNAUTHENTICATED_PATH_PREFIXES = (
+    "/api/v1/offers",
+    "/api/v1/payment-links",
+    "/api/v1/payments/",
+    "/api/v1/webhooks/",
+    "/api/v1/merchants/pairing",
+)
 
 
 @pytest.fixture(scope="module")
@@ -131,12 +139,66 @@ def test_every_operation_has_summary_description_and_a_problem_response(
 def test_gateway_operations_say_they_are_unauthenticated(
     openapi_document: dict[str, Any],
 ) -> None:
-    """Layer 1 endpoints state that they are unauthenticated (ADR 0009)."""
+    """Layer 1 gateway endpoints and pairing state that they need no merchant token (ADR 0009)."""
     for operation_id, operation in list_operations(openapi_document):
-        if operation_id.split(" ")[1].startswith("/api/v1/"):
+        if operation_id.split(" ")[1].startswith(UNAUTHENTICATED_PATH_PREFIXES):
             assert "unauthenticated" in operation["description"].lower() or (
                 "no credentials" in operation["description"]
             ), operation_id
+            assert "security" not in operation, operation_id
+
+
+def test_merchant_operations_require_the_merchant_bearer_token(
+    openapi_document: dict[str, Any],
+) -> None:
+    """Every other /api/v1 operation declares the bearer scheme and documents its 401."""
+    merchant_operations = [
+        (operation_id, operation)
+        for operation_id, operation in list_operations(openapi_document)
+        if operation_id.split(" ")[1].startswith("/api/v1/")
+        and not operation_id.split(" ")[1].startswith(UNAUTHENTICATED_PATH_PREFIXES)
+    ]
+    assert {operation_id for operation_id, _ in merchant_operations} >= {
+        "GET /api/v1/merchants/me",
+        "GET /api/v1/products",
+    }
+    for operation_id, operation in merchant_operations:
+        assert operation["security"] == [{"MerchantBearerToken": []}], operation_id
+        assert "MERCHANT_AUTHENTICATION_REQUIRED" in json.dumps(operation["responses"]["401"]), (
+            operation_id
+        )
+    assert openapi_document["components"]["securitySchemes"]["MerchantBearerToken"] == {
+        "type": "http",
+        "scheme": "bearer",
+        "description": openapi_document["components"]["securitySchemes"]["MerchantBearerToken"][
+            "description"
+        ],
+    }
+
+
+def test_every_too_many_requests_answer_documents_retry_after(
+    openapi_document: dict[str, Any],
+) -> None:
+    """A 429 always tells the client when to try again."""
+    too_many_requests_answers = [
+        (operation_id, operation["responses"]["429"])
+        for operation_id, operation in list_operations(openapi_document)
+        if "429" in operation["responses"]
+    ]
+    assert [operation_id for operation_id, _ in too_many_requests_answers] == [
+        "POST /api/v1/merchants/pairing"
+    ]
+    for _, response in too_many_requests_answers:
+        assert response["headers"]["Retry-After"]["schema"] == {"type": "integer", "minimum": 1}
+
+
+def test_pairing_pin_is_write_only_text_of_six_digits(openapi_document: dict[str, Any]) -> None:
+    """The PIN is text (leading zeros survive), never echoed back, and never shown in docs."""
+    pin_schema = openapi_document["components"]["schemas"]["PairDeviceRequest"]["properties"]["pin"]
+    assert pin_schema["type"] == "string"
+    assert pin_schema["pattern"] == "^[0-9]{6}$"
+    assert pin_schema["writeOnly"] is True
+    assert pin_schema["format"] == "password"
 
 
 def test_committed_openapi_document_is_json() -> None:
