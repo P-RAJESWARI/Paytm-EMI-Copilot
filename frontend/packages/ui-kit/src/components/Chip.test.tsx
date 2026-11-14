@@ -29,11 +29,20 @@ describe('Chip', () => {
     expect(screen.getByTestId('icon').getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('uses the orange tint for the attention tone', () => {
+    render(<Chip tone="attention">Waiting for brand</Chip>);
+
+    expect(screen.getByText('Waiting for brand').className).toContain(
+      'bg-stretching-tint text-stretching-text',
+    );
+  });
+
   it('has no accessibility violations', async () => {
     const { container } = render(
       <>
         <Chip tone="soft">Soft</Chip>
         <Chip tone="neutral">Neutral</Chip>
+        <Chip tone="attention">Attention</Chip>
       </>,
     );
 

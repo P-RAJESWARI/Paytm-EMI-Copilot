@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-export type ChipTone = 'outline' | 'soft' | 'information' | 'neutral';
+/** `attention` is the orange tint for "waiting" states; the chip's word carries the meaning. */
+export type ChipTone = 'outline' | 'soft' | 'information' | 'neutral' | 'attention';
 
 /** `pill` for status-like chips, `rounded` (radius 12) for value chips. */
 export type ChipShape = 'pill' | 'rounded';
@@ -18,6 +19,7 @@ const TONE_CLASS_NAMES: Record<ChipTone, string> = {
   soft: 'bg-light-blue text-navy',
   information: 'bg-cyan-tint text-navy',
   neutral: 'bg-grey-tint text-ink-muted',
+  attention: 'bg-stretching-tint text-stretching-text',
 };
 
 // A small non-interactive label, such as "₹667 above your budget". Never used for comfort bands.

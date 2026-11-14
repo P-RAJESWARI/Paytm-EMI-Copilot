@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from 'react-router';
 
 import { NewEmiSalePage } from '../pages/NewEmiSalePage';
 import { PairingPage } from '../pages/PairingPage';
+import { SalesReportPage } from '../pages/SalesReportPage';
 import { ShowQrPage } from '../pages/ShowQrPage';
 import { TakePaymentPage } from '../pages/TakePaymentPage';
 import { MERCHANT_PATHS } from './merchantPaths';
@@ -20,7 +21,7 @@ export const MERCHANT_ROUTES: RouteObject[] = [
           { path: MERCHANT_PATHS.newEmiSale, element: <NewEmiSalePage /> },
           { path: MERCHANT_PATHS.showQrPattern, element: <ShowQrPage /> },
           { path: MERCHANT_PATHS.takePaymentPattern, element: <TakePaymentPage /> },
-          { path: MERCHANT_PATHS.salesReport, element: null },
+          { path: MERCHANT_PATHS.salesReport, element: <SalesReportPage /> },
         ],
       },
     ],
