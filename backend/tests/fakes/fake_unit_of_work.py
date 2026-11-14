@@ -5,8 +5,15 @@ from types import TracebackType
 from typing import Self
 
 from emi_copilot.core.clock import Clock
+from emi_copilot.domain.catalogue import CatalogueProduct
 from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
+from emi_copilot.domain.merchants import DevicePairing, Merchant
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
+from tests.fakes.fake_merchant_repositories import (
+    FakeDevicePairingRepository,
+    FakeMerchantRepository,
+    FakeProductRepository,
+)
 
 
 @dataclass
@@ -15,6 +22,9 @@ class InMemoryDatabase:
 
     payment_attempts_by_id: dict[str, PaymentAttempt] = field(default_factory=dict)
     audit_events: list[AuditEvent] = field(default_factory=list)
+    merchants_by_id: dict[str, Merchant] = field(default_factory=dict)
+    device_pairings_by_id: dict[str, DevicePairing] = field(default_factory=dict)
+    products_by_id: dict[str, CatalogueProduct] = field(default_factory=dict)
     commit_count: int = 0
     rollback_count: int = 0
 
@@ -103,6 +113,9 @@ class FakeUnitOfWork:
 
     payment_attempts: FakePaymentAttemptRepository
     audit_events: FakeAuditEventRepository
+    merchants: FakeMerchantRepository
+    device_pairings: FakeDevicePairingRepository
+    products: FakeProductRepository
 
     def __init__(self, database: InMemoryDatabase, clock: Clock) -> None:
         """Keeps the shared in-memory database and the clock for updated_at."""
@@ -110,13 +123,22 @@ class FakeUnitOfWork:
         self._clock = clock
         self._working_attempts: dict[str, PaymentAttempt] = {}
         self._working_audit_events: list[AuditEvent] = []
+        self._working_merchants: dict[str, Merchant] = {}
+        self._working_device_pairings: dict[str, DevicePairing] = {}
+        self._working_products: dict[str, CatalogueProduct] = {}
 
     def __enter__(self) -> Self:
-        """Starts a transaction on private copies of the committed attempts and audit trail."""
+        """Starts a transaction on private copies of every committed collection."""
         self._working_attempts = dict(self._database.payment_attempts_by_id)
         self._working_audit_events = list(self._database.audit_events)
+        self._working_merchants = dict(self._database.merchants_by_id)
+        self._working_device_pairings = dict(self._database.device_pairings_by_id)
+        self._working_products = dict(self._database.products_by_id)
         self.payment_attempts = FakePaymentAttemptRepository(self._working_attempts, self._clock)
         self.audit_events = FakeAuditEventRepository(self._working_audit_events)
+        self.merchants = FakeMerchantRepository(self._working_merchants)
+        self.device_pairings = FakeDevicePairingRepository(self._working_device_pairings)
+        self.products = FakeProductRepository(self._working_products)
         return self
 
     def __exit__(
@@ -129,6 +151,9 @@ class FakeUnitOfWork:
         if exception_type is None:
             self._database.payment_attempts_by_id = self._working_attempts
             self._database.audit_events = self._working_audit_events
+            self._database.merchants_by_id = self._working_merchants
+            self._database.device_pairings_by_id = self._working_device_pairings
+            self._database.products_by_id = self._working_products
             self._database.commit_count += 1
         else:
             self._database.rollback_count += 1

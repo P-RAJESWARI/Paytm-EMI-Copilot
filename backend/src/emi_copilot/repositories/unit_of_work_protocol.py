@@ -8,6 +8,8 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Protocol, Self
 
+from emi_copilot.domain.catalogue import CatalogueProduct
+from emi_copilot.domain.merchants import DevicePairing, Merchant
 from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
 
 
@@ -43,6 +45,62 @@ class AuditEventStore(Protocol):
         ...
 
 
+class MerchantStore(Protocol):
+    """Adds, finds and updates merchants inside one transaction."""
+
+    def add(self, merchant: Merchant) -> None:
+        """Inserts a new merchant."""
+        ...
+
+    def find_by_id(self, merchant_id: str) -> Merchant | None:
+        """Returns the merchant with this id, or None."""
+        ...
+
+    def find_by_shop_code_for_update(self, shop_code: str) -> Merchant | None:
+        """Returns the merchant with this shop code, locked until the transaction ends, or None."""
+        ...
+
+    def update(self, merchant: Merchant) -> None:
+        """Saves the mutable fields of a stored merchant."""
+        ...
+
+
+class DevicePairingStore(Protocol):
+    """Adds device pairings and finds one by its access token hash inside one transaction."""
+
+    def add(self, device_pairing: DevicePairing) -> None:
+        """Inserts a new pairing."""
+        ...
+
+    def find_by_access_token_hash(self, access_token_hash: str) -> DevicePairing | None:
+        """Returns the pairing whose token hashes to this value, or None."""
+        ...
+
+
+class ProductStore(Protocol):
+    """Adds products and reads them for one merchant only, inside one transaction."""
+
+    def add(self, product: CatalogueProduct) -> None:
+        """Inserts a new product."""
+        ...
+
+    def list_for_merchant(
+        self, merchant_id: str, name_search_text: str | None = None
+    ) -> tuple[CatalogueProduct, ...]:
+        """Lists the merchant's products by name; a search keeps names containing it."""
+        ...
+
+    def find_by_id_for_merchant(self, merchant_id: str, product_id: str) -> CatalogueProduct | None:
+        """Returns the product only if it belongs to the merchant, else None."""
+        ...
+
+    def find_by_gateway_product_id_for_merchant(
+        self, merchant_id: str, gateway_product_id: str
+    ) -> CatalogueProduct | None:
+        """Returns the merchant's product with this gateway product id, or None."""
+        ...
+
+
 class UnitOfWork(Protocol):
     """One transaction: commits on a clean exit of the `with` block, rolls back on any error."""
 
@@ -54,6 +112,21 @@ class UnitOfWork(Protocol):
     @property
     def audit_events(self) -> AuditEventStore:
         """Gives the audit event repository of this transaction."""
+        ...
+
+    @property
+    def merchants(self) -> MerchantStore:
+        """Gives the merchant repository of this transaction."""
+        ...
+
+    @property
+    def device_pairings(self) -> DevicePairingStore:
+        """Gives the device pairing repository of this transaction."""
+        ...
+
+    @property
+    def products(self) -> ProductStore:
+        """Gives the catalogue product repository of this transaction."""
         ...
 
     def __enter__(self) -> Self:

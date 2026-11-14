@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from emi_copilot.core.clock import Clock
 from emi_copilot.repositories.audit_event_repository import AuditEventRepository
+from emi_copilot.repositories.device_pairing_repository import DevicePairingRepository
+from emi_copilot.repositories.merchant_repository import MerchantRepository
 from emi_copilot.repositories.payment_attempt_repository import PaymentAttemptRepository
+from emi_copilot.repositories.product_repository import ProductRepository
 
 
 # Pattern: Unit of Work. A payment attempt and its audit event commit together or not at all.
@@ -20,6 +23,9 @@ class SqlAlchemyUnitOfWork:
 
     payment_attempts: PaymentAttemptRepository
     audit_events: AuditEventRepository
+    merchants: MerchantRepository
+    device_pairings: DevicePairingRepository
+    products: ProductRepository
     _session: Session
 
     def __init__(self, session_factory: sessionmaker[Session], clock: Clock) -> None:
@@ -34,6 +40,9 @@ class SqlAlchemyUnitOfWork:
         self._session = session
         self.payment_attempts = PaymentAttemptRepository(session, self._clock)
         self.audit_events = AuditEventRepository(session, self._clock)
+        self.merchants = MerchantRepository(session, self._clock)
+        self.device_pairings = DevicePairingRepository(session, self._clock)
+        self.products = ProductRepository(session, self._clock)
         return self
 
     def __exit__(

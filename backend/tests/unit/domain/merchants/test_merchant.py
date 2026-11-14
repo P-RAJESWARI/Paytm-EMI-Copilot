@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from emi_copilot.domain.errors import InvalidMerchantDataError
-from tests.unit.domain.merchants.merchant_builders import (
+from tests.merchant_builders import (
     PAIRED_AT,
     build_device_pairing,
     build_merchant,

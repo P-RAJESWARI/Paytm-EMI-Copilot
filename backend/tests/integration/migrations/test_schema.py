@@ -14,7 +14,8 @@ from tests.integration.migration_runner import build_alembic_config
 pytestmark = pytest.mark.integration
 
 SCRATCH_SCHEMA = "migration_round_trip_scratch"
-APPLICATION_TABLES = {"payment_attempt", "audit_event"}
+APPLICATION_TABLES = {"payment_attempt", "audit_event", "merchant", "device_pairing", "product"}
+MERCHANT_TABLES = ("merchant", "device_pairing", "product")
 CARD_FIELD_WORDS = ("card", "cvv", "expiry", "bin")
 
 
@@ -113,6 +114,9 @@ def test_payment_attempt_lookup_columns_are_unique_and_therefore_indexed(
             },
         ),
         ("audit_event", {"ck_audit_event_event_type_known"}),
+        ("merchant", {"ck_merchant_failed_pin_attempt_count_not_negative"}),
+        ("device_pairing", {"ck_device_pairing_access_token_hash_length"}),
+        ("product", {"ck_product_list_price_in_paise_positive"}),
     ],
 )
 def test_check_constraints_exist_with_convention_names(
@@ -176,3 +180,76 @@ def test_migration_0002_adds_and_removes_the_failure_code_column(
     assert "ck_payment_attempt_failure_code_known" in check_constraint_names
     command.downgrade(alembic_config, "0001")
     assert "failure_code" not in _scratch_payment_attempt_column_names(scratch_schema_connection)
+
+
+@pytest.mark.parametrize("table_name", ["device_pairing", "product"])
+def test_merchant_foreign_keys_are_indexed(
+    database_connection: Connection, table_name: str
+) -> None:
+    """Every foreign key is indexed (backend.md section 8); each points at merchant.id."""
+    database_inspector = inspect(database_connection)
+    foreign_keys = database_inspector.get_foreign_keys(table_name)
+    assert [
+        (foreign_key["constrained_columns"], foreign_key["referred_table"])
+        for foreign_key in foreign_keys
+    ] == [(["merchant_id"], "merchant")]
+    indexed_columns = [
+        index["column_names"] for index in database_inspector.get_indexes(table_name)
+    ]
+    assert ["merchant_id"] in indexed_columns
+
+
+@pytest.mark.parametrize(
+    ("table_name", "expected_unique_constraints"),
+    [
+        ("merchant", {"uq_merchant_shop_code": ["shop_code"]}),
+        ("device_pairing", {"uq_device_pairing_access_token_hash": ["access_token_hash"]}),
+        ("product", {}),
+    ],
+)
+def test_merchant_lookup_columns_are_unique(
+    database_connection: Connection,
+    table_name: str,
+    expected_unique_constraints: dict[str, list[str]],
+) -> None:
+    """Shop codes and token hashes are unique, which also indexes the sign-in lookups."""
+    unique_constraints = {
+        constraint["name"]: constraint["column_names"]
+        for constraint in inspect(database_connection).get_unique_constraints(table_name)
+    }
+    assert unique_constraints == expected_unique_constraints
+
+
+def test_merchant_tables_hold_no_pin_token_card_or_customer_fields(
+    database_connection: Connection,
+) -> None:
+    """Only PIN and token hashes are stored, prices are BIGINT paise and no card field exists."""
+    database_inspector = inspect(database_connection)
+    columns_by_table = {
+        table_name: {
+            column["name"]: column for column in database_inspector.get_columns(table_name)
+        }
+        for table_name in MERCHANT_TABLES
+    }
+    assert {"pin_hash", "pin_salt"} <= set(columns_by_table["merchant"])
+    assert "pin" not in columns_by_table["merchant"]
+    assert "access_token" not in columns_by_table["device_pairing"]
+    assert str(columns_by_table["product"]["list_price_in_paise"]["type"]) == "BIGINT"
+    for table_name, columns in columns_by_table.items():
+        assert {"id", "created_at", "updated_at"} <= set(columns), table_name
+        for column_name in columns:
+            assert not any(card_word in column_name for card_word in CARD_FIELD_WORDS), column_name
+
+
+def test_migration_0003_creates_and_removes_the_merchant_tables(
+    scratch_schema_connection: Connection,
+) -> None:
+    """0003 adds merchant, device_pairing and product; downgrading to 0002 removes all three."""
+    alembic_config = build_alembic_config(scratch_schema_connection)
+    command.upgrade(alembic_config, "0002")
+    assert not set(MERCHANT_TABLES) & _scratch_table_names(scratch_schema_connection)
+    command.upgrade(alembic_config, "0003")
+    assert set(MERCHANT_TABLES) <= _scratch_table_names(scratch_schema_connection)
+    command.downgrade(alembic_config, "0002")
+    assert not set(MERCHANT_TABLES) & _scratch_table_names(scratch_schema_connection)
+    assert {"payment_attempt", "audit_event"} <= _scratch_table_names(scratch_schema_connection)
