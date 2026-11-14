@@ -139,6 +139,10 @@ def test_redaction_filter_redacts_secrets_inside_exception_text(
         ("call +919876543210 now", "call ********10 now"),
         ("call 09876543210 now", "call ********10 now"),
         ("price_in_paise=2200000 order 01JD0000000000000000000000", None),
+        ('{"pin": "135790", "shopId": "SHOP-1"}', '{"pin": [REDACTED], "shopId": "SHOP-1"}'),
+        ("merchant_pin=135790 retry", "merchant_pin=[REDACTED] retry"),
+        ("PIN: 135790", "PIN: [REDACTED]"),
+        ("problem_mapping=status shipping: fast", None),
     ],
 )
 def test_redact_sensitive_text_masks_only_sensitive_values(
@@ -202,3 +206,24 @@ def test_json_log_formatter_without_redaction_filter_still_renders_exception() -
         )
     rendered_line = json.loads(JsonLogFormatter().format(record))
     assert "RuntimeError: formatter only" in rendered_line["exception"]
+
+
+@pytest.mark.parametrize("field_name", ["pin", "pairing_pin", "pin_hash"])
+def test_redaction_filter_redacts_extra_fields_named_after_a_pin(
+    log_output_stream: io.StringIO, field_name: str
+) -> None:
+    """An extra field whose name has "pin" as a word part never shows its value."""
+    logging.getLogger("emi_copilot.tests.logging").info(
+        "pairing attempted", extra={field_name: "135790"}
+    )
+    assert read_single_log_line(log_output_stream)[field_name] == "[REDACTED]"
+
+
+def test_redaction_filter_keeps_extra_fields_that_only_contain_the_letters_pin(
+    log_output_stream: io.StringIO,
+) -> None:
+    """Words such as "mapping" merely contain p-i-n and are not mistaken for a PIN."""
+    logging.getLogger("emi_copilot.tests.logging").info(
+        "mapping chosen", extra={"problem_mapping": "standard"}
+    )
+    assert read_single_log_line(log_output_stream)["problem_mapping"] == "standard"
