@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C2 Budget</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#FFFFFF;border-bottom:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C1.dc.html" aria-label="{{t.back}}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#002E6E"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.step}}</div>
+    <div role="group" aria-label="Language" style="display:flex;background:#EEF6FB;border-radius:999px;padding:3px">
+      <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:42px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+      <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:42px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:14px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+    </div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:24px 16px;display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1 style="margin:0;font-size:24px;line-height:1.3;color:#002E6E">{{t.title}}</h1>
+      <p style="margin:0;font-size:16px;line-height:1.5;color:#5B6B82">{{t.help}}</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label for="amt" style="font-size:15px;font-weight:600">{{t.label}}</label>
+      <div style="display:flex;align-items:center;gap:6px;height:76px;padding:0 18px;background:#FFFFFF;border-radius:16px;border:2px solid {{inputBorder}}">
+        <span style="font-size:34px;font-weight:700;color:#002E6E">₹</span>
+        <input id="amt" inputmode="numeric" value="{{amount}}" onChange="{{onType}}" placeholder="0" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font-family:inherit;font-size:34px;font-weight:700;color:#002E6E">
+        <span style="font-size:15px;color:#5B6B82">{{t.perMonth}}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px">
+      <button onClick="{{onMic}}" aria-label="{{t.mic}}" style="width:64px;height:64px;border-radius:999px;border:0;background:#F5A524;color:#0B1F3A;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg>
+      </button>
+      <div style="font-size:15px;line-height:1.45;color:#0B1F3A">{{t.mic}}</div>
+    </div>
+
+    <sc-if value="{{isVoice}}" hint-placeholder-val="{{ true }}">
+      <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+        <div style="display:flex;gap:10px;align-items:center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4"></path><path d="M8 7v10"></path><path d="M12 4v16"></path><path d="M16 7v10"></path><path d="M20 10v4"></path></svg>
+          <div style="font-size:19px;font-weight:700">{{t.confirm}}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          <button onClick="{{onEdit}}" style="height:48px;border-radius:12px;border:1px solid #C9D8E6;background:#FFFFFF;color:#002E6E;font-family:inherit;font-size:16px;font-weight:600">{{t.edit}}</button>
+          <button onClick="{{onYes}}" style="height:48px;border-radius:12px;border:2px solid #002E6E;background:#FFFFFF;color:#002E6E;font-family:inherit;font-size:16px;font-weight:700">{{t.yes}}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isMisheard}}" hint-placeholder-val="{{ false }}">
+      <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;border:1px solid #C9D8E6">
+        <div style="font-size:17px;font-weight:700">{{t.misheard}}</div>
+        <div style="font-size:15px;line-height:1.5;color:#5B6B82">{{t.fix}}</div>
+        <button onClick="{{onMic}}" style="align-self:flex-start;height:48px;padding:0 16px;border-radius:12px;border:1px solid #C9D8E6;background:#FFFFFF;color:#002E6E;font-family:inherit;font-size:15px;font-weight:600">{{t.again}}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:15px;color:#5B6B82;line-height:1.5">{{t.emptyHint}}</div>
+    </sc-if>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <sc-if value="{{canGo}}" hint-placeholder-val="{{ true }}">
+      <a href="C3.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">{{t.cta}}</a>
+    </sc-if>
+    <sc-if value="{{cantGo}}" hint-placeholder-val="{{ false }}">
+      <button disabled="{{ true }}" style="width:100%;height:56px;border-radius:14px;border:0;background:#DCE7F0;color:#5B6B82;font-family:inherit;font-weight:700;font-size:18px">{{t.cta}}</button>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"screenState":{"editor":"enum","options":["empty","typed","voice","misheard"],"default":"voice"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const lang = st.lang || this.props.lang || 'en';
+    const s = st.s || this.props.screenState || 'voice';
+    const base = { empty: '', typed: '3,000', voice: '3,000', misheard: '30,000' }[s];
+    const amount = st.amount !== undefined ? st.amount : base;
+    const S = {
+      en: {
+        back: 'Back', step: 'Step 1 of 4',
+        title: 'What monthly amount feels comfortable?',
+        help: 'Think of what you can pay each month without worry.',
+        label: 'Monthly amount', perMonth: 'a month',
+        mic: 'Tap and say the amount',
+        confirm: 'You said ₹3,000. Correct?',
+        yes: 'Yes, correct', edit: 'Edit',
+        misheard: 'We heard ₹30,000.',
+        fix: 'If that is wrong, tap the amount above and type the right number.',
+        again: 'Say it again',
+        emptyHint: 'Type an amount or tap the microphone to continue.',
+        cta: 'Continue'
+      },
+      ta: {
+        back: 'பின்செல்', step: 'படி 1 / 4',
+        title: 'மாதம் எவ்வளவு செலுத்துவது உங்களுக்கு வசதியாக இருக்கும்?',
+        help: 'கவலையின்றி ஒவ்வொரு மாதமும் செலுத்தக்கூடிய தொகையை நினைத்துப் பாருங்கள்.',
+        label: 'மாதத் தொகை', perMonth: 'மாதம்',
+        mic: 'தட்டி, தொகையைச் சொல்லுங்கள்',
+        confirm: 'நீங்கள் சொன்னது ₹3,000. சரியா?',
+        yes: 'ஆம், சரி', edit: 'மாற்று',
+        misheard: 'நாங்கள் கேட்டது ₹30,000.',
+        fix: 'அது தவறு என்றால், மேலே உள்ள தொகையைத் தட்டி சரியான எண்ணை உள்ளிடவும்.',
+        again: 'மீண்டும் சொல்லுங்கள்',
+        emptyHint: 'தொடர, ஒரு தொகையை உள்ளிடவும் அல்லது மைக்கைத் தட்டவும்.',
+        cta: 'தொடர்க'
+      }
+    }[lang];
+    const en = lang === 'en';
+    const has = String(amount).trim() !== '';
+    return {
+      t: S, isEn: en, isTa: !en, amount,
+      enBg: en ? '#002E6E' : 'transparent', enFg: en ? '#FFFFFF' : '#002E6E',
+      taBg: !en ? '#002E6E' : 'transparent', taFg: !en ? '#FFFFFF' : '#002E6E',
+      isVoice: s === 'voice', isMisheard: s === 'misheard', isEmpty: !has,
+      canGo: has && s !== 'voice', cantGo: !has || s === 'voice',
+      inputBorder: s === 'misheard' ? '#00BAF2' : '#DCE7F0',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' }),
+      onType: (e) => this.setState({ amount: e.target.value, s: 'typed' }),
+      onMic: () => this.setState({ s: 'voice', amount: '3,000' }),
+      onYes: () => this.setState({ s: 'typed' }),
+      onEdit: () => this.setState({ s: 'typed' })
+    };
+  }
+}
+</script>
+</body>
+</html>

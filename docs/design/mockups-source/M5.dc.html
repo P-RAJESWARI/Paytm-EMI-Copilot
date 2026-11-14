@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M5 Sales report</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1024px;height:{{rootH}};display:flex;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <nav aria-label="Main" style="width:216px;flex-shrink:0;background:#002E6E;color:#FFFFFF;box-sizing:border-box;padding:20px 12px;display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;padding:4px 8px 20px"><svg width="30" height="30" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#FFFFFF"></rect><path d="M7.5 19c1.8-6.5 11.2-6.5 13 0" stroke="#00BAF2" stroke-width="3" fill="none" stroke-linecap="round"></path><circle cx="14" cy="10.5" r="2.6" fill="#00BAF2"></circle></svg>EMI Copilot</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="2">
+      <a href="{{n.href}}" aria-current="{{n.current}}" style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600;background:{{n.bg}};color:{{n.fg}}"><span style="width:8px;height:8px;border-radius:999px;background:{{n.dot}}"></span>{{n.label}}</a>
+    </sc-for>
+    <div style="margin-top:auto;padding:12px;border-radius:12px;background:rgba(255,255,255,0.08);font-size:14px;line-height:1.4"><div style="font-weight:600">Ravi Electronics</div><div style="color:#C9D8E6">Counter tablet 1</div></div>
+  </nav>
+
+  <main style="flex:1;min-width:0;box-sizing:border-box;padding:24px 28px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+      <h1 style="margin:0;font-size:24px;color:#002E6E">Sales report</h1>
+      <div role="group" aria-label="Period" style="display:flex;background:#FFFFFF;border-radius:12px;padding:3px;border:1px solid #DCE7F0">
+        <button aria-pressed="false" style="height:40px;padding:0 12px;border:0;border-radius:9px;background:transparent;font-family:inherit;font-size:14px;font-weight:600;color:#002E6E">Today</button>
+        <button aria-pressed="true" style="height:40px;padding:0 12px;border:0;border-radius:9px;background:#002E6E;font-family:inherit;font-size:14px;font-weight:600;color:#FFFFFF">This week</button>
+        <button aria-pressed="false" style="height:40px;padding:0 12px;border:0;border-radius:9px;background:transparent;font-family:inherit;font-size:14px;font-weight:600;color:#002E6E">This month</button>
+      </div>
+    </div>
+
+    <sc-if value="{{loaded}}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <section aria-label="This week in short" style="background:#002E6E;color:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <h2 style="margin:0;font-size:15px;color:#9FDDF6;font-weight:600">{{t.head}}</h2>
+            <div role="group" aria-label="Language" style="display:flex;background:rgba(255,255,255,0.12);border-radius:999px;padding:2px">
+              <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:13px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+              <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:40px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:13px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+            </div>
+          </div>
+          <p style="margin:0;font-size:16px;line-height:1.55">{{t.body}}</p>
+          <a href="M8.dc.html" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:36px;font-size:14px;font-weight:600;color:#9FDDF6">{{t.sent}}</a>
+        </section>
+
+        <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px">
+          <section aria-label="Where customers drop off" style="background:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+            <h2 style="margin:0 0 4px;font-size:16px">Where customers drop off</h2>
+            <sc-for list="{{funnel}}" as="f" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:120px minmax(0,1fr) 34px;gap:10px;align-items:center;min-height:30px">
+                <span style="font-size:14px">{{f.label}}</span>
+                <div style="height:20px;background:#EEF6FB;border-radius:6px"><div style="height:20px;border-radius:6px;background:{{f.color}};width:{{f.w}}"></div></div>
+                <span style="font-size:15px;font-weight:700;text-align:right;color:#002E6E">{{f.n}}</span>
+              </div>
+            </sc-for>
+            <div style="font-size:14px;line-height:1.45;color:#B4232A;font-weight:600;margin-top:4px">37 customers left after seeing the plans. That is the biggest drop.</div>
+          </section>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <button onClick="{{toggleMissed}}" aria-expanded="{{missedOpen}}" aria-controls="panel-missed" style="text-align:left;font-family:inherit;color:#0B1F3A;background:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;border:2px solid {{missedBorder}};cursor:pointer">
+              <span style="font-size:14px;font-weight:600;color:#5B6B82">Missed sales</span>
+              <span style="font-size:17px;font-weight:700;line-height:1.35;color:#002E6E">12 customers wanted under ₹3,000 a month with nothing extra. No plan fit.</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#002E6E">{{missedLabel}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:{{missedRot}}" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+            </button>
+            <button onClick="{{toggleDue}}" aria-expanded="{{dueOpen}}" aria-controls="panel-due" style="text-align:left;font-family:inherit;color:#0B1F3A;background:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:4px;border:2px solid {{dueBorder}};cursor:pointer">
+              <span style="font-size:14px;font-weight:600;color:#5B6B82">Money due from brands</span>
+              <span style="font-size:26px;font-weight:700;color:#002E6E">₹1,84,000</span>
+              <span style="font-size:14px;color:#5B6B82">For no-cost EMI sales. Next payment expected 13 Jan.</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#002E6E;margin-top:2px">{{dueLabel}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:{{dueRot}}" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <sc-if value="{{missedOpen}}" hint-placeholder-val="{{ false }}">
+          <section id="panel-missed" aria-label="Missed sales detail" style="background:#FFFFFF;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;border:2px solid #00BAF2">
+            <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:stretch">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:17px;font-weight:700;color:#002E6E;line-height:1.35">Example phone, 128 GB: the lowest no-cost plan is ₹3,667 a month.</div>
+                <div style="font-size:15px;line-height:1.5;color:#3D4B5F">The only plan under ₹3,000 a month adds ₹2,600 extra in total, so these customers walked away.</div>
+              </div>
+              <div style="background:#EEF6FB;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:14px;font-weight:600;color:#5B6B82">Suggested action</div>
+                <div style="font-size:15px;font-weight:600;line-height:1.4">Ask the brand for a 9 or 12-month no-cost plan on this model.</div>
+                <button style="align-self:flex-start;height:44px;padding:0 16px;border-radius:12px;border:0;background:#00BAF2;color:#002E6E;font-family:inherit;font-size:14px;font-weight:700">Share with brand rep</button>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px">
+                <div style="font-size:15px;font-weight:700">Monthly budgets customers entered (96)</div>
+                <div style="display:flex;gap:14px;font-size:13px;color:#5B6B82">
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#F5A524"></span>Under ₹3,000</span>
+                  <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#5E86B4"></span>₹3,000 and above</span>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;align-items:end;height:136px;border-bottom:2px solid #C9D8E6" role="img" aria-label="Budgets: under 2,500: 5; 2,500 to 3,000: 7; 3,000 to 3,500: 14; 3,500 to 4,000: 21; 4,000 and above: 49">
+                <sc-for list="{{bars}}" as="b" hint-placeholder-count="5">
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:136px">
+                    <span style="font-size:14px;font-weight:700">{{b.n}}</span>
+                    <div style="width:70%;border-radius:8px 8px 0 0;background:{{b.color}};height:{{b.h}}"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;margin-top:6px">
+                <sc-for list="{{bars}}" as="b" hint-placeholder-count="5">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center">
+                    <span style="font-size:13px;font-weight:600">{{b.label}}</span>
+                    <span style="font-size:12px;color:#002E6E;font-weight:600;background:{{b.planBg}};border-radius:6px;padding:2px 6px">{{b.plans}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{dueOpen}}" hint-placeholder-val="{{ false }}">
+          <section id="panel-due" aria-label="Money due from brands detail" style="background:#FFFFFF;border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;border:2px solid #00BAF2">
+            <div style="font-size:15px;line-height:1.55;color:#3D4B5F;max-width:640px">On a no-cost EMI sale the customer pays nothing extra, so the brand covers that cost. The brand pays you weeks after the sale, not at the counter. This shows what cash is still to come.</div>
+            <sc-for list="{{batches}}" as="b" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;min-height:52px;border-top:1px solid #EEF2F6;padding-top:8px">
+                <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700">{{b.title}}, {{b.sales}}</span><span style="font-size:14px;color:#5B6B82">Expected {{b.date}}</span></div>
+                <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:600;background:{{b.chipBg}};color:{{b.chipFg}}">{{b.status}}</span>
+                <span style="font-size:20px;font-weight:700;color:#002E6E;min-width:90px;text-align:right">{{b.amount}}</span>
+              </div>
+            </sc-for>
+            <div style="font-size:13px;color:#5B6B82">Dates are estimates from the brands’ offer terms.</div>
+          </section>
+        </sc-if>
+
+        <section aria-label="What you can do" style="background:#FFFFFF;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+          <h2 style="margin:0;font-size:16px">What you can do to sell more</h2>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+            <div style="background:#EEF6FB;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+              <strong style="font-size:15px;line-height:1.35">Ask the brand for a longer no-cost plan on the 128 GB phone</strong>
+              <span style="font-size:14px;line-height:1.45;color:#3D4B5F">9 or 12 months with nothing extra would bring it near ₹3,000 a month, where 12 customers stopped.</span>
+            </div>
+            <div style="background:#EEF6FB;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+              <strong style="font-size:15px;line-height:1.35">Keep the 64 GB model ready for budget buyers</strong>
+              <span style="font-size:14px;line-height:1.45;color:#3D4B5F">At ₹18,000 it is ₹3,000 a month for 6 months with nothing extra.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;background:#FFFFFF;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px">
+        <div style="font-size:20px;font-weight:700;color:#002E6E">No EMI sales this week yet</div>
+        <div style="font-size:15px;color:#5B6B82;max-width:420px;line-height:1.5">When a customer asks about EMI, start a new EMI sale. Your report fills in from there.</div>
+        <a href="M2.dc.html" style="display:flex;align-items:center;height:52px;padding:0 20px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:16px;text-decoration:none">New EMI sale</a>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screenState":{"editor":"enum","options":["loaded","empty","missed","due"],"default":"loaded"},"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"$preview":{"width":1024,"height":768}}'>
+class Component extends DCLogic {
+  navList(active) {
+    const items = [['M2', 'New EMI sale'], ['M5', 'Sales report']];
+    return items.map(([id, label]) => {
+      const on = id === active;
+      return { href: id + '.dc.html', label, current: on ? 'page' : undefined, bg: on ? 'rgba(255,255,255,0.14)' : 'transparent', fg: on ? '#FFFFFF' : '#C9D8E6', dot: on ? '#00BAF2' : 'transparent' };
+    });
+  }
+  renderVals() {
+    const st = this.state || {};
+    const s = this.props.screenState || 'loaded';
+    const lang = st.lang || this.props.lang || 'en';
+    const en = lang === 'en';
+    const open = st.open !== undefined ? st.open : (s === 'missed' ? 'missed' : (s === 'due' ? 'due' : 'none'));
+    const T = {
+      en: {
+        head: 'This week in short',
+        body: '44 of 120 customers bought on EMI. Most who left did so after seeing the plans. 12 wanted under ₹3,000 a month with nothing extra, and no plan fit.',
+        sent: 'Also sent to your phone every Monday'
+      },
+      ta: {
+        head: 'இந்த வாரச் சுருக்கம்',
+        body: '120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர். விலகியவர்களில் பெரும்பாலோர் திட்டங்களைப் பார்த்த பின் விலகினர். 12 பேர் கூடுதல் இல்லாமல் மாதம் ₹3,000-க்குள் விரும்பினர், எந்தத் திட்டமும் பொருந்தவில்லை.',
+        sent: 'ஒவ்வொரு திங்களும் உங்கள் போனுக்கும் அனுப்பப்படும்'
+      }
+    }[lang];
+    const rows = [['Started', 120], ['Told a budget', 96], ['Saw the plans', 88], ['Agreed to a plan', 51], ['Paid', 44]];
+    const funnel = rows.map(([label, n], i) => ({ label, n: String(n), w: (n / 120 * 100).toFixed(1) + '%', color: i === 4 ? '#12B886' : '#002E6E' }));
+    const data = [['Under ₹2,500', 5, 'Cardless ₹2,050'], ['₹2,500 to 3,000', 7, ''], ['₹3,000 to 3,500', 14, ''], ['₹3,500 to 4,000', 21, 'No-cost ₹3,667, Card ₹3,850'], ['₹4,000 and above', 49, '']];
+    const bars = data.map(([label, n, plans], i) => ({ label, n: String(n), plans, planBg: plans ? '#EEF6FB' : 'transparent', h: Math.round(n / 49 * 104) + 'px', color: i < 2 ? '#F5A524' : '#5E86B4' }));
+    const batches = [
+      { title: 'Batch 1', date: '13 Jan 2027', sales: '18 sales', amount: '₹72,000', status: 'Claim filed', chipBg: '#E6F7FD', chipFg: '#002E6E' },
+      { title: 'Batch 2', date: '28 Jan 2027', sales: '16 sales', amount: '₹64,000', status: 'Waiting for brand', chipBg: '#FEF3DC', chipFg: '#8A5300' },
+      { title: 'Batch 3', date: '12 Feb 2027', sales: '10 sales', amount: '₹48,000', status: 'Not yet due', chipBg: '#EEF2F6', chipFg: '#3D4B5F' }
+    ];
+    const mo = open === 'missed', dO = open === 'due';
+    return {
+      nav: this.navList('M5'), funnel, bars, batches, t: T, isEn: en, isTa: !en,
+      enBg: en ? '#FFFFFF' : 'transparent', enFg: en ? '#002E6E' : '#FFFFFF',
+      taBg: !en ? '#FFFFFF' : 'transparent', taFg: !en ? '#002E6E' : '#FFFFFF',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' }),
+      loaded: s !== 'empty', empty: s === 'empty',
+      rootH: (s === 'missed' || s === 'due') ? '1180px' : '768px',
+      missedOpen: mo, dueOpen: dO,
+      missedBorder: mo ? '#00BAF2' : '#DCE7F0', dueBorder: dO ? '#00BAF2' : '#DCE7F0',
+      missedLabel: mo ? 'Hide details' : 'See details', dueLabel: dO ? 'Hide details' : 'See details',
+      missedRot: mo ? 'rotate(180deg)' : 'rotate(0deg)', dueRot: dO ? 'rotate(180deg)' : 'rotate(0deg)',
+      toggleMissed: () => this.setState({ open: mo ? 'none' : 'missed' }),
+      toggleDue: () => this.setState({ open: dO ? 'none' : 'due' })
+    };
+  }
+}
+</script>
+</body>
+</html>

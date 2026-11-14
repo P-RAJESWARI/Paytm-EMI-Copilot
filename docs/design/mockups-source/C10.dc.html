@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C10 Handoff and receipt</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#FFFFFF;border-bottom:1px solid #DCE7F0;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#002E6E;font-size:16px;padding-left:4px">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#002E6E"></rect><path d="M7.5 19c1.8-6.5 11.2-6.5 13 0" stroke="#00BAF2" stroke-width="3" fill="none" stroke-linecap="round"></path><circle cx="14" cy="10.5" r="2.6" fill="#00BAF2"></circle></svg>
+      EMI Copilot
+    </div>
+    <div role="group" aria-label="Language" style="display:flex;background:#EEF6FB;border-radius:999px;padding:3px">
+      <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:42px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+      <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:42px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:14px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+    </div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:8px 4px">
+      <div style="width:72px;height:72px;border-radius:999px;background:{{h.bg}};color:{{h.fg}};display:flex;align-items:center;justify-content:center">
+        <sc-if value="{{isHandoff}}" hint-placeholder-val="{{ true }}"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></sc-if>
+        <sc-if value="{{isConfirmed}}" hint-placeholder-val="{{ false }}"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>
+        <sc-if value="{{isPending}}" hint-placeholder-val="{{ false }}"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if>
+        <sc-if value="{{isFailed}}" hint-placeholder-val="{{ false }}"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16v.5"></path></svg></sc-if>
+      </div>
+      <h1 style="margin:0;font-size:24px;line-height:1.3;color:#002E6E">{{h.title}}</h1>
+      <p style="margin:0;font-size:16px;line-height:1.55;color:#5B6B82">{{h.body}}</p>
+    </div>
+
+    <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+      <div style="font-weight:700;font-size:16px">{{t.plan}}</div>
+      <div style="display:flex;justify-content:space-between;font-size:15px"><span style="color:#5B6B82">{{t.monthly}}</span><strong>₹3,667</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px"><span style="color:#5B6B82">{{t.tenure}}</span><strong>{{t.months}}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px"><span style="color:#5B6B82">{{t.total}}</span><strong>₹22,000</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px"><span style="color:#5B6B82">{{t.extra}}</span><strong style="color:#0A6E50">₹0</strong></div>
+      <sc-if value="{{isConfirmed}}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid #DCE7F0;padding-top:10px"><span style="color:#5B6B82">{{t.ref}}</span><strong>EMI-2611-0042</strong></div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#FFFFFF;border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.5">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#002E6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2"></path><path d="M9 2h6"></path></svg>
+      <span>{{t.cooling}}</span>
+    </div>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <a href="{{h.href}}" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">{{h.cta}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"screenState":{"editor":"enum","options":["handoff","confirmed","pending","failed"],"default":"handoff"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const lang = st.lang || this.props.lang || 'en';
+    const s = this.props.screenState || 'handoff';
+    const en = lang === 'en';
+    const S = {
+      en: {
+        plan: 'No-cost EMI', monthly: 'Each month', tenure: 'Tenure', months: '6 months',
+        total: 'Total you pay', extra: 'Extra in total', ref: 'Reference',
+        cooling: 'You can cancel within the cooling-off period. The shop and the lender can help with this.',
+        st: {
+          handoff: { title: 'Pay on Paytm', body: 'Your plan is ready. Paytm opens next to finish the payment.', cta: 'Continue on Paytm' },
+          confirmed: { title: 'Your EMI is confirmed', body: 'You pay ₹3,667 a month for 6 months. A copy is sent to your phone.', cta: 'Done' },
+          pending: { title: 'Waiting for confirmation', body: 'This can take a few minutes. Please do not pay again.', cta: 'Check status' },
+          failed: { title: 'Payment not completed', body: 'The payment did not go through. You can try again, or ask the shop for help.', cta: 'Try again' }
+        }
+      },
+      ta: {
+        plan: 'கட்டணமில்லா EMI', monthly: 'ஒவ்வொரு மாதமும்', tenure: 'காலம்', months: '6 மாதங்கள்',
+        total: 'மொத்தம் நீங்கள் செலுத்துவது', extra: 'மொத்தக் கூடுதல்', ref: 'குறிப்பு எண்',
+        cooling: 'குறிப்பிட்ட காலத்திற்குள் இதை ரத்து செய்யலாம். இதற்குக் கடையும் கடன் வழங்குநரும் உதவுவார்கள்.',
+        st: {
+          handoff: { title: 'Paytm-ல் பணம் செலுத்துங்கள்', body: 'உங்கள் திட்டம் தயார். பணம் செலுத்த அடுத்து Paytm திறக்கும்.', cta: 'Paytm-ல் தொடர்க' },
+          confirmed: { title: 'உங்கள் EMI உறுதியானது', body: '6 மாதங்களுக்கு மாதம் ₹3,667 செலுத்துவீர்கள். ஒரு நகல் உங்கள் போனுக்கு அனுப்பப்பட்டது.', cta: 'முடிந்தது' },
+          pending: { title: 'உறுதிப்படுத்தலுக்காகக் காத்திருக்கிறோம்', body: 'சில நிமிடங்கள் ஆகலாம். தயவுசெய்து மீண்டும் பணம் செலுத்த வேண்டாம்.', cta: 'நிலையைப் பார்' },
+          failed: { title: 'பணம் செலுத்துதல் முடியவில்லை', body: 'பணம் செலுத்துதல் நடக்கவில்லை. மீண்டும் முயற்சிக்கலாம், அல்லது கடையிடம் உதவி கேட்கலாம்.', cta: 'மீண்டும் முயற்சி' }
+        }
+      }
+    }[lang];
+    const look = {
+      handoff: { bg: '#E6F7FD', fg: '#002E6E', href: 'M4.dc.html' },
+      confirmed: { bg: '#E3F7F0', fg: '#0A6E50', href: 'C1.dc.html' },
+      pending: { bg: '#FEF3DC', fg: '#8A5300', href: 'C10.dc.html' },
+      failed: { bg: '#EEF2F6', fg: '#0B1F3A', href: 'C9.dc.html' }
+    }[s];
+    return {
+      t: S, isEn: en, isTa: !en,
+      h: { ...look, ...S.st[s] },
+      isHandoff: s === 'handoff', isConfirmed: s === 'confirmed', isPending: s === 'pending', isFailed: s === 'failed',
+      enBg: en ? '#002E6E' : 'transparent', enFg: en ? '#FFFFFF' : '#002E6E',
+      taBg: !en ? '#002E6E' : 'transparent', taFg: !en ? '#FFFFFF' : '#002E6E',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' })
+    };
+  }
+}
+</script>
+</body>
+</html>

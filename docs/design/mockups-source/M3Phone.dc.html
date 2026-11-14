@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M3 Show QR, phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#002E6E;color:#FFFFFF;flex-shrink:0">
+    <a href="M2.dc.html" aria-label="Back to counter list" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#FFFFFF"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <div style="font-size:16px;font-weight:700">Show QR to customer</div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:15px;color:#5B6B82;text-align:center">Example phone, 128 GB, ₹22,000. Code 4821.</div>
+    <div style="background:#FFFFFF;border-radius:16px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+      <a href="C1.dc.html" aria-label="Session QR code. In the prototype, tap to open the customer phone." style="display:grid;grid-template-columns:repeat(25,minmax(0,1fr));width:240px;height:240px;padding:10px;box-sizing:border-box;border:1px solid #DCE7F0;border-radius:14px;background:#FFFFFF">
+        <sc-for list="{{qr}}" as="cell" hint-placeholder-count="625"><span style="background:{{cell.c}}"></span></sc-for>
+      </a>
+      <div style="font-size:14px;color:#5B6B82">Opens on their phone. No app needed.</div>
+    </div>
+
+    <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;border:2px solid {{s.border}}">
+      <span style="align-self:flex-start;display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:700;background:{{s.chipBg}};color:{{s.chipFg}}">{{s.chip}}</span>
+      <div style="font-size:18px;font-weight:700;color:#002E6E;line-height:1.3">{{s.title}}</div>
+      <sc-if value="{{ready}}" hint-placeholder-val="{{ false }}"><div style="font-size:15px">No-cost EMI, 6 months. ₹3,667 a month.</div></sc-if>
+    </div>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <sc-if value="{{ready}}" hint-placeholder-val="{{ false }}">
+      <a href="M4.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">Take payment</a>
+    </sc-if>
+    <sc-if value="{{notReady}}" hint-placeholder-val="{{ true }}">
+      <a href="M2.dc.html" style="display:flex;align-items:center;justify-content:center;height:52px;border-radius:14px;border:1px solid #C9D8E6;color:#002E6E;font-weight:600;font-size:16px;text-decoration:none">Back to counter list</a>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screenState":{"editor":"enum","options":["waiting","choosing","ready"],"default":"choosing"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  makeQr(n) {
+    const cells = [];
+    const finder = (x, y, cx, cy) => {
+      const dx = x - cx, dy = y - cy;
+      if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null;
+      const e = Math.max(Math.abs(dx - 3), Math.abs(dy - 3));
+      return e === 3 || e <= 1;
+    };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        let v = finder(x, y, 0, 0);
+        if (v === null) v = finder(x, y, n - 7, 0);
+        if (v === null) v = finder(x, y, 0, n - 7);
+        if (v === null) {
+          const near = (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+          v = near ? false : ((x * 7 + y * 13 + x * y * 3) % 5) < 2;
+        }
+        cells.push({ c: v ? '#0B1F3A' : '#FFFFFF' });
+      }
+    }
+    return cells;
+  }
+  renderVals() {
+    const k = this.props.screenState || 'choosing';
+    const s = {
+      waiting: { chip: 'Not scanned yet', chipBg: '#EEF2F6', chipFg: '#3D4B5F', border: '#FFFFFF', title: 'Waiting for the customer to scan' },
+      choosing: { chip: 'Choosing', chipBg: '#FEF3DC', chipFg: '#8A5300', border: '#FFFFFF', title: 'The customer is choosing a plan on their phone' },
+      ready: { chip: 'Ready to pay', chipBg: '#E3F7F0', chipFg: '#0A6E50', border: '#12B886', title: 'The customer agreed to a plan' }
+    }[k];
+    return { qr: this.makeQr(25), s, ready: k === 'ready', notReady: k !== 'ready' };
+  }
+}
+</script>
+</body>
+</html>

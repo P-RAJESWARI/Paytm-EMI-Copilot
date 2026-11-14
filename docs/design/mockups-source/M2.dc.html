@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M2 New EMI sale</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1024px;height:768px;display:flex;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <nav aria-label="Main" style="width:216px;flex-shrink:0;background:#002E6E;color:#FFFFFF;box-sizing:border-box;padding:20px 12px;display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;padding:4px 8px 20px"><svg width="30" height="30" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#FFFFFF"></rect><path d="M7.5 19c1.8-6.5 11.2-6.5 13 0" stroke="#00BAF2" stroke-width="3" fill="none" stroke-linecap="round"></path><circle cx="14" cy="10.5" r="2.6" fill="#00BAF2"></circle></svg>EMI Copilot</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="2">
+      <a href="{{n.href}}" aria-current="{{n.current}}" style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600;background:{{n.bg}};color:{{n.fg}}"><span style="width:8px;height:8px;border-radius:999px;background:{{n.dot}}"></span>{{n.label}}</a>
+    </sc-for>
+    <div style="margin-top:auto;padding:12px;border-radius:12px;background:rgba(255,255,255,0.08);font-size:14px;line-height:1.4"><div style="font-weight:600">Ravi Electronics</div><div style="color:#C9D8E6">Counter tablet 1</div></div>
+  </nav>
+
+  <main style="flex:1;min-width:0;box-sizing:border-box;padding:28px 32px;display:flex;flex-direction:column;gap:18px">
+    <div>
+      <h1 style="margin:0;font-size:26px;color:#002E6E">New EMI sale</h1>
+      <p style="margin:6px 0 0;font-size:16px;color:#5B6B82">Pick the product, then show the customer the QR code.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;flex:1;min-height:0">
+      <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+        <div style="display:flex;gap:8px">
+          <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden">Search product</label>
+          <div style="flex:1;display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;background:#FFFFFF;border-radius:14px;border:2px solid #00BAF2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B6B82" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+            <input id="q" value="example phone" readOnly="{{ true }}" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font-family:inherit;font-size:16px;color:#0B1F3A">
+          </div>
+          <button aria-label="Scan barcode" style="width:52px;height:52px;border-radius:14px;border:2px solid #002E6E;background:#FFFFFF;color:#002E6E;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3"></path><path d="M16 4h3a1 1 0 0 1 1 1v3"></path><path d="M20 16v3a1 1 0 0 1-1 1h-3"></path><path d="M8 20H5a1 1 0 0 1-1-1v-3"></path><path d="M7 12h10"></path></svg></button>
+        </div>
+        <div role="radiogroup" aria-label="Products" style="background:#FFFFFF;border-radius:16px;padding:6px;display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{products}}" as="p" hint-placeholder-count="3">
+            <button role="radio" aria-checked="{{p.sel}}" onClick="{{p.pick}}" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:0 14px;border-radius:12px;border:2px solid {{p.border}};background:{{p.bg}};font-family:inherit;text-align:left;color:#0B1F3A">
+              <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">{{p.name}}</span><span style="font-size:14px;color:#5B6B82">{{p.offers}}</span></span>
+              <span style="font-size:17px;font-weight:700;color:#002E6E">{{p.price}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <label for="price" style="font-size:15px;font-weight:600">Price at counter for {{chosen.name}}</label>
+          <input id="price" value="{{chosen.price}}" readOnly="{{ true }}" style="box-sizing:border-box;height:52px;border-radius:12px;border:2px solid #DCE7F0;padding:0 14px;font-family:inherit;font-size:22px;font-weight:700;color:#002E6E">
+          <a href="M3.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">Show QR to customer</a>
+        </div>
+      </div>
+
+      <section aria-label="At the counter now" style="background:#FFFFFF;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0;font-size:17px">At the counter now</h2>
+          <span style="font-size:14px;color:#5B6B82">3 customers</span>
+        </div>
+        <sc-for list="{{queue}}" as="q" hint-placeholder-count="3">
+          <div style="border:1px solid #DCE7F0;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+              <span style="font-size:15px;font-weight:700">{{q.product}}</span>
+              <span style="font-size:13px;color:#5B6B82">{{q.code}}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:44px">
+              <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:600;background:{{q.chipBg}};color:{{q.chipFg}}">{{q.status}}</span>
+              <sc-if value="{{q.hasAction}}" hint-placeholder-val="{{ true }}">
+                <a href="{{q.href}}" style="display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;background:{{q.btnBg}};color:#002E6E;border:{{q.btnBorder}}">{{q.action}}</a>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <div style="margin-top:auto;font-size:13px;line-height:1.5;color:#5B6B82">You see only what the customer chose. Their income and EMIs stay on their phone.</div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1024,"height":768}}'>
+class Component extends DCLogic {
+  navList(active) {
+    const items = [['M2', 'New EMI sale'], ['M5', 'Sales report']];
+    return items.map(([id, label]) => {
+      const on = id === active;
+      return { href: id + '.dc.html', label, current: on ? 'page' : undefined, bg: on ? 'rgba(255,255,255,0.14)' : 'transparent', fg: on ? '#FFFFFF' : '#C9D8E6', dot: on ? '#00BAF2' : 'transparent' };
+    });
+  }
+  renderVals() {
+    const st = this.state || {};
+    const sel = st.sel !== undefined ? st.sel : 0;
+    const list = [
+      { name: 'Example phone, 128 GB', price: '₹22,000', offers: '3 EMI plans, 1 with no extra cost' },
+      { name: 'Example phone, 64 GB', price: '₹18,000', offers: '2 EMI plans, 1 with no extra cost' },
+      { name: 'Example earbuds', price: '₹2,499', offers: '1 EMI plan' }
+    ];
+    const products = list.map((p, i) => ({ ...p, sel: i === sel, border: i === sel ? '#00BAF2' : '#FFFFFF', bg: i === sel ? '#E6F7FD' : '#FFFFFF', pick: () => this.setState({ sel: i }) }));
+    const queue = [
+      { product: 'Example phone, 64 GB', code: 'Code 4817', status: 'Ready to pay', chipBg: '#E3F7F0', chipFg: '#0A6E50', hasAction: true, action: 'Take payment', href: 'M4.dc.html', btnBg: '#00BAF2', btnBorder: '0' },
+      { product: 'Example phone, 128 GB', code: 'Code 4821', status: 'Choosing on their phone', chipBg: '#FEF3DC', chipFg: '#8A5300', hasAction: true, action: 'Show QR', href: 'M3.dc.html', btnBg: '#FFFFFF', btnBorder: '1px solid #C9D8E6' },
+      { product: 'Example earbuds', code: 'Code 4812', status: 'Paid at 3:40 PM', chipBg: '#EEF2F6', chipFg: '#3D4B5F', hasAction: false, action: '', href: '', btnBg: '', btnBorder: '' }
+    ];
+    return { nav: this.navList('M2'), products, chosen: list[sel], queue };
+  }
+}
+</script>
+</body>
+</html>

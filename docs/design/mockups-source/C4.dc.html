@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C4 Options comparison</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#FFFFFF;border-bottom:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C3.dc.html" aria-label="{{t.back}}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#002E6E"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.step}}</div>
+    <div role="group" aria-label="Language" style="display:flex;background:#EEF6FB;border-radius:999px;padding:3px">
+      <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:42px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+      <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:42px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:14px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+    </div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="margin:0;font-size:22px;line-height:1.3;color:#002E6E">{{t.title}}</h1>
+      <div style="font-size:15px;color:#5B6B82;line-height:1.45">{{t.product}}</div>
+      <div style="display:flex;gap:6px;align-items:center;font-size:14px;color:#002E6E;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>{{sortNote}}</div>
+    </div>
+
+    <sc-if value="{{isNofit}}" hint-placeholder-val="{{ false }}">
+      <div style="background:#FFFFFF;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;border:1px solid #C9D8E6">
+        <div style="font-size:16px;font-weight:700">{{t.nofitTitle}}</div>
+        <div style="font-size:15px;line-height:1.5;color:#5B6B82">{{t.nofitBody}}</div>
+        <a href="C6.dc.html" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:44px;font-size:15px;font-weight:700;color:#002E6E">{{t.nofitLink}}</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isLoaded}}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:15px;line-height:1.5;background:#FFFFFF;border-radius:12px;padding:10px 12px;color:#0B1F3A">{{t.tradeoff}}</div>
+    </sc-if>
+
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:12px" aria-busy="true">
+        <div style="font-size:15px;color:#5B6B82">{{t.loading}}</div>
+        <sc-for list="{{skeletons}}" as="sk" hint-placeholder-count="3">
+          <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="width:55%;height:18px;border-radius:6px;background:#E4EDF4"></div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><div style="height:64px;border-radius:12px;background:#EEF6FB"></div><div style="height:64px;border-radius:12px;background:#EEF6FB"></div></div>
+            <div style="width:40%;height:28px;border-radius:999px;background:#E4EDF4"></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{hasPlans}}" hint-placeholder-val="{{ true }}">
+      <div role="radiogroup" aria-label="{{t.title}}" style="display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{plans}}" as="p" hint-placeholder-count="3">
+          <div style="background:#FFFFFF;border-radius:16px;padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;border:2px solid {{p.border}};box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+            <button role="radio" aria-checked="{{p.sel}}" onClick="{{p.pick}}" style="display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;background:transparent;padding:0;font-family:inherit;text-align:left;color:#0B1F3A;min-height:44px">
+              <span style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:700;font-size:17px">{{p.name}}</span><span style="font-size:14px;color:#5B6B82">{{p.tenure}}</span></span>
+              <span style="width:24px;height:24px;border-radius:999px;box-sizing:border-box;flex-shrink:0;border:{{p.radio}}"></span>
+            </button>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+              <div style="background:#EEF6FB;border-radius:12px;padding:8px 12px"><div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.monthly}}</div><div style="font-size:24px;font-weight:700;color:#002E6E">{{p.monthly}}</div><div style="font-size:13px;color:#5B6B82">{{p.forN}}</div></div>
+              <div style="background:{{p.extraBg}};border-radius:12px;padding:8px 12px"><div style="font-size:14px;font-weight:600;color:{{p.extraFg}}">{{t.extra}}</div><div style="font-size:24px;font-weight:700;color:{{p.extraFg}}">{{p.extra}}</div><div style="font-size:13px;color:{{p.extraFg}}">{{p.onTop}}</div></div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-if value="{{p.isC}}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;background:#E3F7F0;color:#0A6E50;font-size:14px;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg>{{t.comfortable}}</span></sc-if>
+              <sc-if value="{{p.isS}}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;background:#FEF3DC;color:#8A5300;font-size:14px;font-weight:600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"></path><path d="M12 17l3-5"></path></svg>{{t.stretching}}</span></sc-if>
+              <span style="display:inline-flex;align-items:center;height:30px;padding:0 10px;border-radius:999px;background:#FFFFFF;border:1px solid #C9D8E6;font-size:14px;color:#0B1F3A">{{p.fit}}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#5B6B82"><span>{{t.total}} {{p.total}}</span><a href="C5.dc.html" style="display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:#002E6E">{{t.detail}}</a></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C6.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">{{t.cta}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"screenState":{"editor":"enum","options":["loaded","loading","nofit"],"default":"loaded"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const lang = st.lang || this.props.lang || 'en';
+    const s = this.props.screenState || 'loaded';
+    const sel = st.sel || 'nocost';
+    const en = lang === 'en';
+    const S = {
+      en: {
+        back: 'Back', step: 'Step 3 of 4',
+        title: 'Your EMI options',
+        product: 'Example phone, 128 GB, ₹22,000',
+        sort3000: 'Sorted by what fits your ₹3,000 budget',
+        sort1800: 'Sorted by what is closest to your ₹1,800 budget',
+        tradeoff: 'The plan with nothing extra has a higher monthly amount. The lowest monthly amount costs more in total.',
+        nofitTitle: 'No plan is within ₹1,800 a month',
+        nofitBody: 'All plans are shown below so you can still compare them.',
+        nofitLink: 'See ways to lower the monthly amount',
+        loading: 'Getting plans for this phone',
+        monthly: 'Each month', extra: 'Extra in total', total: 'You pay in all', forN: (n) => 'for ' + n + ' months', onTop: 'on top of ₹22,000',
+        detail: 'Comfort detail', comfortable: 'Comfortable', stretching: 'Stretching',
+        cta: 'Continue',
+        names: { nocost: 'No-cost EMI', card: 'Card EMI', cardless: 'Cardless credit' },
+        tenures: { nocost: 'Brand-funded, 6 months', card: 'On your card, 6 months', cardless: '12 months' },
+        within: 'Within your budget', above: (x) => x + ' above your budget'
+      },
+      ta: {
+        back: 'பின்செல்', step: 'படி 3 / 4',
+        title: 'உங்கள் EMI வாய்ப்புகள்',
+        product: 'Example phone, 128 GB, ₹22,000',
+        sort3000: 'உங்கள் ₹3,000 பட்ஜெட்டுக்குப் பொருந்துவதன்படி வரிசை',
+        sort1800: 'உங்கள் ₹1,800 பட்ஜெட்டுக்கு அருகில் உள்ளதன்படி வரிசை',
+        tradeoff: 'கூடுதல் செலவு இல்லாத திட்டத்தில் மாதத் தொகை அதிகம். குறைந்த மாதத் தொகைக்கு மொத்தச் செலவு அதிகம்.',
+        nofitTitle: 'மாதம் ₹1,800-க்குள் எந்தத் திட்டமும் இல்லை',
+        nofitBody: 'ஒப்பிட்டுப் பார்க்க எல்லா திட்டங்களும் கீழே உள்ளன.',
+        nofitLink: 'மாதத் தொகையைக் குறைக்கும் வழிகள்',
+        loading: 'இந்த போனுக்கான திட்டங்களைப் பெறுகிறோம்',
+        monthly: 'ஒவ்வொரு மாதமும்', extra: 'மொத்தக் கூடுதல்', total: 'மொத்தம் செலுத்துவது', forN: (n) => n + ' மாதங்களுக்கு', onTop: '₹22,000-க்கு மேல்',
+        detail: 'வசதி விவரம்', comfortable: 'வசதியானது', stretching: 'கொஞ்சம் சிரமம்',
+        cta: 'தொடர்க',
+        names: { nocost: 'கட்டணமில்லா EMI', card: 'கார்டு EMI', cardless: 'கார்டு இல்லா கடன்' },
+        tenures: { nocost: 'பிராண்ட் செலுத்துவது, 6 மாதங்கள்', card: 'உங்கள் கார்டில், 6 மாதங்கள்', cardless: '12 மாதங்கள்' },
+        within: 'உங்கள் பட்ஜெட்டுக்குள்', above: (x) => 'பட்ஜெட்டை விட ' + x + ' அதிகம்'
+      }
+    }[lang];
+    const base = {
+      nocost: { monthly: '₹3,667', extra: '₹0', total: '₹22,000', band: 'S', f3000: '₹667', f1800: '₹1,867' },
+      card: { monthly: '₹3,850', extra: '₹1,100', total: '₹23,100', band: 'S', f3000: '₹850', f1800: '₹2,050' },
+      cardless: { monthly: '₹2,050', extra: '₹2,600', total: '₹24,600', band: 'C', f3000: null, f1800: '₹250' }
+    };
+    const order = ['cardless', 'nocost', 'card'];
+    const plans = order.map((id) => {
+      const b = base[id];
+      const on = id === sel;
+      const fv = s === 'nofit' ? b.f1800 : b.f3000;
+      return {
+        name: S.names[id], tenure: S.tenures[id], monthly: b.monthly, forN: S.forN(id === 'cardless' ? 12 : 6), onTop: S.onTop, extra: b.extra, total: b.total,
+        fit: fv ? S.above(fv) : S.within,
+        isC: b.band === 'C', isS: b.band === 'S',
+        extraBg: b.extra === '₹0' ? '#E3F7F0' : '#EEF6FB',
+        extraFg: b.extra === '₹0' ? '#0A6E50' : '#002E6E',
+        sel: on, border: on ? '#00BAF2' : '#FFFFFF',
+        radio: on ? '7px solid #00BAF2' : '2px solid #C9D8E6',
+        pick: () => this.setState({ sel: id })
+      };
+    });
+    return {
+      t: S, isEn: en, isTa: !en, plans,
+      skeletons: [{}, {}, {}],
+      sortNote: s === 'nofit' ? S.sort1800 : S.sort3000,
+      isLoaded: s === 'loaded', isLoading: s === 'loading', isNofit: s === 'nofit', hasPlans: s !== 'loading',
+      enBg: en ? '#002E6E' : 'transparent', enFg: en ? '#FFFFFF' : '#002E6E',
+      taBg: !en ? '#002E6E' : 'transparent', taFg: !en ? '#FFFFFF' : '#002E6E',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' })
+    };
+  }
+}
+</script>
+</body>
+</html>

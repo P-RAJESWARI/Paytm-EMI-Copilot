@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C6 Smarter alternatives</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#FFFFFF;border-bottom:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C4.dc.html" aria-label="{{t.back}}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#002E6E"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.step}}</div>
+    <div role="group" aria-label="Language" style="display:flex;background:#EEF6FB;border-radius:999px;padding:3px">
+      <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:42px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+      <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:42px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:14px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+    </div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 style="margin:0;font-size:22px;line-height:1.3;color:#002E6E">{{t.title}}</h1>
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#5B6B82">{{t.sub}}</p>
+    </div>
+
+    <div style="background:#FFFFFF;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.yourPlan}}</div>
+      <div style="font-weight:700;font-size:16px">{{t.nocost}}</div>
+      <div style="display:flex;gap:16px;font-size:15px;flex-wrap:wrap"><span>{{t.monthly}} <strong>₹3,667</strong></span><span>{{t.extra}} <strong style="color:#0A6E50">₹0</strong></span></div>
+      <div style="font-size:14px;color:#5B6B82">{{t.baseFit}}</div>
+    </div>
+
+    <div role="group" aria-label="{{t.title}}" style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{chips}}" as="c" hint-placeholder-count="3">
+        <button onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="display:flex;align-items:center;gap:10px;min-height:52px;padding:0 14px;border-radius:14px;border:2px solid {{c.border}};background:{{c.bg}};color:#002E6E;font-family:inherit;font-size:16px;font-weight:600;text-align:left">
+          <span style="width:22px;height:22px;border-radius:7px;box-sizing:border-box;flex-shrink:0;border:{{c.box}}"></span>{{c.label}}
+        </button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{hasAlt}}" hint-placeholder-val="{{ true }}">
+      <div style="background:#FFFFFF;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;border:2px solid #00BAF2;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+        <div style="font-weight:700;font-size:16px">{{a.name}}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+          <div style="background:#EEF6FB;border-radius:12px;padding:8px 12px"><div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.monthly}}</div><div style="font-size:22px;font-weight:700;color:#002E6E">{{a.monthly}}</div><div style="font-size:13px;color:#5B6B82">{{t.was}} ₹3,667</div></div>
+          <div style="background:{{a.extraBg}};border-radius:12px;padding:8px 12px"><div style="font-size:14px;font-weight:600;color:{{a.extraFg}}">{{t.extra}}</div><div style="font-size:22px;font-weight:700;color:{{a.extraFg}}">{{a.extra}}</div></div>
+        </div>
+        <div style="font-size:15px;line-height:1.45">{{a.note}}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;background:{{a.bandBg}};color:{{a.bandFg}};font-size:14px;font-weight:600">
+            <sc-if value="{{a.isC}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg></sc-if>
+            <sc-if value="{{a.isS}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"></path><path d="M12 17l3-5"></path></svg></sc-if>
+            {{a.band}} {{a.ratio}}
+          </span>
+          <span style="display:inline-flex;align-items:center;height:30px;padding:0 10px;border-radius:999px;background:#FFFFFF;border:1px solid #C9D8E6;font-size:14px">{{t.within}}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="font-size:14px;line-height:1.5;color:#5B6B82">{{t.nothing}}</div>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C7.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">{{t.cta}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"screenState":{"editor":"enum","options":["none","down","longer","model"],"default":"none"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const lang = st.lang || this.props.lang || 'en';
+    const alt = st.alt !== undefined ? st.alt : (this.props.screenState || 'none');
+    const en = lang === 'en';
+    const S = {
+      en: {
+        back: 'Back', step: 'Step 3 of 4',
+        title: 'Ways to lower the monthly amount',
+        sub: 'Try one. The numbers update here.',
+        yourPlan: 'Plan you are looking at', nocost: 'No-cost EMI, 6 months',
+        monthly: 'Each month', extra: 'Extra in total', was: 'Was',
+        baseFit: 'Stretching, 38.9% of monthly inflow. ₹667 above your ₹3,000 budget.',
+        within: 'Within your budget',
+        nothing: 'Nothing is chosen until you confirm on the last step.',
+        cta: 'Continue',
+        chips: { down: 'Add a ₹4,000 down payment', longer: 'Longer tenure', model: 'Cheaper model' },
+        bands: { C: 'Comfortable', S: 'Stretching' },
+        alts: {
+          down: { name: 'No-cost EMI, 6 months, ₹4,000 down', note: 'You pay ₹4,000 today at the shop, then ₹2,999 a month.' },
+          longer: { name: 'Cardless credit, 12 months', note: 'The only longer plan for this phone. It costs ₹2,600 extra in total.' },
+          model: { name: 'Example phone, 64 GB, ₹18,000', note: 'No-cost EMI on the smaller model, 6 months.' }
+        }
+      },
+      ta: {
+        back: 'பின்செல்', step: 'படி 3 / 4',
+        title: 'மாதத் தொகையைக் குறைக்கும் வழிகள்',
+        sub: 'ஒன்றை முயற்சிக்கவும். எண்கள் இங்கேயே மாறும்.',
+        yourPlan: 'நீங்கள் பார்க்கும் திட்டம்', nocost: 'கட்டணமில்லா EMI, 6 மாதங்கள்',
+        monthly: 'ஒவ்வொரு மாதமும்', extra: 'மொத்தக் கூடுதல்', was: 'முன்பு',
+        baseFit: 'கொஞ்சம் சிரமம், மாத வரவில் 38.9%. உங்கள் ₹3,000 பட்ஜெட்டை விட ₹667 அதிகம்.',
+        within: 'உங்கள் பட்ஜெட்டுக்குள்',
+        nothing: 'கடைசிப் படியில் நீங்கள் உறுதிசெய்யும் வரை எதுவும் தேர்வாகாது.',
+        cta: 'தொடர்க',
+        chips: { down: '₹4,000 முன்பணம் சேர்', longer: 'நீண்ட காலம்', model: 'விலை குறைந்த மாடல்' },
+        bands: { C: 'வசதியானது', S: 'கொஞ்சம் சிரமம்' },
+        alts: {
+          down: { name: 'கட்டணமில்லா EMI, 6 மாதங்கள், ₹4,000 முன்பணம்', note: 'இன்று கடையில் ₹4,000 செலுத்துங்கள், பிறகு மாதம் ₹2,999.' },
+          longer: { name: 'கார்டு இல்லா கடன், 12 மாதங்கள்', note: 'இந்த போனுக்கான ஒரே நீண்ட திட்டம். மொத்தத்தில் ₹2,600 கூடுதல்.' },
+          model: { name: 'Example phone, 64 GB, ₹18,000', note: 'சிறிய மாடலில் கட்டணமில்லா EMI, 6 மாதங்கள்.' }
+        }
+      }
+    }[lang];
+    const N = {
+      down: { monthly: '₹2,999', extra: '₹0', band: 'S', ratio: '36.6%' },
+      longer: { monthly: '₹2,050', extra: '₹2,600', band: 'C', ratio: '33.5%' },
+      model: { monthly: '₹3,000', extra: '₹0', band: 'S', ratio: '36.7%' }
+    };
+    const chips = ['down', 'longer', 'model'].map((id) => {
+      const on = id === alt;
+      return {
+        label: S.chips[id], on,
+        border: on ? '#00BAF2' : '#DCE7F0', bg: on ? '#E6F7FD' : '#FFFFFF',
+        box: on ? '7px solid #00BAF2' : '2px solid #C9D8E6',
+        pick: () => this.setState({ alt: on ? 'none' : id })
+      };
+    });
+    const n = N[alt];
+    const a = n ? {
+      name: S.alts[alt].name, note: S.alts[alt].note,
+      monthly: n.monthly, extra: n.extra, ratio: n.ratio, band: S.bands[n.band],
+      isC: n.band === 'C', isS: n.band === 'S',
+      bandBg: n.band === 'C' ? '#E3F7F0' : '#FEF3DC', bandFg: n.band === 'C' ? '#0A6E50' : '#8A5300',
+      extraBg: n.extra === '₹0' ? '#E3F7F0' : '#EEF6FB', extraFg: n.extra === '₹0' ? '#0A6E50' : '#002E6E'
+    } : {};
+    return {
+      t: S, isEn: en, isTa: !en, chips, a, hasAlt: !!n,
+      enBg: en ? '#002E6E' : 'transparent', enFg: en ? '#FFFFFF' : '#002E6E',
+      taBg: !en ? '#002E6E' : 'transparent', taFg: !en ? '#FFFFFF' : '#002E6E',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' })
+    };
+  }
+}
+</script>
+</body>
+</html>

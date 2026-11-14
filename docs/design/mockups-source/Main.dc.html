@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EMI Copilot style sheet and design notes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#002E6E}a:hover{color:#0B1F3A}
+</style>
+</helmet>
+<div style="width:1440px;height:1080px;box-sizing:border-box;padding:56px;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px">
+
+<div style="display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <svg width="40" height="40" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#002E6E"></rect><path d="M7.5 19c1.8-6.5 11.2-6.5 13 0" stroke="#00BAF2" stroke-width="3" fill="none" stroke-linecap="round"></path><circle cx="14" cy="10.5" r="2.6" fill="#00BAF2"></circle></svg>
+      <h1 style="margin:0;font-size:36px;line-height:1.1;color:#002E6E;letter-spacing:-0.5px">EMI Copilot style sheet</h1>
+    </div>
+    <p style="margin:0;font-size:18px;line-height:1.5;color:#5B6B82;max-width:600px">Paytm makes EMI available. We make it affordable and understood, and show merchants why they lose sales.</p>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2 style="margin:0;font-size:18px;color:#002E6E">Colour tokens</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#002E6E"></div><div><div style="font-weight:600;font-size:14px">Navy</div><div style="font-size:13px;color:#5B6B82">#002E6E headers, accents</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#0B1F3A"></div><div><div style="font-weight:600;font-size:14px">Deep navy</div><div style="font-size:13px;color:#5B6B82">#0B1F3A body text</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#00BAF2"></div><div><div style="font-weight:600;font-size:14px">Cyan</div><div style="font-size:13px;color:#5B6B82">#00BAF2 primary buttons</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#F5A524"></div><div><div style="font-weight:600;font-size:14px">Orange</div><div style="font-size:13px;color:#5B6B82">#F5A524 voice, Stretching</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#12B886"></div><div><div style="font-weight:600;font-size:14px">Green</div><div style="font-size:13px;color:#5B6B82">#12B886 Comfortable, ₹0</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#E5484D"></div><div><div style="font-weight:600;font-size:14px">Red</div><div style="font-size:13px;color:#5B6B82">#E5484D Risky, warnings</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#EEF6FB;border:1px solid #C9D8E6"></div><div><div style="font-weight:600;font-size:14px">Light blue</div><div style="font-size:13px;color:#5B6B82">#EEF6FB page, soft cards</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#5B6B82"></div><div><div style="font-weight:600;font-size:14px">Slate</div><div style="font-size:13px;color:#5B6B82">#5B6B82 secondary text</div></div></div>
+      <div style="background:#FFFFFF;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:10px;background:#FFFFFF;border:1px solid #C9D8E6"></div><div><div style="font-weight:600;font-size:14px">White</div><div style="font-size:13px;color:#5B6B82">#FFFFFF cards</div></div></div>
+    </div>
+    <div style="background:#FFFFFF;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:600;font-size:14px">Text-safe band shades (added for WCAG AA)</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#E3F7F0;color:#0A6E50;font-size:14px;font-weight:600">Green text #0A6E50 on #E3F7F0</span>
+        <span style="display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#FEF3DC;color:#8A5300;font-size:14px;font-weight:600">Orange text #8A5300 on #FEF3DC</span>
+        <span style="display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#FDE8E8;color:#B4232A;font-size:14px;font-weight:600">Red text #B4232A on #FDE8E8</span>
+      </div>
+      <div style="font-size:13px;color:#5B6B82;line-height:1.45">Cyan buttons carry navy labels (5.7 : 1). White on cyan fails AA, so it is not used.</div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2 style="margin:0;font-size:18px;color:#002E6E">Type</h2>
+    <div style="background:#FFFFFF;border-radius:14px;padding:18px;display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px 16px;align-items:baseline">
+      <span style="font-size:13px;color:#5B6B82">Money 32 / 700</span><span style="font-size:32px;font-weight:700;color:#002E6E;font-variant-numeric:tabular-nums">₹3,667 a month</span>
+      <span style="font-size:13px;color:#5B6B82">Title 22 / 700</span><span style="font-size:22px;font-weight:700">What monthly amount feels comfortable?</span>
+      <span style="font-size:13px;color:#5B6B82">Body 16 / 400</span><span style="font-size:16px;line-height:1.5">The shop cannot see this information.</span>
+      <span style="font-size:13px;color:#5B6B82">Tamil body 16</span><span style="font-size:16px;line-height:1.6;font-family:'Noto Sans Tamil',sans-serif">இந்தத் தகவலை கடை பார்க்க முடியாது.</span>
+      <span style="font-size:13px;color:#5B6B82">Label 14 / 600</span><span style="font-size:14px;font-weight:600;color:#5B6B82">Extra you pay</span>
+    </div>
+    <div style="font-size:14px;color:#5B6B82;line-height:1.5">Inter for English, Noto Sans Tamil for Tamil (falls back automatically in one stack). Tabular numerals for money. Indian digit grouping: ₹1,84,000.</div>
+  </section>
+
+  <section style="display:flex;gap:12px">
+    <div style="flex:1;background:#FFFFFF;border-radius:16px;padding:16px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)"><div style="font-weight:600;font-size:14px">Cards</div><div style="font-size:13px;color:#5B6B82;margin-top:4px">Radius 16, soft shadow</div></div>
+    <div style="flex:1;background:#FFFFFF;border-radius:12px;padding:16px;border:1px solid #DCE7F0"><div style="font-weight:600;font-size:14px">Inputs and chips</div><div style="font-size:13px;color:#5B6B82;margin-top:4px">Radius 12, 1px #DCE7F0</div></div>
+    <div style="flex:1;background:#FFFFFF;border-radius:12px;padding:16px"><div style="font-weight:600;font-size:14px">Spacing</div><div style="font-size:13px;color:#5B6B82;margin-top:4px">4, 8, 12, 16, 24, 32</div></div>
+    <div style="flex:1;background:#FFFFFF;border-radius:12px;padding:16px"><div style="font-weight:600;font-size:14px">Touch</div><div style="font-size:13px;color:#5B6B82;margin-top:4px">48 px minimum, 56 px primary</div></div>
+  </section>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+  <section style="background:#FFFFFF;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px">
+    <h2 style="margin:0;font-size:18px;color:#002E6E">Design notes: sample data</h2>
+    <p style="margin:0;font-size:14px;line-height:1.5;color:#5B6B82">All numbers, names and dates in these mockups are sample data for the demo. Nothing on screen is labelled as sample; it is recorded here instead.</p>
+    <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 14px;font-size:14px;line-height:1.45">
+      <strong>All customer</strong><span>Example phone, 128 GB at ₹22,000. Three plans: No-cost 6 m ₹3,667 (₹0 extra), Card EMI 6 m ₹3,850 (₹1,100), Cardless 12 m ₹2,050 (₹2,600). Shop name “Ravi Electronics”.</span>
+      <strong>C2</strong><span>Budget ₹3,000; misheard value ₹30,000.</span>
+      <strong>C3, C5</strong><span>Synthetic inflow ₹30,000 a month, existing EMIs ₹8,000 (27%). Ratios 38.9%, 39.5%, 33.5%. Risky state uses a second synthetic customer: inflow ₹20,000, ratio 59.3%.</span>
+      <strong>C4</strong><span>“No plan fits” state uses a ₹1,800 budget.</span>
+      <strong>C6</strong><span>₹4,000 down payment gives ₹2,999 a month, 36.6%. Cheaper model is an invented 64 GB variant at ₹18,000 (₹3,000 a month, 36.7%).</span>
+      <strong>C9, C10</strong><span>Phone ending 42, OTP 6 digits, reference EMI-2611-0042, cooling-off wording is a placeholder for the lender’s real period.</span>
+      <strong>M1–M4</strong><span>Shop ID RAVI-0193, other catalogue items and prices, session times.</span>
+      <strong>M5–M8</strong><span>Funnel 120, 96, 88, 51, 44 (last 7 days). Budget buckets in M6 (5, 7, 14, 21, 49 customers). Settlement ₹1,84,000 split ₹72,000, ₹64,000, ₹48,000 on 13 Jan, 28 Jan and 12 Feb 2027.</span>
+    </div>
+  </section>
+  <section style="background:#002E6E;color:#FFFFFF;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px">
+    <h2 style="margin:0;font-size:18px">Rules every screen follows</h2>
+    <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;display:flex;flex-direction:column;gap:2px">
+      <li>Only three comfort bands: Comfortable, Stretching, Risky. Each has an icon and a word, never colour alone.</li>
+      <li>Every plan shows “Each month ₹X for N months” beside “Extra in total ₹Y on top of the price”, at the same size, so nobody reads the extra as monthly.</li>
+      <li>No interest rates, no card fields, no “best for you”, no urgency.</li>
+      <li>The merchant never sees inflow, EMIs, comfort ratios or the customer’s step-by-step progress; only “Choosing” or “Ready to pay”, the chosen plan and totals.</li>
+      <li>Merchant app has two tabs in shop language: New EMI sale and Sales report. Everything else opens in place on the report as an expandable card, never as a separate page.</li>
+      <li>Every number the AI says is also on screen. Voice is optional.</li>
+      <li>One main action per customer screen. Language toggle on every customer screen.</li>
+      <li>Tamil strings are drafts: a native speaker must review them before the demo.</li>
+    </ul>
+  </section>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

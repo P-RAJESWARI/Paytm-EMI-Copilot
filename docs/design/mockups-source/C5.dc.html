@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C5 Comfort detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:360px;height:800px;display:flex;flex-direction:column;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#FFFFFF;border-bottom:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C4.dc.html" aria-label="{{t.back}}" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#002E6E"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+    <div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.head}}</div>
+    <div role="group" aria-label="Language" style="display:flex;background:#EEF6FB;border-radius:999px;padding:3px">
+      <button onClick="{{setEn}}" aria-pressed="{{isEn}}" style="min-width:48px;height:42px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:600;background:{{enBg}};color:{{enFg}}">EN</button>
+      <button onClick="{{setTa}}" aria-pressed="{{isTa}}" style="min-width:60px;height:42px;border:0;border-radius:999px;font-family:'Noto Sans Tamil',sans-serif;font-size:14px;font-weight:600;background:{{taBg}};color:{{taFg}}">தமிழ்</button>
+    </div>
+  </header>
+
+  <main style="flex:1;min-height:0;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px">
+    <div style="background:#FFFFFF;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+      <div><div style="font-weight:700;font-size:17px">{{p.name}}</div><div style="font-size:14px;color:#5B6B82">{{p.tenure}}</div></div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <div style="background:#EEF6FB;border-radius:12px;padding:8px 12px"><div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.monthly}}</div><div style="font-size:22px;font-weight:700;color:#002E6E">{{p.monthly}}</div></div>
+        <div style="background:#EEF6FB;border-radius:12px;padding:8px 12px"><div style="font-size:14px;color:#5B6B82;font-weight:600">{{t.extra}}</div><div style="font-size:22px;font-weight:700;color:#002E6E">{{p.extra}}</div></div>
+      </div>
+    </div>
+
+    <div style="background:#FFFFFF;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px">
+      <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;background:{{band.bg}};color:{{band.fg}};font-size:15px;font-weight:700">
+        <sc-if value="{{band.isC}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg></sc-if>
+        <sc-if value="{{band.isS}}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 17a8 8 0 0 1 16 0"></path><path d="M12 17l3-5"></path></svg></sc-if>
+        <sc-if value="{{band.isR}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4"></path><path d="M12 17.5v.5"></path></svg></sc-if>
+        {{band.label}}
+      </span>
+      <div style="font-size:19px;font-weight:700;line-height:1.35">{{p.line1}}</div>
+      <div style="font-size:16px;line-height:1.45;color:#5B6B82">{{p.line2}}</div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="position:relative;height:28px;border-radius:8px;background:#EEF6FB;display:flex;overflow:hidden" role="img" aria-label="{{p.aria}}">
+          <div style="height:28px;background:#002E6E;width:{{p.wOld}}"></div>
+          <div style="height:28px;background:{{band.bar}};width:{{p.wNew}}"></div>
+          <div style="position:absolute;left:35%;top:0;bottom:0;width:2px;background:#0B1F3A;opacity:0.35"></div>
+          <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#0B1F3A;opacity:0.35"></div>
+        </div>
+        <div style="position:relative;height:16px;font-size:12px;color:#5B6B82"><span style="position:absolute;left:0">0%</span><span style="position:absolute;left:35%;transform:translateX(-50%)">35%</span><span style="position:absolute;left:50%;transform:translateX(-50%)">50%</span><span style="position:absolute;right:0">100%</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;font-size:15px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:4px;background:#002E6E"></span><span style="flex:1">{{t.current}}</span><strong>{{p.old}}</strong></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;border-radius:4px;background:{{band.bar}};border:1px solid #0B1F3A33"></span><span style="flex:1">{{t.thisPlan}}</span><strong>{{p.new}}</strong></div>
+          <div style="display:flex;align-items:center;gap:8px;border-top:1px solid #DCE7F0;padding-top:6px"><span style="width:14px"></span><span style="flex:1">{{t.inflow}}</span><strong>{{p.inflow}}</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#FFFFFF;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.4">
+      <div style="font-weight:700">{{t.howTitle}}</div>
+      <div style="display:flex;gap:8px;align-items:center"><span style="width:10px;height:10px;border-radius:999px;background:#12B886"></span>{{t.b1}}</div>
+      <div style="display:flex;gap:8px;align-items:center"><span style="width:10px;height:10px;border-radius:999px;background:#F5A524"></span>{{t.b2}}</div>
+      <div style="display:flex;gap:8px;align-items:center"><span style="width:10px;height:10px;border-radius:999px;background:#E5484D"></span>{{t.b3}}</div>
+      <div style="font-size:14px;color:#5B6B82">{{t.guide}}</div>
+    </div>
+  </main>
+
+  <div style="padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #DCE7F0;flex-shrink:0">
+    <a href="C4.dc.html" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:18px;text-decoration:none">{{t.cta}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"lang":{"editor":"enum","options":["en","ta"],"default":"en"},"plan":{"editor":"enum","options":["card","cardless","risky"],"default":"card"},"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const lang = st.lang || this.props.lang || 'en';
+    const plan = this.props.plan || 'card';
+    const en = lang === 'en';
+    const S = {
+      en: {
+        back: 'Back', head: 'Comfort detail', monthly: 'Each month', extra: 'Extra in total',
+        current: 'EMIs you pay now', thisPlan: 'This plan', inflow: 'Money coming in each month',
+        howTitle: 'How we read this',
+        b1: 'Below 35%: Comfortable', b2: '35% to 50%: Stretching', b3: 'Above 50%: Risky',
+        guide: 'A guide to help you choose, not a loan decision.',
+        cta: 'Back to plans',
+        bands: { C: 'Comfortable', S: 'Stretching', R: 'Risky' },
+        names: { card: 'Card EMI', cardless: 'Cardless credit' },
+        tenures: { card: 'On your card, 6 months', cardless: '12 months' },
+        l1: (x) => 'With this plan, your EMIs take ' + x + ' of your monthly inflow.',
+        l2: (x) => 'Your current EMIs already take ' + x + '.'
+      },
+      ta: {
+        back: 'பின்செல்', head: 'வசதி விவரம்', monthly: 'ஒவ்வொரு மாதமும்', extra: 'மொத்தக் கூடுதல்',
+        current: 'இப்போது செலுத்தும் EMI-கள்', thisPlan: 'இந்தத் திட்டம்', inflow: 'ஒவ்வொரு மாதமும் வரும் பணம்',
+        howTitle: 'இதை எப்படிப் படிப்பது',
+        b1: '35%-க்குக் கீழ்: வசதியானது', b2: '35% முதல் 50%: கொஞ்சம் சிரமம்', b3: '50%-க்கு மேல்: அதிக சுமை',
+        guide: 'தேர்வு செய்ய உதவும் வழிகாட்டி மட்டுமே, கடன் முடிவு அல்ல.',
+        cta: 'திட்டங்களுக்குத் திரும்பு',
+        bands: { C: 'வசதியானது', S: 'கொஞ்சம் சிரமம்', R: 'அதிக சுமை' },
+        names: { card: 'கார்டு EMI', cardless: 'கார்டு இல்லா கடன்' },
+        tenures: { card: 'உங்கள் கார்டில், 6 மாதங்கள்', cardless: '12 மாதங்கள்' },
+        l1: (x) => 'இந்தத் திட்டத்துடன், உங்கள் EMI-கள் மாத வரவில் ' + x + ' எடுக்கும்.',
+        l2: (x) => 'உங்கள் தற்போதைய EMI-கள் ஏற்கனவே ' + x + ' எடுக்கின்றன.'
+      }
+    }[lang];
+    const D = {
+      card: { id: 'card', monthly: '₹3,850', extra: '₹1,100', inflow: '₹30,000', old: '₹8,000 (26.7%)', nw: '₹3,850 (12.8%)', pOld: 26.7, pNew: 12.8, total: '39.5%', oldPct: '26.7%', band: 'S' },
+      cardless: { id: 'cardless', monthly: '₹2,050', extra: '₹2,600', inflow: '₹30,000', old: '₹8,000 (26.7%)', nw: '₹2,050 (6.8%)', pOld: 26.7, pNew: 6.8, total: '33.5%', oldPct: '26.7%', band: 'C' },
+      risky: { id: 'card', monthly: '₹3,850', extra: '₹1,100', inflow: '₹20,000', old: '₹8,000 (40%)', nw: '₹3,850 (19.3%)', pOld: 40, pNew: 19.3, total: '59.3%', oldPct: '40%', band: 'R' }
+    }[plan];
+    const bandStyle = {
+      C: { bg: '#E3F7F0', fg: '#0A6E50', bar: '#12B886' },
+      S: { bg: '#FEF3DC', fg: '#8A5300', bar: '#F5A524' },
+      R: { bg: '#FDE8E8', fg: '#B4232A', bar: '#E5484D' }
+    }[D.band];
+    return {
+      t: S, isEn: en, isTa: !en,
+      p: {
+        name: S.names[D.id], tenure: S.tenures[D.id], monthly: D.monthly, extra: D.extra,
+        line1: S.l1(D.total), line2: S.l2(D.oldPct),
+        old: D.old, new: D.nw, inflow: D.inflow,
+        wOld: D.pOld + '%', wNew: D.pNew + '%',
+        aria: 'Existing EMIs ' + D.oldPct + ', with this plan ' + D.total
+      },
+      band: { ...bandStyle, label: S.bands[D.band], isC: D.band === 'C', isS: D.band === 'S', isR: D.band === 'R' },
+      enBg: en ? '#002E6E' : 'transparent', enFg: en ? '#FFFFFF' : '#002E6E',
+      taBg: !en ? '#002E6E' : 'transparent', taFg: !en ? '#FFFFFF' : '#002E6E',
+      setEn: () => this.setState({ lang: 'en' }),
+      setTa: () => this.setState({ lang: 'ta' })
+    };
+  }
+}
+</script>
+</body>
+</html>

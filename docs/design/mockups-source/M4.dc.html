@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M4 Handoff and status</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1024px;height:768px;display:flex;background:#EEF6FB;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;overflow:hidden">
+  <nav aria-label="Main" style="width:216px;flex-shrink:0;background:#002E6E;color:#FFFFFF;box-sizing:border-box;padding:20px 12px;display:flex;flex-direction:column;gap:4px">
+    <div style="display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;padding:4px 8px 20px"><svg width="30" height="30" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#FFFFFF"></rect><path d="M7.5 19c1.8-6.5 11.2-6.5 13 0" stroke="#00BAF2" stroke-width="3" fill="none" stroke-linecap="round"></path><circle cx="14" cy="10.5" r="2.6" fill="#00BAF2"></circle></svg>EMI Copilot</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="2">
+      <a href="{{n.href}}" aria-current="{{n.current}}" style="display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border-radius:12px;text-decoration:none;font-size:15px;font-weight:600;background:{{n.bg}};color:{{n.fg}}"><span style="width:8px;height:8px;border-radius:999px;background:{{n.dot}}"></span>{{n.label}}</a>
+    </sc-for>
+    <div style="margin-top:auto;padding:12px;border-radius:12px;background:rgba(255,255,255,0.08);font-size:14px;line-height:1.4"><div style="font-weight:600">Ravi Electronics</div><div style="color:#C9D8E6">Counter tablet 1</div></div>
+  </nav>
+
+  <main style="flex:1;min-width:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;gap:20px">
+    <div>
+      <h1 style="margin:0;font-size:26px;color:#002E6E">Take payment on Paytm</h1>
+      <p style="margin:6px 0 0;font-size:16px;color:#5B6B82">Use the exact offer the customer chose so the price matches.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;flex:1;min-height:0">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="background:#FFFFFF;border-radius:16px;padding:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;box-shadow:0 1px 2px rgba(11,31,58,0.06),0 6px 16px rgba(11,31,58,0.06)">
+          <div style="grid-column:1 / -1"><div style="font-size:14px;color:#5B6B82;font-weight:600">Chosen plan</div><div style="font-size:20px;font-weight:700">No-cost EMI, 6 months</div></div>
+          <div><div style="font-size:14px;color:#5B6B82">Product</div><div style="font-size:16px;font-weight:600">Example phone, 128 GB</div></div>
+          <div><div style="font-size:14px;color:#5B6B82">Price</div><div style="font-size:16px;font-weight:600">₹22,000</div></div>
+          <div><div style="font-size:14px;color:#5B6B82">Monthly</div><div style="font-size:16px;font-weight:600">₹3,667</div></div>
+          <div><div style="font-size:14px;color:#5B6B82">Funded by</div><div style="font-size:16px;font-weight:600">Brand</div></div>
+        </div>
+
+        <div style="background:#FFFFFF;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:16px;font-weight:700">On the EDC machine</div>
+          <ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.45">
+            <li>Choose <strong>Brand EMI</strong>.</li>
+            <li>Pick <strong>Example phone, 128 GB</strong> and <strong>6 months, no-cost</strong>.</li>
+            <li>Check the amount is <strong>₹22,000</strong>, then hand it to the customer.</li>
+          </ol>
+          <div style="display:flex;align-items:center;gap:12px;border-top:1px solid #DCE7F0;padding-top:12px">
+            <span style="flex:1;font-size:15px;color:#5B6B82">No EDC at hand?</span>
+            <button style="height:48px;padding:0 18px;border-radius:12px;border:2px solid #002E6E;background:#FFFFFF;color:#002E6E;font-family:inherit;font-size:15px;font-weight:700">Send payment link</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px;border:2px solid {{look.border}}">
+        <div style="font-size:14px;color:#5B6B82;font-weight:600">Payment status</div>
+        <div style="width:64px;height:64px;border-radius:999px;background:{{look.bg}};color:{{look.fg}};display:flex;align-items:center;justify-content:center">
+          <sc-if value="{{isWaiting}}" hint-placeholder-val="{{ true }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if>
+          <sc-if value="{{isPaid}}" hint-placeholder-val="{{ false }}"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>
+          <sc-if value="{{isFailed}}" hint-placeholder-val="{{ false }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16v.5"></path></svg></sc-if>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#002E6E">{{look.title}}</div>
+        <div style="font-size:15px;line-height:1.5;color:#5B6B82">{{look.body}}</div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+          <a href="{{look.href}}" style="display:flex;align-items:center;justify-content:center;height:56px;border-radius:14px;background:#00BAF2;color:#002E6E;font-weight:700;font-size:17px;text-decoration:none">{{look.cta}}</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screenState":{"editor":"enum","options":["waiting","paid","failed"],"default":"waiting"},"$preview":{"width":1024,"height":768}}'>
+class Component extends DCLogic {
+  navList(active) {
+    const items = [['M2', 'New EMI sale'], ['M5', 'Sales report']];
+    return items.map(([id, label]) => {
+      const on = id === active;
+      return { href: id + '.dc.html', label, current: on ? 'page' : undefined, bg: on ? 'rgba(255,255,255,0.14)' : 'transparent', fg: on ? '#FFFFFF' : '#C9D8E6', dot: on ? '#00BAF2' : 'transparent' };
+    });
+  }
+  renderVals() {
+    const s = this.props.screenState || 'waiting';
+    const look = {
+      waiting: { border: '#DCE7F0', bg: '#FEF3DC', fg: '#8A5300', title: 'Waiting for payment', body: 'This updates when the server confirms the payment. Don’t hand over the product yet.', cta: 'Refresh status', href: 'M4.dc.html' },
+      paid: { border: '#12B886', bg: '#E3F7F0', fg: '#0A6E50', title: 'Paid', body: 'Confirmed by the server at 4:12 PM. ₹22,000 on no-cost EMI. You can hand over the product.', cta: 'Back to counter list', href: 'M2.dc.html' },
+      failed: { border: '#DCE7F0', bg: '#EEF2F6', fg: '#0B1F3A', title: 'Payment not completed', body: 'Nothing was confirmed. Ask the customer if they want to try again, or send a payment link.', cta: 'Try again', href: 'M4.dc.html' }
+    }[s];
+    return { nav: this.navList('M2'), look, isWaiting: s === 'waiting', isPaid: s === 'paid', isFailed: s === 'failed' };
+  }
+}
+</script>
+</body>
+</html>

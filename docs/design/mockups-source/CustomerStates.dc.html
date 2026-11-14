@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customer screen states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+Tamil:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:3256px;height:1940px;box-sizing:border-box;padding:48px;background:#DCE7F0;font-family:Inter,'Noto Sans Tamil',system-ui,sans-serif;color:#0B1F3A;display:flex;flex-direction:column;gap:32px">
+  <h1 style="margin:0;font-size:32px;color:#002E6E">Customer states</h1>
+  <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:48px 40px">
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C2 Budget: empty</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C2" screen-state="empty" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C2 Budget: typed</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C2" screen-state="typed" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C2 Budget: voice misheard, edit</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C2" screen-state="misheard" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C4 Options: loading</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C4" screen-state="loading" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C4 Options: no plan fits</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C4" screen-state="nofit" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C5 Comfort: Comfortable band</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C5" plan="cardless" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C5 Comfort: Risky band</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C5" plan="risky" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C6 Alternatives: one selected</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C6" screen-state="down" hint-size="360px,800px"></dc-import></div></div>
+
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C7 Explanation: audio playing</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C7" screen-state="audio" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C7 Explanation: AI unavailable</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C7" screen-state="unavailable" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C8 Teach-back: explain again</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C8" screen-state="again" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C9 OTP: wrong</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C9" screen-state="wrong" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C9 OTP: expired</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C9" screen-state="expired" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C10 Receipt: confirmed</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C10" screen-state="confirmed" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C10 Receipt: pending</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C10" screen-state="pending" hint-size="360px,800px"></dc-import></div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:16px;font-weight:700">C10 Receipt: failed</div><div style="width:360px;height:800px;overflow:hidden;border-radius:12px"><dc-import name="C10" screen-state="failed" hint-size="360px,800px"></dc-import></div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":3256,"height":1940}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
