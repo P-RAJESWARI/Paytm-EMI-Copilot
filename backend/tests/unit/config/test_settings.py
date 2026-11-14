@@ -10,6 +10,11 @@ SETTINGS_ENVIRONMENT_VARIABLES = (
     "PAYMENT_GATEWAY_MODE",
     "PAYMENT_GATEWAY_CONNECT_TIMEOUT_IN_SECONDS",
     "PAYMENT_GATEWAY_READ_TIMEOUT_IN_SECONDS",
+    "PAYMENT_GATEWAY_RETRY_MAX_ATTEMPTS",
+    "PAYMENT_GATEWAY_RETRY_BASE_DELAY_IN_SECONDS",
+    "PAYMENT_GATEWAY_RETRY_MAX_DELAY_IN_SECONDS",
+    "PAYMENT_GATEWAY_CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+    "PAYMENT_GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_IN_SECONDS",
     "LOG_LEVEL",
 )
 
@@ -57,3 +62,45 @@ def test_application_settings_hides_database_url_from_its_representation() -> No
     settings = ApplicationSettings()
     assert "emi_copilot_local_only" not in repr(settings)
     assert settings.database_url.get_secret_value().startswith("postgresql+psycopg://")
+
+
+def test_application_settings_without_environment_uses_documented_resilience_defaults() -> None:
+    """Three attempts for reads, and the breaker opens after five failures for thirty seconds."""
+    settings = ApplicationSettings()
+    assert settings.payment_gateway_retry_max_attempts == 3
+    assert settings.payment_gateway_retry_base_delay_in_seconds == 0.2
+    assert settings.payment_gateway_retry_max_delay_in_seconds == 2.0
+    assert settings.payment_gateway_circuit_breaker_failure_threshold == 5
+    assert settings.payment_gateway_circuit_breaker_open_duration_in_seconds == 30.0
+
+
+def test_application_settings_reads_resilience_values_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every retry and breaker value can be tuned per environment."""
+    monkeypatch.setenv("PAYMENT_GATEWAY_RETRY_MAX_ATTEMPTS", "4")
+    monkeypatch.setenv("PAYMENT_GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_IN_SECONDS", "60")
+    settings = ApplicationSettings()
+    assert settings.payment_gateway_retry_max_attempts == 4
+    assert settings.payment_gateway_circuit_breaker_open_duration_in_seconds == 60.0
+
+
+@pytest.mark.parametrize(
+    ("variable_name", "unusable_value"),
+    [
+        ("PAYMENT_GATEWAY_RETRY_MAX_ATTEMPTS", "0"),
+        ("PAYMENT_GATEWAY_RETRY_MAX_ATTEMPTS", "11"),
+        ("PAYMENT_GATEWAY_RETRY_BASE_DELAY_IN_SECONDS", "0"),
+        ("PAYMENT_GATEWAY_RETRY_MAX_DELAY_IN_SECONDS", "-1"),
+        ("PAYMENT_GATEWAY_RETRY_BASE_DELAY_IN_SECONDS", "5"),
+        ("PAYMENT_GATEWAY_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "0"),
+        ("PAYMENT_GATEWAY_CIRCUIT_BREAKER_OPEN_DURATION_IN_SECONDS", "0"),
+    ],
+)
+def test_application_settings_with_unusable_resilience_value_raises_validation_error(
+    monkeypatch: pytest.MonkeyPatch, variable_name: str, unusable_value: str
+) -> None:
+    """No retries without bound, no zero delays, base delay within max, a breaker that can open."""
+    monkeypatch.setenv(variable_name, unusable_value)
+    with pytest.raises(ValidationError):
+        ApplicationSettings()

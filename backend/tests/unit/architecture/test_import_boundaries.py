@@ -1,4 +1,8 @@
-"""Import boundaries: domain/ and the gateway port import only the standard library and domain/."""
+"""Import boundaries: domain/, the gateway port and core/ each depend only on what they may.
+
+domain/ and the port import only the standard library and domain/. core/ never reaches up into
+domain/, the other application layers or the web framework.
+"""
 
 import ast
 import sys
@@ -9,10 +13,20 @@ import pytest
 from tests.unit.architecture.source_files import (
     PAYMENT_GATEWAY_PORT_FILE,
     describe_source_file,
+    list_core_modules,
     list_domain_modules,
 )
 
 ALLOWED_APPLICATION_PACKAGE = "emi_copilot.domain"
+# core/ is shared plumbing under every layer; adapters translate its errors into domain errors.
+PACKAGES_FORBIDDEN_IN_CORE = (
+    "emi_copilot.domain",
+    "emi_copilot.adapters",
+    "emi_copilot.services",
+    "emi_copilot.repositories",
+    "emi_copilot.api",
+    "fastapi",
+)
 
 
 def list_imported_module_names(source_file: Path) -> list[str]:
@@ -95,3 +109,54 @@ def test_find_disallowed_imports_reports_every_import_form(tmp_path: Path) -> No
         encoding="utf-8",
     )
     assert find_disallowed_imports(sample_module) == ["httpx", "emi_copilot.core.clock", "fastapi"]
+
+
+def is_inside_package(module_name: str, package_name: str) -> bool:
+    """Tells whether a module is the package itself or one of its submodules."""
+    return module_name == package_name or module_name.startswith(package_name + ".")
+
+
+def find_imports_forbidden_in_core(source_file: Path) -> list[str]:
+    """Lists the imports of a file that reach a layer or framework core/ must not depend on."""
+    return [
+        module_name
+        for module_name in list_imported_module_names(source_file)
+        if module_name.startswith(".")
+        or any(is_inside_package(module_name, package) for package in PACKAGES_FORBIDDEN_IN_CORE)
+    ]
+
+
+def test_core_has_modules_to_check() -> None:
+    """Guards the core boundary test against silently checking nothing if the package moves."""
+    assert len(list_core_modules()) > 5
+
+
+@pytest.mark.parametrize("core_module", list_core_modules(), ids=describe_source_file)
+def test_core_module_imports_no_domain_other_layer_or_web_framework(core_module: Path) -> None:
+    """core/ stays below every layer, so the HTTP client cannot leak domain or FastAPI types."""
+    assert find_imports_forbidden_in_core(core_module) == []
+
+
+def test_find_imports_forbidden_in_core_reports_layers_framework_and_relative_imports(
+    tmp_path: Path,
+) -> None:
+    """The core rule rejects domain, adapter, service and FastAPI imports but allows httpx."""
+    sample_module = tmp_path / "sample_module.py"
+    sample_module.write_text(
+        "import httpx\n"
+        "from emi_copilot.core.clock import Clock\n"
+        "from emi_copilot.domain.errors import DomainError\n"
+        "from emi_copilot.adapters.payment_gateway import port\n"
+        "import emi_copilot.services\n"
+        "from fastapi import FastAPI\n"
+        "from .clock import SystemClock\n"
+        "import emi_copilot.domain_extras\n",
+        encoding="utf-8",
+    )
+    assert find_imports_forbidden_in_core(sample_module) == [
+        "emi_copilot.domain.errors",
+        "emi_copilot.adapters.payment_gateway",
+        "emi_copilot.services",
+        "fastapi",
+        ".clock",
+    ]

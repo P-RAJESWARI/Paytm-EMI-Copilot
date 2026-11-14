@@ -19,6 +19,7 @@ OVERALL_COVERAGE_MINIMUM_PERCENT := 85
 # A gate is skipped until its path holds Python modules, so early steps stay green.
 COVERAGE_GATES := \
 	src/emi_copilot/domain:100 \
+	src/emi_copilot/core:100 \
 	src/emi_copilot/events/audit_subscriber.py:100 \
 	src/emi_copilot/repositories/audit_event_repository.py:100 \
 	src/emi_copilot/services:90 \
