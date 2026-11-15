@@ -4,8 +4,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import './styles.css';
-import { CustomerAppPlaceholder } from './app/CustomerAppPlaceholder';
 import { CustomerApp } from './app/CustomerApp';
+import { CustomerFlowScreens } from './app/CustomerFlowScreens';
 import { createCustomerQueryClient } from './app/createCustomerQueryClient';
 import { takeQrTokenFromLocation } from './app/takeQrTokenFromLocation';
 import { createCustomerFlowApi, readCustomerFlowApiMode } from './features/customer-flow';
@@ -29,7 +29,7 @@ createRoot(rootElement).render(
       customerFlowApi={customerFlowApi}
       qrToken={qrToken}
     >
-      <CustomerAppPlaceholder />
+      <CustomerFlowScreens />
     </CustomerApp>
   </StrictMode>,
 );
