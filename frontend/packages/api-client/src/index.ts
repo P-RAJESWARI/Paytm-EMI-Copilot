@@ -14,6 +14,10 @@ export {
   createCorrelationIdMiddleware,
 } from './middleware/correlationIdMiddleware';
 export { createRandomCorrelationId } from './middleware/createRandomCorrelationId';
+export {
+  CUSTOMER_SESSION_TOKEN_HEADER,
+  createCustomerSessionTokenMiddleware,
+} from './middleware/customerSessionTokenMiddleware';
 export { readProblemCode, type ProblemDetails } from './problemDetails';
 export {
   SALE_STATUS_EVENTS_PATH,

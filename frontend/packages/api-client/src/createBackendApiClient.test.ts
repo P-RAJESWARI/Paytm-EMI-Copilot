@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createBackendApiClient } from './createBackendApiClient';
 import { CORRELATION_ID_HEADER } from './middleware/correlationIdMiddleware';
+import { CUSTOMER_SESSION_TOKEN_HEADER } from './middleware/customerSessionTokenMiddleware';
 
 const UUID_VERSION_4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -75,6 +76,51 @@ describe('createBackendApiClient', () => {
 
     expect(requestAt(sentRequests, 0).headers.has('Authorization')).toBe(false);
     expect(requestAt(sentRequests, 1).headers.has('Authorization')).toBe(false);
+  });
+
+  it('sends the customer session token from its getter once the phone holds one', async () => {
+    const { fetch, sentRequests } = createRecordingFetch();
+    let customerSessionToken: string | undefined = undefined;
+    const client = createBackendApiClient({
+      baseUrl: 'http://api.test',
+      getCustomerSessionToken: () => customerSessionToken,
+      fetch,
+    });
+
+    await client.POST('/api/v1/customer-sessions', { body: { qrToken: 'qr-token' } });
+    customerSessionToken = 'customer-session-token';
+    await client.GET('/api/v1/customer-sessions/{customerSessionId}/plans', {
+      params: { path: { customerSessionId: 'session-1' } },
+    });
+
+    expect(requestAt(sentRequests, 0).headers.has(CUSTOMER_SESSION_TOKEN_HEADER)).toBe(false);
+    const plansRequest = requestAt(sentRequests, 1);
+    expect(plansRequest.headers.get(CUSTOMER_SESSION_TOKEN_HEADER)).toBe('customer-session-token');
+    expect(plansRequest.headers.has('Authorization')).toBe(false);
+  });
+
+  it('keeps a customer session token the caller set and skips an empty one', async () => {
+    const { fetch, sentRequests } = createRecordingFetch();
+    const clientWithEmptyToken = createBackendApiClient({
+      baseUrl: 'http://api.test',
+      getCustomerSessionToken: () => '',
+      fetch,
+    });
+    const clientWithToken = createBackendApiClient({
+      baseUrl: 'http://api.test',
+      getCustomerSessionToken: () => 'held-token',
+      fetch,
+    });
+
+    await clientWithEmptyToken.GET('/health');
+    await clientWithToken.GET('/health', {
+      headers: { [CUSTOMER_SESSION_TOKEN_HEADER]: 'explicit-token' },
+    });
+
+    expect(requestAt(sentRequests, 0).headers.has(CUSTOMER_SESSION_TOKEN_HEADER)).toBe(false);
+    expect(requestAt(sentRequests, 1).headers.get(CUSTOMER_SESSION_TOKEN_HEADER)).toBe(
+      'explicit-token',
+    );
   });
 
   it('gives each request a different random UUID v4 correlation id by default', async () => {

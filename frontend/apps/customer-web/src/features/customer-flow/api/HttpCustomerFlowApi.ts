@@ -1,6 +1,6 @@
+import { createBackendApiClient, type BackendApiClient } from '@emi-copilot/api-client';
 import type { SupportedLanguage } from '@emi-copilot/shared-i18n';
 
-import { createCustomerApiClient, type CustomerApiClient } from './createCustomerApiClient';
 import { CUSTOMER_SESSION_TOKEN_INVALID_CODE, CustomerApiError } from './customerApiError';
 import type {
   ComfortCheckResult,
@@ -32,18 +32,19 @@ export interface HttpCustomerFlowApiOptions {
   fetchFunction: (request: Request) => Promise<Response>;
 }
 
-// Pattern: Adapter. Implements CustomerFlowApi over the customer REST endpoints with openapi-fetch;
-// it keeps the session token in memory and adds it to every call through the client middleware.
+// Pattern: Adapter. Implements CustomerFlowApi over the customer REST endpoints with the generated
+// api-client; it keeps the session token in memory and adds it to every call through the client's
+// session-token middleware.
 export class HttpCustomerFlowApi implements CustomerFlowApi {
   private activeSession: ActiveSession | undefined;
-  private readonly apiClient: CustomerApiClient;
+  private readonly apiClient: BackendApiClient;
 
-  // Builds the customer client whose middleware reads this instance's in-memory session token.
+  // Builds the generated client whose middleware reads this instance's in-memory session token.
   constructor({ baseUrl, fetchFunction }: HttpCustomerFlowApiOptions) {
-    this.apiClient = createCustomerApiClient({
+    this.apiClient = createBackendApiClient({
       baseUrl,
-      fetchFunction,
-      getSessionToken: () => this.activeSession?.sessionToken,
+      fetch: fetchFunction,
+      getCustomerSessionToken: () => this.activeSession?.sessionToken,
     });
   }
 
