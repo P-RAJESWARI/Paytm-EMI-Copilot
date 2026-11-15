@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "Synthetic rate limit message.",
+    "code": "rate_limit_exceeded_error",
+    "request_id": "synthetic-error-request-chat-0429"
+  }
+}

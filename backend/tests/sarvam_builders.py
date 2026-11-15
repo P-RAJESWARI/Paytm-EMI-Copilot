@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 from pydantic import SecretStr
 
+from emi_copilot.adapters.ai.sarvam.sarvam_chat_text_adapter import SarvamChatTextAdapter
 from emi_copilot.adapters.ai.sarvam.sarvam_http_clients import SINGLE_ATTEMPT_POLICY
 from emi_copilot.adapters.ai.sarvam.sarvam_speech_adapter import (
     SarvamSpeechAdapter,
@@ -111,3 +112,8 @@ def build_sarvam_speech_adapter(
             speech_to_text=speech_to_text.client, text_to_speech=text_to_speech.client
         ),
     )
+
+
+def build_sarvam_chat_text_adapter(chat: ScriptedSarvamClient) -> SarvamChatTextAdapter:
+    """Builds the real chat adapter on a scripted client with default settings."""
+    return SarvamChatTextAdapter(AiSettings(), SecretStr(SYNTHETIC_SARVAM_KEY), chat.client)

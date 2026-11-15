@@ -12,7 +12,10 @@ from pydantic import SecretStr
 from emi_copilot.adapters.ai.explanation_text_port import ExplanationTextPort
 from emi_copilot.adapters.ai.mock_explanation_text_adapter import MockExplanationTextAdapter
 from emi_copilot.adapters.ai.mock_speech_adapter import MockSpeechAdapter
-from emi_copilot.adapters.ai.sarvam.sarvam_adapter_builder import build_sarvam_speech_adapter
+from emi_copilot.adapters.ai.sarvam.sarvam_adapter_builder import (
+    build_sarvam_chat_text_adapter,
+    build_sarvam_speech_adapter,
+)
 from emi_copilot.adapters.ai.speech_port import SpeechPort
 from emi_copilot.config.ai_settings import AiProviderMode, AiSettings
 from emi_copilot.core.clock import Clock
@@ -58,7 +61,7 @@ class AiProviderFactory:
         """Builds both configured ports; raises AiConfigurationError for an unusable mode."""
         return AiComponents(
             speech=self._create_speech(settings, clock),
-            explanation_text=self._create_explanation_text(settings),
+            explanation_text=self._create_explanation_text(settings, clock),
             settings=settings,
         )
 
@@ -72,13 +75,13 @@ class AiProviderFactory:
             return None
         return MockSpeechAdapter()
 
-    def _create_explanation_text(self, settings: AiSettings) -> ExplanationTextPort | None:
+    def _create_explanation_text(
+        self, settings: AiSettings, clock: Clock
+    ) -> ExplanationTextPort | None:
         """Builds the explanation text port for its mode; None when AI text is off."""
         if settings.explanation_text_provider_mode is AiProviderMode.SARVAM:
-            require_sarvam_api_key(settings, EXPLANATION_TEXT_MODE_VARIABLE)
-            raise AiConfigurationError(
-                f"{EXPLANATION_TEXT_MODE_VARIABLE}=sarvam is not available in this build yet."
-            )
+            api_key = require_sarvam_api_key(settings, EXPLANATION_TEXT_MODE_VARIABLE)
+            return build_sarvam_chat_text_adapter(settings, api_key, clock)
         if settings.explanation_text_provider_mode is AiProviderMode.OFF:
             announce_provider_off(EXPLANATION_TEXT_MODE_VARIABLE)
             return None

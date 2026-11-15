@@ -27,6 +27,11 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.adapters.customer_contact.port",
     "emi_copilot.adapters.consent_otp.port",
     "emi_copilot.adapters.consent_otp.code_generator_port",
+    # The AI ports and their typed values (Layer 4): requests, completions and prompt facts.
+    "emi_copilot.adapters.ai.ai_types",
+    "emi_copilot.adapters.ai.prompt_facts",
+    "emi_copilot.adapters.ai.explanation_text_port",
+    "emi_copilot.adapters.ai.speech_port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
     # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens

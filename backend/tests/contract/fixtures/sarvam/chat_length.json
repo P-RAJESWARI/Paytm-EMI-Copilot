@@ -1,0 +1,20 @@
+{
+  "id": "synthetic-chat-request-0002",
+  "object": "chat.completion",
+  "model": "sarvam-105b",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "length",
+      "message": {
+        "role": "assistant",
+        "content": "No-cost EMI from Brand: you pay ₹3,667 each"
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 412,
+    "completion_tokens": 600,
+    "total_tokens": 1012
+  }
+}

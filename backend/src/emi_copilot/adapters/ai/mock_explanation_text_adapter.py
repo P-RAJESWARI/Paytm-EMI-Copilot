@@ -1,7 +1,8 @@
 """MockExplanationTextAdapter: labelled stand-in for the AI text writer (CLAUDE.md rule 10).
 
-It copies every fact verbatim, so its text carries only numbers the facts already hold and
-passes the number audit; MOCK_AI_TEXT_BEHAVIOUR can make it fail on purpose for tests and demos.
+Given plan explanation facts it writes two plain sentences from them; any other facts are copied
+verbatim. Either way its text carries only numbers the facts hold, so it passes the number audit;
+MOCK_AI_TEXT_BEHAVIOUR can make it fail on purpose for tests and demos.
 """
 
 import json
@@ -11,12 +12,14 @@ from types import MappingProxyType
 
 from emi_copilot.adapters.ai.ai_types import AiTextCompletion, AiTextRequest
 from emi_copilot.adapters.ai.explanation_text_port import ExplanationTextPort
+from emi_copilot.adapters.ai.prompt_facts import ExplanationPromptFacts
 from emi_copilot.config.ai_settings import MockAiTextBehaviour
+from emi_copilot.core.indian_rupee_formatter import format_paise_as_whole_rupees
 from emi_copilot.domain.ai_errors import AiTextUnavailableError
 from emi_copilot.domain.customer_sessions import CustomerLanguage
 
 MOCK_TEXT_ACTIVE_WARNING_TEMPLATE = (
-    "MockExplanationTextAdapter active: AI text is copied from the facts, behaviour %s "
+    "MockExplanationTextAdapter active: AI text is written from the facts, behaviour %s "
     "(MOCK_AI_TEXT_BEHAVIOUR)"
 )
 MOCK_TEXT_MODEL_NAME = "mock-explanation-text"
@@ -28,6 +31,21 @@ OPENING_SENTENCES_BY_LANGUAGE = MappingProxyType(
         CustomerLanguage.TAMIL: "திட்டத்தின் விவரங்கள் எளிய சொற்களில்.",
     }
 )
+# {name}, {lender}, {monthly}, {tenure} and {extra} are filled from ExplanationPromptFacts.
+EXPLANATION_SENTENCES_BY_LANGUAGE = MappingProxyType(
+    {
+        CustomerLanguage.ENGLISH: (
+            "{name} from {lender}: {monthly} each month for {tenure} months. "
+            "The extra you pay in total is {extra}."
+        ),
+        # draft: needs native review
+        CustomerLanguage.TAMIL: (
+            "{name} ({lender}): ஒவ்வொரு மாதமும் {monthly}, {tenure} மாதங்களுக்கு. "
+            "மொத்தத்தில் நீங்கள் கூடுதலாகச் செலுத்துவது {extra}."
+        ),
+    }
+)
+_PAISE_PER_RUPEE = 100
 # The first digit of the first rupee amount, else the first digit anywhere in the text.
 RUPEE_AMOUNT_FIRST_DIGIT_PATTERN = re.compile(r"₹\s?(?P<digit>[0-9])")
 ANY_FIRST_DIGIT_PATTERN = re.compile(r"(?P<digit>[0-9])")
@@ -48,9 +66,23 @@ def render_fact_value(fact_value: object) -> str:
     return json.dumps(fact_value, ensure_ascii=False)
 
 
+def write_explanation(facts: ExplanationPromptFacts, language: CustomerLanguage) -> str:
+    """Writes the monthly and extra sentences, amounts formatted as the screens show them."""
+    return EXPLANATION_SENTENCES_BY_LANGUAGE[language].format(
+        name=facts.plan_display_name,
+        lender=facts.lender_label,
+        monthly=format_paise_as_whole_rupees(facts.monthly_amount_in_rupees * _PAISE_PER_RUPEE),
+        tenure=facts.tenure_in_months,
+        extra=format_paise_as_whole_rupees(facts.extra_in_total_in_rupees * _PAISE_PER_RUPEE),
+    )
+
+
 def write_text_from_facts(request: AiTextRequest) -> str:
-    """Writes one opening sentence, then one "name: value." sentence per top-level fact."""
+    """Explains plan facts in two sentences; copies any other facts as "name: value." sentences."""
     facts: dict[str, object] = json.loads(request.structured_facts_json)
+    explanation_facts = ExplanationPromptFacts.from_json_object(facts)
+    if explanation_facts is not None:
+        return write_explanation(explanation_facts, request.language)
     fact_sentences = [
         f"{humanise_fact_name(fact_name)}: {render_fact_value(fact_value)}."
         for fact_name, fact_value in facts.items()

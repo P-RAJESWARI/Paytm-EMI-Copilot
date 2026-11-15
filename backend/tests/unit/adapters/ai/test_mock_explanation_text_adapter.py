@@ -16,6 +16,11 @@ from emi_copilot.adapters.ai.mock_explanation_text_adapter import (
 from emi_copilot.config.ai_settings import MockAiTextBehaviour
 from emi_copilot.domain.ai_errors import AiTextUnavailableError
 from emi_copilot.domain.customer_sessions import CustomerLanguage
+from emi_copilot.domain.number_audit import AllowedNumbers, NumberAuditService
+from emi_copilot.domain.number_audit.allowed_numbers import whole_rupees_of
+from emi_copilot.domain.sales import ChosenPlan
+from emi_copilot.services.ai.explanation_prompt_builder import ExplanationPromptBuilder
+from tests.sale_builders import build_no_cost_chosen_plan, build_standard_chosen_plan
 
 DESIGN_PLAN_A_FACTS = {
     "planName": "No-cost EMI",
@@ -124,3 +129,37 @@ def test_humanise_fact_name_splits_camel_and_snake_case(
 ) -> None:
     """Fact names read as lower-case words in the Mock's text."""
     assert humanise_fact_name(fact_name) == expected_words
+
+
+@pytest.mark.parametrize("language", list(CustomerLanguage))
+@pytest.mark.parametrize("plan", [build_no_cost_chosen_plan(), build_standard_chosen_plan()])
+def test_mock_text_adapter_correct_explanation_passes_the_number_audit(
+    plan: ChosenPlan, language: CustomerLanguage
+) -> None:
+    """Given typed plan facts, the Mock writes two sentences the audit accepts."""
+    request = ExplanationPromptBuilder().build(plan, language)
+    text = MockExplanationTextAdapter().write_text(request).text
+    allowed = AllowedNumbers.for_plan_explanation(plan, label_texts=(plan.lender_label,))
+    required = (whole_rupees_of(plan.monthly_installment), whole_rupees_of(plan.extra_in_total))
+    assert NumberAuditService().audit(text, allowed, required).has_passed, text
+
+
+def test_mock_text_adapter_explains_design_plan_a_in_plain_english() -> None:
+    """The monthly figure, the tenure and the extra, formatted as the screens show them."""
+    request = ExplanationPromptBuilder().build(
+        build_no_cost_chosen_plan(), CustomerLanguage.ENGLISH
+    )
+    assert MockExplanationTextAdapter().write_text(request).text == (
+        "No-cost EMI from Brand: ₹3,667 each month for 6 months. The extra you pay in total is ₹0."
+    )
+
+
+def test_mock_text_adapter_wrong_number_explanation_fails_the_number_audit() -> None:
+    """MOCK_AI_TEXT_BEHAVIOUR=wrong_number shows the template fallback in the demo."""
+    plan = build_no_cost_chosen_plan()
+    request = ExplanationPromptBuilder().build(plan, CustomerLanguage.ENGLISH)
+    text = MockExplanationTextAdapter(MockAiTextBehaviour.WRONG_NUMBER).write_text(request).text
+    allowed = AllowedNumbers.for_plan_explanation(plan, label_texts=(plan.lender_label,))
+    result = NumberAuditService().audit(text, allowed, (3667, 0))
+    assert result.has_passed is False
+    assert result.mismatched_tokens == ("₹4,667",)

@@ -11,6 +11,7 @@ from emi_copilot.adapters.ai.mock_speech_adapter import (
     MOCK_SPEECH_ACTIVE_WARNING,
     MockSpeechAdapter,
 )
+from emi_copilot.adapters.ai.sarvam.sarvam_chat_text_adapter import SarvamChatTextAdapter
 from emi_copilot.adapters.ai.sarvam.sarvam_speech_adapter import SarvamSpeechAdapter
 from emi_copilot.config.ai_settings import AiProviderMode, AiSettings
 from emi_copilot.core.clock import SystemClock
@@ -74,15 +75,19 @@ def test_ai_factory_sarvam_mode_without_key_refuses_to_start(
         AiProviderFactory().create(AiSettings.model_validate(settings_fields), CLOCK)
 
 
-def test_ai_factory_sarvam_mode_with_key_refuses_until_the_adapter_exists() -> None:
-    """Until the Sarvam adapters are built, a configured key still cannot start Sarvam mode."""
+def test_ai_factory_text_in_sarvam_mode_with_key_builds_the_sarvam_chat_adapter(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """With a key, AI text is real and announced by host; the key is never logged."""
     settings = AiSettings(
         explanation_text_provider_mode=AiProviderMode.SARVAM,
         sarvam_api_key=SecretStr(SYNTHETIC_SARVAM_KEY),
     )
-    with pytest.raises(AiConfigurationError, match="not available in this build yet") as raised:
-        AiProviderFactory().create(settings, CLOCK)
-    assert SYNTHETIC_SARVAM_KEY not in str(raised.value)
+    with caplog.at_level(logging.INFO):
+        components = AiProviderFactory().create(settings, CLOCK)
+    assert isinstance(components.explanation_text, SarvamChatTextAdapter)
+    assert "SarvamChatTextAdapter active" in caplog.text
+    assert SYNTHETIC_SARVAM_KEY not in caplog.text
 
 
 def test_ai_factory_speech_in_sarvam_mode_with_key_builds_the_sarvam_adapter(

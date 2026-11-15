@@ -52,6 +52,7 @@ def test_speech_port_methods_take_only_audio_or_text_and_a_language(
         AI_ADAPTERS_DIRECTORY / "speech_port.py",
         AI_ADAPTERS_DIRECTORY / "explanation_text_port.py",
         AI_ADAPTERS_DIRECTORY / "ai_types.py",
+        AI_ADAPTERS_DIRECTORY / "prompt_facts.py",
     ],
     ids=describe_source_file,
 )
