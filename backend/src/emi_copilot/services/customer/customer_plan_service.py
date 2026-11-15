@@ -10,7 +10,7 @@ from emi_copilot.domain.customer_sessions import ComfortCheckStatus, CustomerSes
 from emi_copilot.domain.events import CustomerPlansViewed
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import OfferDiscoveryQuery
-from emi_copilot.domain.sales import Sale
+from emi_copilot.domain.sales import Sale, SaleStatus
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork, UnitOfWorkFactory
 from emi_copilot.services.customer.customer_session_access import (
@@ -101,18 +101,28 @@ class CustomerPlanService:
         comparison = self._plan_advice_service.compare_plans(
             inputs.item, inputs.monthly_budget, self._read_financial_profile(inputs.session)
         )
+        self._announce_plans_viewed_while_choosing(inputs.sale.id)
+        return comparison
+
+    def _announce_plans_viewed_while_choosing(self, sale_id: str) -> None:
+        """Announces PLANS_VIEWED only if the sale, locked, is still CHOOSING.
+
+        The plans were quoted outside a transaction, so the customer may have agreed meanwhile
+        (another tab); a view recorded after AGREED would put the funnel out of order.
+        """
         with self._unit_of_work_factory() as unit_of_work:
             # The sale lock makes two first views take turns, so the funnel counts one.
-            unit_of_work.sales.find_by_id_for_update(inputs.sale.id)
+            locked_sale = unit_of_work.sales.find_by_id_for_update(sale_id)
+            if locked_sale is None or locked_sale.status is not SaleStatus.CHOOSING:
+                return
             self._event_bus.publish(
                 CustomerPlansViewed(
                     occurred_at=self._clock.now(),
-                    sale_id=inputs.sale.id,
-                    merchant_id=inputs.sale.merchant_id,
+                    sale_id=locked_sale.id,
+                    merchant_id=locked_sale.merchant_id,
                 ),
                 unit_of_work,
             )
-        return comparison
 
     def suggest_alternatives(
         self, credentials: CustomerSessionCredentials, chosen_offer_id: str

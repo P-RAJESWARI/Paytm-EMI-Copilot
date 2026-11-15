@@ -152,6 +152,28 @@ def test_compare_plans_when_the_gateway_fails_records_no_view(
     assert FunnelStage.PLANS_VIEWED not in [event.stage for event in kit.database.funnel_events]
 
 
+def test_compare_plans_when_the_sale_is_agreed_meanwhile_records_no_view_after_agreement(
+    services: CustomerServices, kit: ServiceTestKit, credentials: CustomerSessionCredentials
+) -> None:
+    """Consent in another tab during the quote: PLANS_VIEWED never follows AGREED in the funnel."""
+    confirm(services, credentials, 3000)
+    quote_mock_offers = kit.payment_gateway.before_discover_offers
+    assert quote_mock_offers is not None
+
+    def agree_in_another_tab() -> None:
+        """Quotes as usual, standing in for the customer consenting meanwhile in another tab."""
+        quote_mock_offers()
+        sale = kit.database.sales_by_id[SALE_ID]
+        kit.database.sales_by_id[SALE_ID] = sale.agree_to_plan(
+            build_no_cost_chosen_plan(), sale.started_at
+        )
+
+    kit.payment_gateway.before_discover_offers = agree_in_another_tab
+    comparison = services.plans.compare_plans(credentials)
+    assert offer_ids(comparison) == [CARDLESS_OFFER_ID, NO_COST_OFFER_ID, CARD_OFFER_ID]
+    assert [event.stage for event in kit.database.funnel_events] == [FunnelStage.BUDGET_TOLD]
+
+
 def test_compare_plans_before_the_budget_is_refused(
     services: CustomerServices, credentials: CustomerSessionCredentials
 ) -> None:
