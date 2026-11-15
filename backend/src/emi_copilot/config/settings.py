@@ -32,6 +32,13 @@ class PaymentGatewayMode(StrEnum):
     PAYTM = "paytm"
 
 
+class MockFinancialProfileChoice(StrEnum):
+    """Which synthetic design profile the Mock gives every customer session (demo only)."""
+
+    STANDARD = "standard"
+    RISKY = "risky"
+
+
 class ApplicationSettings(BaseSettings):
     """All runtime configuration, one typed field per environment variable."""
 
@@ -101,6 +108,10 @@ class ApplicationSettings(BaseSettings):
     # When unset in Mock gateway mode a random per-process key is drawn (stored phone hashes
     # then differ after a restart); Paytm mode refuses to start without it.
     customer_phone_hash_secret: SecretStr | None = None
+    # MockSyntheticFinancialProfileAdapter (demo only, CLAUDE.md rule 10): the synthetic profile
+    # every comfort check reads. "standard" is the design's ₹30,000 inflow customer; "risky" is
+    # its second customer (₹20,000 inflow, plan B 59.3%), so the Risky band can be shown.
+    mock_financial_profile: MockFinancialProfileChoice = MockFinancialProfileChoice.STANDARD
     # Customer rate limits (security-and-compliance.md section 4; in-memory, per process). The QR
     # exchange is counted per client address; one-time code requests and consent (which verifies
     # the code) per client address and customer session together, so one phone cannot use up

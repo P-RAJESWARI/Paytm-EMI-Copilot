@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from emi_copilot.config.settings import ApplicationSettings
+from emi_copilot.config.settings import ApplicationSettings, MockFinancialProfileChoice
 from tests.unit.config.test_settings import SETTINGS_ENVIRONMENT_VARIABLES
 
 SYNTHETIC_HASH_KEY_TEXT = "synthetic-customer-hash-secret-0123456789"  # pragma: allowlist secret
@@ -108,4 +108,20 @@ def test_unusable_values_are_refused_at_startup(
     """A resend wait as long as the code's life, or a code that is not six digits, fails fast."""
     monkeypatch.setenv(variable_name, unusable_value)
     with pytest.raises(ValidationError, match=f"(?i){variable_name}"):
+        ApplicationSettings()
+
+
+def test_mock_financial_profile_is_standard_unless_the_demo_asks_for_risky(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MOCK_FINANCIAL_PROFILE picks the synthetic design customer; standard is the default."""
+    assert ApplicationSettings().mock_financial_profile is MockFinancialProfileChoice.STANDARD
+    monkeypatch.setenv("MOCK_FINANCIAL_PROFILE", "risky")
+    assert ApplicationSettings().mock_financial_profile is MockFinancialProfileChoice.RISKY
+
+
+def test_unknown_mock_financial_profile_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A typo fails at startup instead of silently showing another customer's bands."""
+    monkeypatch.setenv("MOCK_FINANCIAL_PROFILE", "comfortable")
+    with pytest.raises(ValidationError, match="mock_financial_profile"):
         ApplicationSettings()

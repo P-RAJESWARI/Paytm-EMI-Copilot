@@ -151,7 +151,7 @@ def build_application_components(
         sale_status_broadcaster=sale_status_broadcaster,
         settlement=SettlementFactory().create(),
         weekly_message_delivery=WeeklyMessageDeliveryFactory().create(),
-        financial_profile=MockSyntheticFinancialProfileAdapter(),
+        financial_profile=MockSyntheticFinancialProfileAdapter(settings.mock_financial_profile),
         are_financial_profiles_synthetic=True,
         customer_contact=customer_contact,
         consent_otp=consent_otp,

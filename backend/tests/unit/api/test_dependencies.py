@@ -11,6 +11,7 @@ from emi_copilot.adapters.consent_otp.mock_adapter import MockConsentOtpSenderAd
 from emi_copilot.adapters.customer_contact.factory import CustomerContactConfigurationError
 from emi_copilot.adapters.customer_contact.mock_adapter import MockPaytmCustomerContactAdapter
 from emi_copilot.adapters.financial_profile.mock_adapter import (
+    RISKY_SYNTHETIC_PROFILE,
     MockSyntheticFinancialProfileAdapter,
 )
 from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayConfigurationError
@@ -40,7 +41,11 @@ from emi_copilot.api.rate_limiting import (
     provide_pairing_rate_limiter,
     provide_payment_webhook_rate_limiter,
 )
-from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
+from emi_copilot.config.settings import (
+    ApplicationSettings,
+    MockFinancialProfileChoice,
+    PaymentGatewayMode,
+)
 from emi_copilot.core.consent_reference_serial_generator import (
     RandomConsentReferenceSerialGenerator,
 )
@@ -142,6 +147,20 @@ def test_startup_builds_the_labelled_customer_flow_mocks_and_announces_them(
         "MockConsentOtpSenderAdapter",
     ):
         assert mock_name in announced_messages
+
+
+def test_startup_gives_the_mock_the_configured_synthetic_profile(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """MOCK_FINANCIAL_PROFILE=risky makes the design's Risky customer reachable, and says so."""
+    application = create_application(
+        ApplicationSettings(mock_financial_profile=MockFinancialProfileChoice.RISKY)
+    )
+    with caplog.at_level(logging.WARNING), TestClient(application):
+        components = application.state.application_components
+        profile = components.financial_profile.get_financial_profile("any-customer-session")
+        assert profile == RISKY_SYNTHETIC_PROFILE
+    assert "synthetic risky profile" in caplog.text
 
 
 def test_customer_rate_limiters_are_built_once_from_their_settings() -> None:

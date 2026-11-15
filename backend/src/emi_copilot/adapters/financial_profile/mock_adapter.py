@@ -3,11 +3,13 @@
 import logging
 
 from emi_copilot.adapters.financial_profile.port import FinancialProfilePort
+from emi_copilot.config.settings import MockFinancialProfileChoice
 from emi_copilot.domain.comfort import FinancialProfile
 from emi_copilot.domain.money import Money
 
-MOCK_ACTIVE_WARNING = (
-    "MockSyntheticFinancialProfileAdapter active: comfort checks use synthetic profiles"
+MOCK_ACTIVE_WARNING_TEMPLATE = (
+    "MockSyntheticFinancialProfileAdapter active: every comfort check uses the synthetic "
+    "%s profile (MOCK_FINANCIAL_PROFILE)"
 )
 STANDARD_SYNTHETIC_PROFILE = FinancialProfile(
     monthly_inflow=Money.from_rupees(30000), existing_emis_per_month=Money.from_rupees(8000)
@@ -19,23 +21,30 @@ RISKY_SYNTHETIC_PROFILE = FinancialProfile(
 )
 """The design's second customer: inflow ₹20,000, existing EMIs ₹8,000; plan B gives 59.25%."""
 
+SYNTHETIC_PROFILES_BY_CHOICE = {
+    MockFinancialProfileChoice.STANDARD: STANDARD_SYNTHETIC_PROFILE,
+    MockFinancialProfileChoice.RISKY: RISKY_SYNTHETIC_PROFILE,
+}
+
 mock_financial_profile_logger = logging.getLogger(__name__)
 
 
 # Pattern: Adapter (Mock). Implements FinancialProfilePort with synthetic data, so the comfort check
 # can be demonstrated without any account-aggregator integration (CLAUDE.md section 2, rule 10).
 class MockSyntheticFinancialProfileAdapter(FinancialProfilePort):
-    """Gives the risky synthetic profile to listed sessions and the standard one to all others."""
+    """Gives every customer session the one synthetic profile chosen by MOCK_FINANCIAL_PROFILE."""
 
-    def __init__(self, risky_customer_session_ids: frozenset[str] = frozenset()) -> None:
-        """Stores the sessions that get the risky profile and announces that this is a Mock."""
-        self._risky_customer_session_ids = frozenset(risky_customer_session_ids)
+    def __init__(
+        self, profile_choice: MockFinancialProfileChoice = MockFinancialProfileChoice.STANDARD
+    ) -> None:
+        """Keeps the chosen profile and announces, naming it, that profiles are synthetic."""
+        self._profile = SYNTHETIC_PROFILES_BY_CHOICE[profile_choice]
         mock_financial_profile_logger.warning(
-            MOCK_ACTIVE_WARNING, extra={"financial_profile_adapter": "mock"}
+            MOCK_ACTIVE_WARNING_TEMPLATE,
+            profile_choice.value,
+            extra={"financial_profile_adapter": "mock"},
         )
 
-    def get_financial_profile(self, customer_session_id: str) -> FinancialProfile:
-        """Gives the risky profile for a listed session id, else the standard profile."""
-        if customer_session_id in self._risky_customer_session_ids:
-            return RISKY_SYNTHETIC_PROFILE
-        return STANDARD_SYNTHETIC_PROFILE
+    def get_financial_profile(self, customer_session_id: str) -> FinancialProfile:  # noqa: ARG002 - one profile for all
+        """Gives the chosen synthetic profile, whichever session asks."""
+        return self._profile
