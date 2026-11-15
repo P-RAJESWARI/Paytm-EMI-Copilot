@@ -6,20 +6,18 @@ import type {
   CustomerPlanResponse,
   CustomerPlansResponse,
   CustomerReceiptResponse,
+  CustomerSessionResponse,
   OtpChallengeResponse,
   PlanAlternativeResponse,
   PlanAlternativesResponse,
   PlanExplanationResponse,
-} from './customerContractTypes';
-import type {
-  Layer4CustomerSessionResponse,
-  SpeechPurpose,
+  SpeechTranscriptionPurpose,
   SpeechTranscriptionResponse,
   TeachBackResponse,
-} from './layer4ContractTypes';
+} from './customerContractTypes';
 
 /** The session as screens see it: the shop, the item and the code; the token never leaves the API. */
-export type CustomerSession = Omit<Layer4CustomerSessionResponse, 'sessionToken'>;
+export type CustomerSession = Omit<CustomerSessionResponse, 'sessionToken'>;
 /** The comfort check outcome: completed with synthetic inflow and EMIs, or skipped. */
 export type ComfortCheckResult = ComfortCheckResponse;
 /** Every plan for the confirmed budget, ranked by the server; none is ever hidden. */
@@ -31,7 +29,7 @@ export type PlanAlternative = PlanAlternativeResponse;
 export type PlanExplanation = PlanExplanationResponse;
 export type SpeechTranscription = SpeechTranscriptionResponse;
 export type TeachBackOutcome = TeachBackResponse;
-export type { SpeechPurpose };
+export type SpeechPurpose = SpeechTranscriptionPurpose;
 export type OtpChallenge = OtpChallengeResponse;
 export type ConsentConfirmation = ConsentResponse;
 export type CustomerReceipt = CustomerReceiptResponse;

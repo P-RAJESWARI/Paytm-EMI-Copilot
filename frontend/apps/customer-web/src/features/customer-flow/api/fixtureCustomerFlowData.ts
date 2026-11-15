@@ -4,17 +4,17 @@ import type {
   ConsentedPlanResponse,
   CustomerPlanResponse,
   CustomerPlansResponse,
+  CustomerSessionResponse,
   PlanAlternativesResponse,
   PlanExplanationResponse,
 } from './customerContractTypes';
-import type { Layer4CustomerSessionResponse } from './layer4ContractTypes';
 
 // The DESIGN_SPEC section 4 sample, copied from the Phase 3A contract examples (which the engines
 // computed), so the fixture and the real API agree. ADR 0020: a ₹4,000 down payment gives ₹3,000
 // a month at 3,667 bp, never the mockup's ₹2,999 / 36.6%.
 
 /** The session as screens see it: sample shop, item and session code 4821. */
-export const FIXTURE_CUSTOMER_SESSION: Omit<Layer4CustomerSessionResponse, 'sessionToken'> = {
+export const FIXTURE_CUSTOMER_SESSION: Omit<CustomerSessionResponse, 'sessionToken'> = {
   customerSessionId: 'fixture-customer-session-4821',
   sessionCode: '4821',
   shopName: 'Ravi Electronics',
@@ -25,7 +25,7 @@ export const FIXTURE_CUSTOMER_SESSION: Omit<Layer4CustomerSessionResponse, 'sess
 };
 
 /** The QR exchange answer on the wire: the session plus its (fake) token. */
-export const FIXTURE_SESSION: Layer4CustomerSessionResponse = {
+export const FIXTURE_SESSION: CustomerSessionResponse = {
   ...FIXTURE_CUSTOMER_SESSION,
   sessionToken: 'fixture-session-token',
 };

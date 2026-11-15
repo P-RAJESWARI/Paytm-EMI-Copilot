@@ -48,24 +48,6 @@ async function createApiWithOpenSession(routes: FakeRoutes = ROUTES) {
 }
 
 describe('HttpCustomerFlowApi: Layer 4 voice and teach-back', () => {
-  it('treats a session answer without the voice flag as voice off', async () => {
-    const sessionWithoutFlag = Object.fromEntries(
-      Object.entries(FIXTURE_SESSION).filter(([fieldName]) => fieldName !== 'isVoiceAvailable'),
-    );
-    const fakeBackend = createFakeCustomerBackend({
-      'POST /api/v1/customer-sessions': () => jsonResponse(sessionWithoutFlag, 201),
-    });
-    const customerFlowApi = new HttpCustomerFlowApi({
-      baseUrl: 'http://customer.test',
-      fetchFunction: fakeBackend.fetchFunction,
-    });
-
-    const session = await customerFlowApi.startSession('qr-token-2');
-
-    expect(session.isVoiceAvailable).toBe(false);
-    expect(Object.keys(session)).not.toContain('sessionToken');
-  });
-
   it('sends the raw recording with its content type, the purpose and the session token', async () => {
     const { fakeBackend, customerFlowApi } = await createApiWithOpenSession();
 
@@ -100,6 +82,9 @@ describe('HttpCustomerFlowApi: Layer 4 voice and teach-back', () => {
 
     expect(await audio.text()).toBe('mp3-bytes');
     expect(fakeBackend.recordedRequests.at(-1)?.body).toEqual({ explanationId: 'explanation-1' });
+    expect(fakeBackend.recordedRequests.at(-1)?.headers.get('X-Customer-Session-Token')).toBe(
+      'fixture-session-token',
+    );
   });
 
   it('sends the teach-back answer with the language and reads the result', async () => {

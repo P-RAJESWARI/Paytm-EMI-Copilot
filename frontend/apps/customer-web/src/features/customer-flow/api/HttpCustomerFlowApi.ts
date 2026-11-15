@@ -17,7 +17,6 @@ import type {
   SpeechTranscription,
   TeachBackOutcome,
 } from './CustomerFlowApi';
-import { readLayer4Session } from './layer4ContractTypes';
 import { readApiData } from './readApiData';
 import { sendSessionRequest, type SessionRequest } from './sendSessionRequest';
 
@@ -73,7 +72,7 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
     const response = await readApiData(
       this.apiClient.POST('/api/v1/customer-sessions', { body: { qrToken } }),
     );
-    const { sessionToken, ...session } = readLayer4Session(response);
+    const { sessionToken, ...session } = response;
     this.activeSession = { customerSessionId: session.customerSessionId, sessionToken };
     return session;
   }
@@ -195,32 +194,40 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
   }
 
   // Fetches the spoken explanation as audio bytes (C7 Listen).
-  async synthesiseExplanation(explanationId: string): Promise<Blob> {
-    const response = await this.sendInSession('/speech/synthesis', {
-      body: JSON.stringify({ explanationId }),
-      contentType: 'application/json',
-    });
-    return response.blob();
+  synthesiseExplanation(explanationId: string): Promise<Blob> {
+    return this.callInSession((params) =>
+      readApiData(
+        this.apiClient.POST('/api/v1/customer-sessions/{customerSessionId}/speech/synthesis', {
+          params,
+          body: { explanationId },
+          parseAs: 'blob',
+        }),
+      ),
+    );
   }
 
   // Sends the customer's own-words answer for the plan in their language (C8).
-  async checkTeachBack(
+  checkTeachBack(
     offerId: string,
     answerText: string,
     language: SupportedLanguage,
   ): Promise<TeachBackOutcome> {
-    const response = await this.sendInSession('/teach-back', {
-      body: JSON.stringify({ offerId, answerText }),
-      contentType: 'application/json',
-      language,
-    });
-    return (await response.json()) as TeachBackOutcome;
+    return this.callInSession((params) =>
+      readApiData(
+        this.apiClient.POST('/api/v1/customer-sessions/{customerSessionId}/teach-back', {
+          params,
+          body: { offerId, answerText },
+          headers: { 'Accept-Language': language },
+        }),
+      ),
+    );
   }
 
-  // Sends a Layer 4 call the generated client cannot type yet, under the active session's path.
+  // Sends a raw-body call under the active session's path. The generated schema types the raw
+  // audio body as a string, so only transcription uses this instead of the typed client.
   private sendInSession(
     pathAfterSession: string,
-    options: Pick<SessionRequest, 'body' | 'contentType' | 'language'> & { query?: string },
+    options: Pick<SessionRequest, 'body' | 'contentType' | 'language'> & { query: string },
   ): Promise<Response> {
     const activeSession = this.activeSession;
     if (activeSession === undefined) {
@@ -231,7 +238,7 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
       baseUrl: this.baseUrl,
       fetchFunction: this.fetchFunction,
       sessionToken: activeSession.sessionToken,
-      path: `${sessionPath}${pathAfterSession}${options.query ?? ''}`,
+      path: `${sessionPath}${pathAfterSession}${options.query}`,
       body: options.body,
       contentType: options.contentType,
       language: options.language,

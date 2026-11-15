@@ -1,10 +1,10 @@
-import type { CustomerPlanResponse } from './customerContractTypes';
+import type { SpeechPurpose } from './CustomerFlowApi';
 import type {
-  SpeechPurpose,
+  CustomerPlanResponse,
   SpeechTranscriptionResponse,
   TeachBackResponse,
   TeachBackResult,
-} from './layer4ContractTypes';
+} from './customerContractTypes';
 
 // Layer 4 sample answers for the fixture: what the speech, synthesis and teach-back calls give
 // against the DESIGN_SPEC section 4 data. The real checks run on the server.

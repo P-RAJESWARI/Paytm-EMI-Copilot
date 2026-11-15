@@ -30,4 +30,11 @@ export type ConsentedPlanResponse = ApiSchemas['ConsentedPlanResponse'];
 export type ConsentResponse = ApiSchemas['ConsentResponse'];
 export type CustomerReceiptResponse = ApiSchemas['CustomerReceiptResponse'];
 /** RFC 7807 body; `attemptsRemaining` is the OTP_INCORRECT extension member (ADR 0022 decision 3). */
+/** What a recording is for: BUDGET (C2, an amount is read) or TEACH_BACK (C8). */
+export type SpeechTranscriptionPurpose = ApiSchemas['SpeechTranscriptionPurpose'];
+/** Speech-to-text answer; it never changes the budget. */
+export type SpeechTranscriptionResponse = ApiSchemas['SpeechTranscriptionResponse'];
+/** C8 outcome: advice only, the customer may always continue. */
+export type TeachBackResult = ApiSchemas['TeachBackResult'];
+export type TeachBackResponse = ApiSchemas['TeachBackResponse'];
 export type CustomerProblemDetailsResponse = ApiSchemas['CustomerProblemDetailsResponse'];
