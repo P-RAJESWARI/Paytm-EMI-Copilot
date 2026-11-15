@@ -440,7 +440,7 @@ export interface paths {
         put?: never;
         /**
          * Start a customer session from the shop's QR
-         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. No credentials: the QR token itself is the credential. It is single-use: it is traded once for a session token, sent as X-Customer-Session-Token on every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new QR from the shop ends the sale's earlier session. Limited per client address (429 with Retry-After). Location points at the session.
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. No credentials: the QR token itself is the credential. It is single-use: it is traded once for a session token, sent as X-Customer-Session-Token on every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new QR from the shop ends the sale's earlier session. Limited per client address (429 with Retry-After). Location points at the session. isVoiceAvailable says whether to offer the microphone.
          */
         post: operations["start_customer_session_api_v1_customer_sessions_post"];
         delete?: never;
@@ -563,6 +563,66 @@ export interface paths {
          * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Plain words about the plan as quoted now for the session's item: each month, for how many months, and the extra in total. source AI_AUDITED is AI text whose every number passed the number audit; TEMPLATE is the standard text, shown whenever AI is off, unavailable or fails the audit, never with an AI error. Accept-Language en or ta picks the language (English by default; the Tamil text is a draft awaiting native review). highlightedAmounts are computed by the engine, never by AI. Asking again for the same plan gives the same text and explanationId; send explanationId to speech/synthesis to hear exactly this text.
          */
         post: operations["explain_customer_plan_api_v1_customer_sessions__customerSessionId__explanation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/speech/transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn the customer's recording into text and an amount
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Voice is optional: when isVoiceAvailable is false, or on a 502 or 504, the app offers typing instead. Audio is held in memory only and never stored or logged. Limited per client and session (429 with Retry-After). The body is the raw recording (audio/webm, ogg, mp4, mpeg or wav; codec parameters allowed). purpose BUDGET is the C2 monthly amount, TEACH_BACK the C8 answer. Accept-Language picks the language listened for. recognisedAmountInPaise is the one amount heard (null if none or several), read deterministically, never by AI. This NEVER changes the budget: the customer still confirms the amount, which calls PUT .../budget.
+         */
+        post: operations["transcribe_customer_speech_api_v1_customer_sessions__customerSessionId__speech_transcriptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/speech/synthesis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Speak an explanation the customer was shown
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Voice is optional: when isVoiceAvailable is false, or on a 502 or 504, the app offers typing instead. Audio is held in memory only and never stored or logged. Limited per client and session (429 with Retry-After). Speaks exactly the text of an explanation this session was shown, named by its explanationId from POST .../explanation; the client never supplies text. Answers the audio bytes (audio/mpeg from Sarvam, audio/wav from the labelled Mock) with Cache-Control: no-store.
+         */
+        post: operations["synthesise_customer_explanation_api_v1_customer_sessions__customerSessionId__speech_synthesis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/teach-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the customer's own words about a plan
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Advisory only: CLOSE_ENOUGH when the monthly amount said is within 5% of the plan's and the months are right, otherwise TRY_AGAIN. The answer is read deterministically and never sent to an AI model; nothing is stored and consent is never blocked. Accept-Language en or ta picks the language of the feedback. highlightedAmounts are the engine's figures. Limited per client and session (429 with Retry-After).
+         */
+        post: operations["check_customer_teach_back_api_v1_customer_sessions__customerSessionId__teach_back_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1331,6 +1391,12 @@ export interface components {
              * @example 2026-11-15T10:00:00Z
              */
             expiresAt: string;
+            /**
+             * Isvoiceavailable
+             * @description Whether to offer the microphone: speech is not switched off.
+             * @example true
+             */
+            isVoiceAvailable: boolean;
         };
         /**
          * CustomerSessionSummaryResponse
@@ -1381,6 +1447,12 @@ export interface components {
              * @example false
              */
             hasConsented: boolean;
+            /**
+             * Isvoiceavailable
+             * @description Whether to offer the microphone: speech is not switched off.
+             * @example true
+             */
+            isVoiceAvailable: boolean;
         };
         /**
          * DevicePairingResponse
@@ -2367,6 +2439,47 @@ export interface components {
             periodStartDate: string;
         };
         /**
+         * SpeechSynthesisRequest
+         * @description Which shown explanation to speak; the client never supplies the text itself.
+         */
+        SpeechSynthesisRequest: {
+            /**
+             * Explanationid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0F
+             */
+            explanationId: string;
+        };
+        /**
+         * SpeechTranscriptionPurpose
+         * @description Which screen the recording is for: the C2 budget or the C8 teach-back answer.
+         * @enum {string}
+         */
+        SpeechTranscriptionPurpose: "BUDGET" | "TEACH_BACK";
+        /**
+         * SpeechTranscriptionResponse
+         * @description What was heard and the one amount in it; the budget is not changed by this answer.
+         *
+         *     recognisedAmountInPaise is null when no single amount was heard. isLikelyMisheard asks the
+         *     customer to check: no single amount, zero, or more each month than the item's price.
+         */
+        SpeechTranscriptionResponse: {
+            /**
+             * Transcript
+             * @example ₹3,000 a month
+             */
+            transcript: string;
+            /**
+             * Recognisedamountinpaise
+             * @example 300000
+             */
+            recognisedAmountInPaise: number | null;
+            /**
+             * Islikelymisheard
+             * @example false
+             */
+            isLikelyMisheard: boolean;
+        };
+        /**
          * StartCustomerSessionRequest
          * @description The token read from the QR the merchant shows; it is never logged.
          */
@@ -2408,6 +2521,55 @@ export interface components {
             /** Monthlyinstallmentinpaise */
             monthlyInstallmentInPaise: number;
         };
+        /**
+         * TeachBackRequest
+         * @description The plan and the customer's answer in their own words (typed or transcribed).
+         */
+        TeachBackRequest: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+            /**
+             * Answertext
+             * @example 3,667 every month for 6 months, nothing extra
+             */
+            answerText: string;
+        };
+        /**
+         * TeachBackResponse
+         * @description Advisory feedback: CLOSE_ENOUGH or TRY_AGAIN, with the plan's terms restated.
+         *
+         *     heardText echoes the monthly amount heard (null when none); highlightedAmounts are the
+         *     engine's figures. Nothing is stored and consent is never blocked.
+         */
+        TeachBackResponse: {
+            result: components["schemas"]["TeachBackResult"];
+            /**
+             * Title
+             * @example Nearly there
+             */
+            title: string;
+            /**
+             * Body
+             * @example You will pay ₹3,667 every month for 6 months. Nothing extra on top of ₹22,000.
+             */
+            body: string;
+            /**
+             * Heardtext
+             * @example About ₹3,667 every month
+             */
+            heardText: string | null;
+            /** Highlightedamounts */
+            highlightedAmounts: components["schemas"]["HighlightedAmountResponse"][];
+        };
+        /**
+         * TeachBackResult
+         * @description Advisory only: TRY_AGAIN never blocks consent, it offers to explain the plan again.
+         * @enum {string}
+         */
+        TeachBackResult: "CLOSE_ENOUGH" | "TRY_AGAIN";
         /**
          * WeeklyMessageLanguagesResponse
          * @description The same message in English (en) and Tamil (ta, draft wording).
@@ -4465,7 +4627,8 @@ export interface operations {
                      *       "shopName": "Ravi Electronics",
                      *       "productName": "Example phone, 128 GB",
                      *       "priceInPaise": 2200000,
-                     *       "expiresAt": "2026-11-15T10:00:00Z"
+                     *       "expiresAt": "2026-11-15T10:00:00Z",
+                     *       "isVoiceAvailable": true
                      *     }
                      */
                     "application/json": components["schemas"]["CustomerSessionResponse"];
@@ -4548,7 +4711,8 @@ export interface operations {
                      *       "expiresAt": "2026-11-15T10:00:00Z",
                      *       "hasConfirmedBudget": true,
                      *       "comfortCheckStatus": "COMPLETED",
-                     *       "hasConsented": true
+                     *       "hasConsented": true,
+                     *       "isVoiceAvailable": true
                      *     }
                      */
                     "application/json": components["schemas"]["CustomerSessionSummaryResponse"];
@@ -5198,6 +5362,314 @@ export interface operations {
             /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway could not quote plans right now. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway did not answer in time. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    transcribe_customer_speech_api_v1_customer_sessions__customerSessionId__speech_transcriptions_post: {
+        parameters: {
+            query: {
+                /** @description BUDGET (C2) or TEACH_BACK (C8). */
+                purpose: components["schemas"]["SpeechTranscriptionPurpose"];
+            };
+            header?: {
+                /** @description en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English. */
+                "Accept-Language"?: string | null;
+            };
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "audio/mp4": string;
+                "audio/mpeg": string;
+                "audio/ogg": string;
+                "audio/wav": string;
+                "audio/webm": string;
+            };
+        };
+        responses: {
+            /** @description What was heard and the amount in it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpeechTranscriptionResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. The body is larger than SPEECH_UPLOAD_MAX_BYTES (512 KiB by default); record less. The body is empty or its Content-Type is not one of the accepted audio types. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description This phone made too many voice or teach-back requests for the session in this window. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description Speech is switched off, or the speech provider refused or failed; nothing was stored. The app quietly offers typing instead. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The speech provider did not answer within its timeout; try again or type instead. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    synthesise_customer_explanation_api_v1_customer_sessions__customerSessionId__speech_synthesis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpeechSynthesisRequest"];
+            };
+        };
+        responses: {
+            /** @description The spoken explanation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": string;
+                    "audio/wav": string;
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. The explanationId was not shown to this session, or it has expired; ask for the explanation again. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description This phone made too many voice or teach-back requests for the session in this window. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description Speech is switched off, or the speech provider refused or failed; nothing was stored. The app quietly offers typing instead. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The speech provider did not answer within its timeout; try again or type instead. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    check_customer_teach_back_api_v1_customer_sessions__customerSessionId__teach_back_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English. */
+                "Accept-Language"?: string | null;
+            };
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeachBackRequest"];
+            };
+        };
+        responses: {
+            /** @description The feedback card. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeachBackResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description This phone made too many voice or teach-back requests for the session in this window. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

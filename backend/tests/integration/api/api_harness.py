@@ -16,6 +16,7 @@ from emi_copilot.api.dependencies import (
     provide_unit_of_work_factory,
 )
 from emi_copilot.api.rate_limiting import (
+    provide_ai_session_rate_limiter,
     provide_consent_otp_request_rate_limiter,
     provide_customer_consent_rate_limiter,
     provide_customer_session_start_rate_limiter,
@@ -122,6 +123,11 @@ def open_api_harness(
             provide_customer_consent_rate_limiter,
             settings.customer_consent_rate_limit_max_requests,
             settings.customer_consent_rate_limit_window_in_seconds,
+        ),
+        (
+            provide_ai_session_rate_limiter,
+            settings.ai_settings.ai_session_rate_limit_max_requests,
+            settings.ai_settings.ai_session_rate_limit_window_in_seconds,
         ),
     ):
         application.dependency_overrides[limiter_provider] = keep_limiter(

@@ -4486,7 +4486,7 @@
           "customer sessions"
         ],
         "summary": "Start a customer session from the shop's QR",
-        "description": "Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. No credentials: the QR token itself is the credential. It is single-use: it is traded once for a session token, sent as X-Customer-Session-Token on every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new QR from the shop ends the sale's earlier session. Limited per client address (429 with Retry-After). Location points at the session.",
+        "description": "Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. No credentials: the QR token itself is the credential. It is single-use: it is traded once for a session token, sent as X-Customer-Session-Token on every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new QR from the shop ends the sale's earlier session. Limited per client address (429 with Retry-After). Location points at the session. isVoiceAvailable says whether to offer the microphone.",
         "operationId": "start_customer_session_api_v1_customer_sessions_post",
         "requestBody": {
           "content": {
@@ -4521,7 +4521,8 @@
                   "shopName": "Ravi Electronics",
                   "productName": "Example phone, 128 GB",
                   "priceInPaise": 2200000,
-                  "expiresAt": "2026-11-15T10:00:00Z"
+                  "expiresAt": "2026-11-15T10:00:00Z",
+                  "isVoiceAvailable": true
                 }
               }
             }
@@ -4708,7 +4709,8 @@
                   "expiresAt": "2026-11-15T10:00:00Z",
                   "hasConfirmedBudget": true,
                   "comfortCheckStatus": "COMPLETED",
-                  "hasConsented": true
+                  "hasConsented": true,
+                  "isVoiceAvailable": true
                 }
               }
             }
@@ -6088,6 +6090,878 @@
                 },
                 "schema": {
                   "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The payment gateway could not quote plans right now.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_UNAVAILABLE": {
+                    "summary": "Payment gateway unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-unavailable",
+                      "title": "Payment gateway unavailable",
+                      "status": 502,
+                      "detail": "The gateway could not serve the call.",
+                      "code": "PAYMENT_GATEWAY_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The payment gateway did not answer in time.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "PAYMENT_GATEWAY_TIMEOUT": {
+                    "summary": "Payment gateway timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/payment-gateway-timeout",
+                      "title": "Payment gateway timed out",
+                      "status": 504,
+                      "detail": "The gateway did not answer in time.",
+                      "code": "PAYMENT_GATEWAY_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer-sessions/{customerSessionId}/speech/transcriptions": {
+      "post": {
+        "tags": [
+          "customer voice"
+        ],
+        "summary": "Turn the customer's recording into text and an amount",
+        "description": "Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Voice is optional: when isVoiceAvailable is false, or on a 502 or 504, the app offers typing instead. Audio is held in memory only and never stored or logged. Limited per client and session (429 with Retry-After). The body is the raw recording (audio/webm, ogg, mp4, mpeg or wav; codec parameters allowed). purpose BUDGET is the C2 monthly amount, TEACH_BACK the C8 answer. Accept-Language picks the language listened for. recognisedAmountInPaise is the one amount heard (null if none or several), read deterministically, never by AI. This NEVER changes the budget: the customer still confirms the amount, which calls PUT .../budget.",
+        "operationId": "transcribe_customer_speech_api_v1_customer_sessions__customerSessionId__speech_transcriptions_post",
+        "security": [
+          {
+            "CustomerSessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customerSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The customerSessionId returned when the QR was exchanged.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0E"
+              ],
+              "title": "Customersessionid"
+            },
+            "description": "The customerSessionId returned when the QR was exchanged."
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SpeechTranscriptionPurpose",
+              "description": "BUDGET (C2) or TEACH_BACK (C8)."
+            },
+            "description": "BUDGET (C2) or TEACH_BACK (C8)."
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English.",
+              "examples": [
+                "ta"
+              ],
+              "title": "Accept-Language"
+            },
+            "description": "en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What was heard and the amount in it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeechTranscriptionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The session token is missing, opens no session, or the session or its sale has ended.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_TOKEN_INVALID": {
+                    "summary": "Customer session not valid",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-token-invalid",
+                      "title": "Customer session not valid",
+                      "status": 401,
+                      "detail": "This session link is not valid; ask the shop for a new QR.",
+                      "code": "CUSTOMER_SESSION_TOKEN_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The token is valid but belongs to another session id, whether that id exists or not.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_NOT_FOUND": {
+                    "summary": "Customer session not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-not-found",
+                      "title": "Customer session not found",
+                      "status": 404,
+                      "detail": "No customer session has this id.",
+                      "code": "CUSTOMER_SESSION_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one. The body is larger than SPEECH_UPLOAD_MAX_BYTES (512 KiB by default); record less. The body is empty or its Content-Type is not one of the accepted audio types.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  },
+                  "AUDIO_TOO_LARGE": {
+                    "summary": "Recording too large",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/audio-too-large",
+                      "title": "Recording too large",
+                      "status": 422,
+                      "detail": "The recording is larger than the upload limit.",
+                      "code": "AUDIO_TOO_LARGE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "AUDIO_FORMAT_UNSUPPORTED": {
+                    "summary": "Recording format not accepted",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/audio-format-unsupported",
+                      "title": "Recording format not accepted",
+                      "status": 422,
+                      "detail": "Send one recording as audio/webm, ogg, mp4, mpeg or wav.",
+                      "code": "AUDIO_FORMAT_UNSUPPORTED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This phone made too many voice or teach-back requests for the session in this window.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many voice or teach-back requests for this session; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Speech is switched off, or the speech provider refused or failed; nothing was stored. The app quietly offers typing instead.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEECH_UNAVAILABLE": {
+                    "summary": "Speech unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/speech-unavailable",
+                      "title": "Speech unavailable",
+                      "status": 502,
+                      "detail": "Speech is switched off; type the amount instead.",
+                      "code": "SPEECH_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The speech provider did not answer within its timeout; try again or type instead.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEECH_TIMEOUT": {
+                    "summary": "Speech timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/speech-timeout",
+                      "title": "Speech timed out",
+                      "status": 504,
+                      "detail": "The speech provider did not answer in time.",
+                      "code": "SPEECH_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "audio/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "audio/mpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "audio/ogg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "audio/wav": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "audio/webm": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer-sessions/{customerSessionId}/speech/synthesis": {
+      "post": {
+        "tags": [
+          "customer voice"
+        ],
+        "summary": "Speak an explanation the customer was shown",
+        "description": "Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Voice is optional: when isVoiceAvailable is false, or on a 502 or 504, the app offers typing instead. Audio is held in memory only and never stored or logged. Limited per client and session (429 with Retry-After). Speaks exactly the text of an explanation this session was shown, named by its explanationId from POST .../explanation; the client never supplies text. Answers the audio bytes (audio/mpeg from Sarvam, audio/wav from the labelled Mock) with Cache-Control: no-store.",
+        "operationId": "synthesise_customer_explanation_api_v1_customer_sessions__customerSessionId__speech_synthesis_post",
+        "security": [
+          {
+            "CustomerSessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customerSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The customerSessionId returned when the QR was exchanged.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0E"
+              ],
+              "title": "Customersessionid"
+            },
+            "description": "The customerSessionId returned when the QR was exchanged."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeechSynthesisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The spoken explanation.",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The session token is missing, opens no session, or the session or its sale has ended.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_TOKEN_INVALID": {
+                    "summary": "Customer session not valid",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-token-invalid",
+                      "title": "Customer session not valid",
+                      "status": 401,
+                      "detail": "This session link is not valid; ask the shop for a new QR.",
+                      "code": "CUSTOMER_SESSION_TOKEN_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The token is valid but belongs to another session id, whether that id exists or not. The explanationId was not shown to this session, or it has expired; ask for the explanation again.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_NOT_FOUND": {
+                    "summary": "Customer session not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-not-found",
+                      "title": "Customer session not found",
+                      "status": 404,
+                      "detail": "No customer session has this id.",
+                      "code": "CUSTOMER_SESSION_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "EXPLANATION_NOT_FOUND": {
+                    "summary": "Explanation not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/explanation-not-found",
+                      "title": "Explanation not found",
+                      "status": 404,
+                      "detail": "No explanation with this id was shown to the session.",
+                      "code": "EXPLANATION_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This phone made too many voice or teach-back requests for the session in this window.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many voice or teach-back requests for this session; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected failure; the body never holds a stack trace.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "INTERNAL_SERVER_ERROR": {
+                    "summary": "Internal server error",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/internal-server-error",
+                      "title": "Internal server error",
+                      "status": 500,
+                      "detail": "An unexpected error occurred; quote the correlation id when reporting it.",
+                      "code": "INTERNAL_SERVER_ERROR",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Speech is switched off, or the speech provider refused or failed; nothing was stored. The app quietly offers typing instead.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEECH_UNAVAILABLE": {
+                    "summary": "Speech unavailable",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/speech-unavailable",
+                      "title": "Speech unavailable",
+                      "status": 502,
+                      "detail": "Speech is switched off; type the amount instead.",
+                      "code": "SPEECH_UNAVAILABLE",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "The speech provider did not answer within its timeout; try again or type instead.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "SPEECH_TIMEOUT": {
+                    "summary": "Speech timed out",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/speech-timeout",
+                      "title": "Speech timed out",
+                      "status": 504,
+                      "detail": "The speech provider did not answer in time.",
+                      "code": "SPEECH_TIMEOUT",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customer-sessions/{customerSessionId}/teach-back": {
+      "post": {
+        "tags": [
+          "customer advice"
+        ],
+        "summary": "Check the customer's own words about a plan",
+        "description": "Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Advisory only: CLOSE_ENOUGH when the monthly amount said is within 5% of the plan's and the months are right, otherwise TRY_AGAIN. The answer is read deterministically and never sent to an AI model; nothing is stored and consent is never blocked. Accept-Language en or ta picks the language of the feedback. highlightedAmounts are the engine's figures. Limited per client and session (429 with Retry-After).",
+        "operationId": "check_customer_teach_back_api_v1_customer_sessions__customerSessionId__teach_back_post",
+        "security": [
+          {
+            "CustomerSessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customerSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[!-~]+$",
+              "description": "The customerSessionId returned when the QR was exchanged.",
+              "examples": [
+                "01JD5Z0Q8M6X3V2N7B4C9K1T0E"
+              ],
+              "title": "Customersessionid"
+            },
+            "description": "The customerSessionId returned when the QR was exchanged."
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English.",
+              "examples": [
+                "ta"
+              ],
+              "title": "Accept-Language"
+            },
+            "description": "en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeachBackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The feedback card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeachBackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body cannot be parsed.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "MALFORMED_REQUEST": {
+                    "summary": "Malformed request",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/malformed-request",
+                      "title": "Malformed request",
+                      "status": 400,
+                      "detail": "The body is not valid JSON.",
+                      "code": "MALFORMED_REQUEST",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The session token is missing, opens no session, or the session or its sale has ended.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_TOKEN_INVALID": {
+                    "summary": "Customer session not valid",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-token-invalid",
+                      "title": "Customer session not valid",
+                      "status": 401,
+                      "detail": "This session link is not valid; ask the shop for a new QR.",
+                      "code": "CUSTOMER_SESSION_TOKEN_INVALID",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "CUSTOMER_SESSION_NOT_FOUND": {
+                    "summary": "Customer session not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/customer-session-not-found",
+                      "title": "Customer session not found",
+                      "status": 404,
+                      "detail": "No customer session has this id.",
+                      "code": "CUSTOMER_SESSION_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  },
+                  "OFFER_NOT_FOUND": {
+                    "summary": "Offer not found",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/offer-not-found",
+                      "title": "Offer not found",
+                      "status": 404,
+                      "detail": "The offer is not quoted for this item and price.",
+                      "code": "OFFER_NOT_FOUND",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A field, query parameter or header is missing or invalid; fieldErrors names each one.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "REQUEST_VALIDATION_FAILED": {
+                    "summary": "Request validation failed",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/request-validation-failed",
+                      "title": "Request validation failed",
+                      "status": 422,
+                      "detail": "One or more request fields are missing or invalid; see fieldErrors.",
+                      "code": "REQUEST_VALIDATION_FAILED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B",
+                      "fieldErrors": [
+                        {
+                          "field": "priceInPaise",
+                          "message": "Input should be greater than 0"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This phone made too many voice or teach-back requests for the session in this window.",
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "Too many requests",
+                    "value": {
+                      "type": "https://emicopilot.example/problems/rate-limited",
+                      "title": "Too many requests",
+                      "status": 429,
+                      "detail": "Too many voice or teach-back requests for this session; try again after Retry-After.",
+                      "code": "RATE_LIMITED",
+                      "correlationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0B"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProblemDetailsResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before trying again.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
                 }
               }
             }
@@ -8327,6 +9201,14 @@
             "examples": [
               "2026-11-15T10:00:00Z"
             ]
+          },
+          "isVoiceAvailable": {
+            "type": "boolean",
+            "title": "Isvoiceavailable",
+            "description": "Whether to offer the microphone: speech is not switched off.",
+            "examples": [
+              true
+            ]
           }
         },
         "type": "object",
@@ -8337,7 +9219,8 @@
           "shopName",
           "productName",
           "priceInPaise",
-          "expiresAt"
+          "expiresAt",
+          "isVoiceAvailable"
         ],
         "title": "CustomerSessionResponse",
         "description": "The session opened by the QR: send sessionToken as X-Customer-Session-Token from now on."
@@ -8412,6 +9295,14 @@
             "examples": [
               false
             ]
+          },
+          "isVoiceAvailable": {
+            "type": "boolean",
+            "title": "Isvoiceavailable",
+            "description": "Whether to offer the microphone: speech is not switched off.",
+            "examples": [
+              true
+            ]
           }
         },
         "type": "object",
@@ -8424,7 +9315,8 @@
           "expiresAt",
           "hasConfirmedBudget",
           "comfortCheckStatus",
-          "hasConsented"
+          "hasConsented",
+          "isVoiceAvailable"
         ],
         "title": "CustomerSessionSummaryResponse",
         "description": "The session as C1 shows it and the customer's own progress; the token is never echoed.\n\ncomfortCheckStatus is null until the customer answers the comfort check."
@@ -10278,6 +11170,76 @@
         "title": "SendWeeklyMessageRequest",
         "description": "Which week's message to mark sent."
       },
+      "SpeechSynthesisRequest": {
+        "properties": {
+          "explanationId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Explanationid",
+            "examples": [
+              "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "explanationId"
+        ],
+        "title": "SpeechSynthesisRequest",
+        "description": "Which shown explanation to speak; the client never supplies the text itself."
+      },
+      "SpeechTranscriptionPurpose": {
+        "type": "string",
+        "enum": [
+          "BUDGET",
+          "TEACH_BACK"
+        ],
+        "title": "SpeechTranscriptionPurpose",
+        "description": "Which screen the recording is for: the C2 budget or the C8 teach-back answer."
+      },
+      "SpeechTranscriptionResponse": {
+        "properties": {
+          "transcript": {
+            "type": "string",
+            "title": "Transcript",
+            "examples": [
+              "₹3,000 a month"
+            ]
+          },
+          "recognisedAmountInPaise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recognisedamountinpaise",
+            "examples": [
+              300000
+            ]
+          },
+          "isLikelyMisheard": {
+            "type": "boolean",
+            "title": "Islikelymisheard",
+            "examples": [
+              false
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "transcript",
+          "recognisedAmountInPaise",
+          "isLikelyMisheard"
+        ],
+        "title": "SpeechTranscriptionResponse",
+        "description": "What was heard and the one amount in it; the budget is not changed by this answer.\n\nrecognisedAmountInPaise is null when no single amount was heard. isLikelyMisheard asks the\ncustomer to check: no single amount, zero, or more each month than the item's price."
+      },
       "StartCustomerSessionRequest": {
         "properties": {
           "qrToken": {
@@ -10374,6 +11336,98 @@
         ],
         "title": "SuggestedNoCostTenureResponse",
         "description": "A longer no-cost tenure and its regular monthly installment on the list price."
+      },
+      "TeachBackRequest": {
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[!-~]+$",
+            "title": "Offerid",
+            "examples": [
+              "mock-offer-no-cost-6m"
+            ]
+          },
+          "answerText": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Answertext",
+            "examples": [
+              "3,667 every month for 6 months, nothing extra"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "offerId",
+          "answerText"
+        ],
+        "title": "TeachBackRequest",
+        "description": "The plan and the customer's answer in their own words (typed or transcribed)."
+      },
+      "TeachBackResponse": {
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/TeachBackResult"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "examples": [
+              "Nearly there"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "examples": [
+              "You will pay ₹3,667 every month for 6 months. Nothing extra on top of ₹22,000."
+            ]
+          },
+          "heardText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heardtext",
+            "examples": [
+              "About ₹3,667 every month"
+            ]
+          },
+          "highlightedAmounts": {
+            "items": {
+              "$ref": "#/components/schemas/HighlightedAmountResponse"
+            },
+            "type": "array",
+            "title": "Highlightedamounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result",
+          "title",
+          "body",
+          "heardText",
+          "highlightedAmounts"
+        ],
+        "title": "TeachBackResponse",
+        "description": "Advisory feedback: CLOSE_ENOUGH or TRY_AGAIN, with the plan's terms restated.\n\nheardText echoes the monthly amount heard (null when none); highlightedAmounts are the\nengine's figures. Nothing is stored and consent is never blocked."
+      },
+      "TeachBackResult": {
+        "type": "string",
+        "enum": [
+          "CLOSE_ENOUGH",
+          "TRY_AGAIN"
+        ],
+        "title": "TeachBackResult",
+        "description": "Advisory only: TRY_AGAIN never blocks consent, it offers to explain the plan again."
       },
       "WeeklyMessageLanguagesResponse": {
         "properties": {

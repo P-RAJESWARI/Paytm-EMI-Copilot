@@ -36,6 +36,7 @@ CUSTOMER_SESSION_RESPONSE_EXAMPLE: dict[str, Any] = {
     "productName": "Example phone, 128 GB",
     "priceInPaise": 2200000,
     "expiresAt": "2026-11-15T10:00:00Z",
+    "isVoiceAvailable": True,
 }
 BUDGET_RESPONSE_EXAMPLE: dict[str, Any] = {
     "monthlyBudgetInPaise": 300000,
@@ -251,4 +252,5 @@ CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE: dict[str, Any] = {
     "hasConfirmedBudget": True,
     "comfortCheckStatus": "COMPLETED",
     "hasConsented": True,
+    "isVoiceAvailable": True,
 }

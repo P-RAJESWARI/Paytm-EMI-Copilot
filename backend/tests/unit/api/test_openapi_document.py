@@ -200,6 +200,9 @@ def test_every_too_many_requests_answer_documents_retry_after(
         "POST /api/v1/customer-sessions",
         "POST /api/v1/customer-sessions/{customerSessionId}/consent/otp",
         "POST /api/v1/customer-sessions/{customerSessionId}/consent",
+        "POST /api/v1/customer-sessions/{customerSessionId}/speech/transcriptions",
+        "POST /api/v1/customer-sessions/{customerSessionId}/speech/synthesis",
+        "POST /api/v1/customer-sessions/{customerSessionId}/teach-back",
     }
     for _, response in too_many_requests_answers:
         assert response["headers"]["Retry-After"]["schema"] == {"type": "integer", "minimum": 1}

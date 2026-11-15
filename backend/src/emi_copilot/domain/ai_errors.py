@@ -64,3 +64,21 @@ class InvalidTeachBackInputError(DomainError):
     """Raised when a teach-back tolerance is not a Decimal share from 0 up to 1."""
 
     code: ClassVar[str] = "INVALID_TEACH_BACK_INPUT"
+
+
+class AudioTooLargeError(DomainError):
+    """Raised when an uploaded recording is larger than SPEECH_UPLOAD_MAX_BYTES allows."""
+
+    code: ClassVar[str] = "AUDIO_TOO_LARGE"
+
+
+class AudioFormatUnsupportedError(DomainError):
+    """Raised when an upload is empty or not one of the accepted audio media types."""
+
+    code: ClassVar[str] = "AUDIO_FORMAT_UNSUPPORTED"
+
+
+class ExplanationNotFoundError(DomainError):
+    """Raised when no explanation with this id was shown to this session (or it has expired)."""
+
+    code: ClassVar[str] = "EXPLANATION_NOT_FOUND"

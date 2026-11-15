@@ -92,6 +92,7 @@ class ApplicationComponents:
     customer_consent_rate_limiter: FixedWindowRateLimiter
     ai: AiComponents
     ai_service_state: AiServiceState
+    ai_session_rate_limiter: FixedWindowRateLimiter
 
 
 def build_event_bus(
@@ -179,6 +180,11 @@ def build_application_components(
         ),
         ai=ai_components,
         ai_service_state=AiServiceState.build(clock),
+        ai_session_rate_limiter=build_rate_limiter(
+            clock,
+            settings.ai_settings.ai_session_rate_limit_max_requests,
+            settings.ai_settings.ai_session_rate_limit_window_in_seconds,
+        ),
     )
 
 

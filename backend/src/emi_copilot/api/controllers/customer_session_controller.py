@@ -16,6 +16,7 @@ from emi_copilot.api.controllers.customer_response_examples import (
 )
 from emi_copilot.api.customer_dependencies import CustomerSessionServiceDependency
 from emi_copilot.api.customer_request_context import CustomerSessionCredentialsDependency
+from emi_copilot.api.customer_voice_dependencies import IsVoiceAvailableDependency
 from emi_copilot.api.openapi_documentation import (
     MALFORMED_REQUEST_PROBLEM,
     REQUEST_VALIDATION_PROBLEM,
@@ -41,7 +42,8 @@ GET_CUSTOMER_SESSION_ROUTE_NAME = "get_customer_session"
         "single-use: it is traded once for a session token, sent as X-Customer-Session-Token on "
         "every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new "
         "QR from the shop ends the sale's earlier session. Limited per client address (429 with "
-        "Retry-After). Location points at the session."
+        "Retry-After). Location points at the session. isVoiceAvailable says whether to offer the "
+        "microphone."
     ),
     response_description="The session for C1: shop, item and price.",
     dependencies=[Depends(enforce_customer_session_start_rate_limit)],
@@ -68,6 +70,7 @@ def start_customer_session(
     request: Request,
     response: Response,
     session_service: CustomerSessionServiceDependency,
+    is_voice_available: IsVoiceAvailableDependency,
 ) -> CustomerSessionResponse:
     """Exchanges the QR for a session, returns its token and points Location at the session."""
     started_session = session_service.start(start_request.qr_token)
@@ -76,7 +79,9 @@ def start_customer_session(
             GET_CUSTOMER_SESSION_ROUTE_NAME, customerSessionId=started_session.customer_session_id
         )
     )
-    return CustomerSessionResponse.from_started_session(started_session)
+    return CustomerSessionResponse.from_started_session(
+        started_session, is_voice_available=is_voice_available
+    )
 
 
 @customer_session_router.get(
@@ -100,6 +105,9 @@ def start_customer_session(
 def get_customer_session(
     credentials: CustomerSessionCredentialsDependency,
     session_service: CustomerSessionServiceDependency,
+    is_voice_available: IsVoiceAvailableDependency,
 ) -> CustomerSessionSummaryResponse:
     """Gives the session summary for its own token."""
-    return CustomerSessionSummaryResponse.from_summary(session_service.get_summary(credentials))
+    return CustomerSessionSummaryResponse.from_summary(
+        session_service.get_summary(credentials), is_voice_available=is_voice_available
+    )
