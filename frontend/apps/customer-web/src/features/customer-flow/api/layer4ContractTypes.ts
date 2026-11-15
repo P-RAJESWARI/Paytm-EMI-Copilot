@@ -38,6 +38,6 @@ export type Layer4CustomerSessionResponse = CustomerSessionResponse & {
 export function readLayer4Session(
   response: CustomerSessionResponse,
 ): Layer4CustomerSessionResponse {
-  const isVoiceAvailable = 'isVoiceAvailable' in response && response.isVoiceAvailable === true;
-  return { ...response, isVoiceAvailable };
+  const sessionFields: Partial<Record<'isVoiceAvailable', unknown>> = response;
+  return { ...response, isVoiceAvailable: sessionFields.isVoiceAvailable === true };
 }
