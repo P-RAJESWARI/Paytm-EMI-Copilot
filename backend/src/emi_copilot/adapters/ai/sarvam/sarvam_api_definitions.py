@@ -26,7 +26,7 @@ TEXT_TO_SPEECH_MAXIMUM_CHARACTERS = 2_500
 TEXT_TO_SPEECH_OUTPUT_AUDIO_CODEC = "mp3"
 TEXT_TO_SPEECH_MEDIA_TYPE = "audio/mpeg"
 
-# [Verify] The documented error body is {"error": {"message", "code", "request_id"}}; only the
+# The error body is {"error": {"message", "code", "request_id"}} (verified 2026-11-15); only the
 # code and request id are read, never the message.
 ERROR_OBJECT_FIELD = "error"
 ERROR_CODE_FIELD = "code"

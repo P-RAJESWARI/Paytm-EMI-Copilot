@@ -16,6 +16,7 @@ SARVAM_DEFAULT_BASE_URL = "https://api.sarvam.ai"
 # [Verify] "shubh" is a documented bulbul:v3 speaker; confirm it reads Tamil and English well.
 SARVAM_DEFAULT_SPEAKER = "shubh"
 
+# Verified 2026-11-15: Sarvam accepts only these; "none" answers 400 invalid_request_error.
 ChatReasoningEffort = Literal["low", "medium", "high"]
 
 
@@ -68,25 +69,34 @@ class AiSettings(BaseSettings):
     sarvam_text_to_speech_circuit_breaker_open_duration_in_seconds: float = Field(
         default=30.0, gt=0
     )
-    # sarvam-105b answers in 3 to 8 s; after 6 s the template text is shown instead.
+    # sarvam-105b-conversations answered in 0.3 s in the 2026-11-15 smoke check; after 6 s
+    # the template text is shown instead.
     sarvam_chat_connect_timeout_in_seconds: float = Field(default=3.0, gt=0)
     sarvam_chat_read_timeout_in_seconds: float = Field(default=6.0, gt=0)
     sarvam_chat_circuit_breaker_failure_threshold: int = Field(default=3, ge=1)
     sarvam_chat_circuit_breaker_open_duration_in_seconds: float = Field(default=30.0, gt=0)
     sarvam_speech_to_text_model: str = Field(default="saaras:v4", min_length=1)
     sarvam_text_to_speech_model: str = Field(default="bulbul:v3", min_length=1)
-    sarvam_chat_model: str = Field(default="sarvam-105b", min_length=1)
+    # The owner chose the Sarvam 105B family. Verified 2026-11-15 with synthetic plan data:
+    # sarvam-105b spent its whole budget on hidden reasoning (max_tokens 600 and 2000 gave
+    # finish_reason "length", empty content, 599 reasoning tokens at 600; max_tokens 4000 at low
+    # effort stopped after 6.3 s, over the 6 s timeout). sarvam-105b-conversations stopped in
+    # 0.3 s with about 25 completion tokens and no reasoning content.
+    sarvam_chat_model: str = Field(default="sarvam-105b-conversations", min_length=1)
     sarvam_text_to_speech_english_speaker: str = Field(default=SARVAM_DEFAULT_SPEAKER, min_length=1)
     sarvam_text_to_speech_tamil_speaker: str = Field(default=SARVAM_DEFAULT_SPEAKER, min_length=1)
     sarvam_chat_temperature: Decimal = Field(default=Decimal("0.2"), ge=0, le=2)
     sarvam_chat_max_tokens: int = Field(default=600, ge=1, le=4_000)
-    # [Verify] whether sarvam-105b accepts reasoning_effort and counts it within max_tokens.
+    # Still sent as "low" (accepted, verified 2026-11-15); the conversations model showed no
+    # reasoning at all, so it is a guard should the model change.
     sarvam_chat_reasoning_effort: ChatReasoningEffort = "low"
     # [Verify] Sarvam's published prices (checked 15 Nov 2026), in rupees; used for cost estimates.
     sarvam_speech_to_text_price_in_rupees_per_minute: Decimal = Field(default=Decimal("0.49"), ge=0)
     sarvam_text_to_speech_price_in_rupees_per_thousand_characters: Decimal = Field(
         default=Decimal("3.00"), ge=0
     )
+    # [Verify] sarvam-105b-conversations is not on the pricing page; the sarvam-105b prices are
+    # used as the estimate.
     sarvam_chat_input_price_in_rupees_per_million_tokens: Decimal = Field(
         default=Decimal("15"), ge=0
     )

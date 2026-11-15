@@ -16,7 +16,7 @@ from emi_copilot.domain.customer_sessions import CustomerLanguage
 from emi_copilot.domain.number_audit import NumberTokenExtractor
 from emi_copilot.domain.number_audit.allowed_numbers import whole_rupees_of
 from emi_copilot.domain.sales import ChosenPlan
-from emi_copilot.domain.speech.spoken_amount_parser import combine_spoken_amounts
+from emi_copilot.domain.speech.spoken_amount_parser import read_spoken_numbers
 from emi_copilot.domain.teach_back import TeachBackResult, TeachBackScoringStrategy
 from emi_copilot.services.ai.ai_flow_types import require_flow_result
 from emi_copilot.services.ai.teach_back_feedback import TeachBackFeedback, TeachBackFeedbackWriter
@@ -74,9 +74,9 @@ class TeachBackFlow:
         return require_flow_result(final_state.feedback, TEACH_BACK_FLOW_NAME)
 
     def _extract_numbers(self, state: TeachBackFlowState) -> TeachBackFlowState:
-        """Reads every number said, joining magnitude words ("3 thousand" is 3,000)."""
-        tokens = self._extractor.extract(state.answer_text)
-        return replace(state, stated_numbers=tuple(combine_spoken_amounts(tokens)))
+        """Reads every number said, composing number words ("three thousand six hundred")."""
+        stated_numbers = read_spoken_numbers(self._extractor, state.answer_text)
+        return replace(state, stated_numbers=tuple(stated_numbers))
 
     def _score(self, state: TeachBackFlowState) -> TeachBackFlowState:
         """Scores the numbers against the engine's whole-rupee monthly and the tenure."""

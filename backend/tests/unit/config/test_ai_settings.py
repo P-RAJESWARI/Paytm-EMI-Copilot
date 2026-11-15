@@ -33,7 +33,7 @@ def test_ai_settings_without_variables_use_mocks_and_the_documented_defaults() -
         "saaras:v4",
         "bulbul:v3",
     )
-    assert settings.sarvam_chat_model == "sarvam-105b"
+    assert settings.sarvam_chat_model == "sarvam-105b-conversations"
     assert settings.sarvam_text_to_speech_tamil_speaker == "shubh"
     assert settings.sarvam_chat_temperature == Decimal("0.2")
     assert settings.sarvam_chat_reasoning_effort == "low"

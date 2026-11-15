@@ -119,6 +119,18 @@ def test_number_audit_with_magnitude_words_fails() -> None:
         assert any(token in {"thousand", "ஆயிரம்"} for token in mismatched_tokens)
 
 
+def test_number_audit_with_a_tens_word_not_in_the_plan_fails_as_unexpected_plain_number() -> None:
+    """The word seventy now reads as 70 (added for spoken amounts), so AI cannot slip it past."""
+    result = NumberAuditService().audit(
+        f"{DESIGN_PLAN_A_TEXT} Seventy people chose this plan.",
+        AllowedNumbers.for_plan_explanation(design_plan_a(), label_texts=()),
+        required_rupee_amounts=PLAN_A_REQUIRED_AMOUNTS,
+    )
+    assert result.has_passed is False
+    assert result.failure_reasons == (NumberAuditFailureReason.UNEXPECTED_PLAIN_NUMBER,)
+    assert result.mismatched_tokens == ("Seventy",)
+
+
 def test_number_audit_with_a_bare_amount_without_rupee_marker_fails() -> None:
     """3667 without ₹ is a plain number, and plain numbers hold only the tenure here."""
     assert audit_plan_a_text(f"{DESIGN_PLAN_A_TEXT} That is 3667 each month.") == (False, ("3667",))

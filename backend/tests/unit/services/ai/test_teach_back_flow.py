@@ -25,6 +25,8 @@ def check(
         "I will pay 3667 every month for 6 months",
         "₹3,700 a month, six months",
         "about 3 thousand 7 hundred... no, 3,650 for 6 months",
+        # Sarvam speech-to-text writes amounts as words (verified 2026-11-15).
+        "three thousand six hundred and sixty seven for six months",
     ],
 )
 def test_teach_back_flow_close_answer_gets_the_nearly_there_card(answer_text: str) -> None:

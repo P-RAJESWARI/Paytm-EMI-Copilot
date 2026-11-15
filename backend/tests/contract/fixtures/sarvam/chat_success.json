@@ -1,7 +1,7 @@
 {
   "id": "synthetic-chat-request-0001",
   "object": "chat.completion",
-  "model": "sarvam-105b",
+  "model": "sarvam-105b-conversations",
   "choices": [
     {
       "index": 0,

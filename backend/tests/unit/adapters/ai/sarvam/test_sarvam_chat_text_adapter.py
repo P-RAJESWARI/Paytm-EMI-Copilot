@@ -58,7 +58,7 @@ def test_sarvam_chat_body_holds_only_the_allow_listed_documented_fields() -> Non
     assert request.url == "https://api.sarvam.ai/v1/chat/completions"
     assert set(body) == ALLOWED_CHAT_REQUEST_FIELDS
     assert {"tools", "tool_choice", "response_format"}.isdisjoint(body)
-    assert body["model"] == "sarvam-105b"
+    assert body["model"] == "sarvam-105b-conversations"
     assert body["temperature"] == 0.2
     assert (body["max_tokens"], body["reasoning_effort"], body["n"]) == (600, "low", 1)
     system_message, user_message = body["messages"]
@@ -95,7 +95,10 @@ def test_sarvam_chat_reads_message_content_and_usage_never_reasoning_content() -
     assert completion.text == SUCCESS_CONTENT
     assert "9,999" not in completion.text
     assert (completion.input_token_count, completion.output_token_count) == (412, 38)
-    assert (completion.model_name, completion.finish_reason) == ("sarvam-105b", "stop")
+    assert (completion.model_name, completion.finish_reason) == (
+        "sarvam-105b-conversations",
+        "stop",
+    )
 
 
 def test_sarvam_chat_answer_without_usage_or_model_counts_zero_and_names_the_setting() -> None:
@@ -109,7 +112,7 @@ def test_sarvam_chat_answer_without_usage_or_model_counts_zero_and_names_the_set
     chat = build_scripted_client([httpx.Response(200, json=answer)], "sarvam-chat")
     completion = build_sarvam_chat_text_adapter(chat).write_text(REQUEST)
     assert (completion.input_token_count, completion.output_token_count) == (0, 0)
-    assert completion.model_name == "sarvam-105b"
+    assert completion.model_name == "sarvam-105b-conversations"
 
 
 @pytest.mark.parametrize(
