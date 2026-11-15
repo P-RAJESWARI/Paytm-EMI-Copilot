@@ -9,7 +9,7 @@ export type PlanReasonCode = ApiSchemas['PlanReasonCode'];
 export type AlternativeKind = ApiSchemas['AlternativeKind'];
 export type ReceiptStatus = ApiSchemas['ReceiptStatus'];
 export type CoolingOffNoticeStatus = ApiSchemas['CoolingOffNoticeStatus'];
-/** Layer 3 serves only the template text; Layer 4 adds the audited AI source. */
+/** AI_AUDITED text passed the number audit; TEMPLATE is the standard text (Layer 4). */
 export type ExplanationSource = ApiSchemas['ExplanationSource'];
 /** Which plan figure a highlighted amount in the explanation is (ADR 0022, C7). */
 export type HighlightedAmountKind = ApiSchemas['HighlightedAmountKind'];

@@ -13,8 +13,13 @@ import type {
   PlanAlternatives,
   PlanComparison,
   PlanExplanation,
+  SpeechPurpose,
+  SpeechTranscription,
+  TeachBackOutcome,
 } from './CustomerFlowApi';
+import { readLayer4Session } from './layer4ContractTypes';
 import { readApiData } from './readApiData';
+import { sendSessionRequest, type SessionRequest } from './sendSessionRequest';
 
 /** The one session this phone holds, in memory only (never browser storage; ADR 0022 decision 4). */
 interface ActiveSession {
@@ -38,9 +43,13 @@ export interface HttpCustomerFlowApiOptions {
 export class HttpCustomerFlowApi implements CustomerFlowApi {
   private activeSession: ActiveSession | undefined;
   private readonly apiClient: BackendApiClient;
+  private readonly baseUrl: string;
+  private readonly fetchFunction: (request: Request) => Promise<Response>;
 
   // Builds the generated client whose middleware reads this instance's in-memory session token.
   constructor({ baseUrl, fetchFunction }: HttpCustomerFlowApiOptions) {
+    this.baseUrl = baseUrl;
+    this.fetchFunction = fetchFunction;
     this.apiClient = createBackendApiClient({
       baseUrl,
       fetch: fetchFunction,
@@ -64,7 +73,7 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
     const response = await readApiData(
       this.apiClient.POST('/api/v1/customer-sessions', { body: { qrToken } }),
     );
-    const { sessionToken, ...session } = response;
+    const { sessionToken, ...session } = readLayer4Session(response);
     this.activeSession = { customerSessionId: session.customerSessionId, sessionToken };
     return session;
   }
@@ -167,5 +176,59 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
         }),
       ),
     );
+  }
+
+  // Sends one raw recording as the request body with its own content type (C2 and C8 microphone).
+  async transcribeSpeech(audio: Blob, purpose: SpeechPurpose): Promise<SpeechTranscription> {
+    const response = await this.sendInSession('/speech/transcriptions', {
+      body: await audio.arrayBuffer(),
+      contentType: audio.type === '' ? 'audio/webm' : audio.type,
+      query: `?purpose=${purpose}`,
+    });
+    return (await response.json()) as SpeechTranscription;
+  }
+
+  // Fetches the spoken explanation as audio bytes (C7 Listen).
+  async synthesiseExplanation(explanationId: string): Promise<Blob> {
+    const response = await this.sendInSession('/speech/synthesis', {
+      body: JSON.stringify({ explanationId }),
+      contentType: 'application/json',
+    });
+    return response.blob();
+  }
+
+  // Sends the customer's own-words answer for the plan in their language (C8).
+  async checkTeachBack(
+    offerId: string,
+    answerText: string,
+    language: SupportedLanguage,
+  ): Promise<TeachBackOutcome> {
+    const response = await this.sendInSession('/teach-back', {
+      body: JSON.stringify({ offerId, answerText }),
+      contentType: 'application/json',
+      language,
+    });
+    return (await response.json()) as TeachBackOutcome;
+  }
+
+  // Sends a Layer 4 call the generated client cannot type yet, under the active session's path.
+  private sendInSession(
+    pathAfterSession: string,
+    options: Pick<SessionRequest, 'body' | 'contentType' | 'language'> & { query?: string },
+  ): Promise<Response> {
+    const activeSession = this.activeSession;
+    if (activeSession === undefined) {
+      return Promise.reject(new CustomerApiError(401, CUSTOMER_SESSION_TOKEN_INVALID_CODE));
+    }
+    const sessionPath = `/api/v1/customer-sessions/${encodeURIComponent(activeSession.customerSessionId)}`;
+    return sendSessionRequest({
+      baseUrl: this.baseUrl,
+      fetchFunction: this.fetchFunction,
+      sessionToken: activeSession.sessionToken,
+      path: `${sessionPath}${pathAfterSession}${options.query ?? ''}`,
+      body: options.body,
+      contentType: options.contentType,
+      language: options.language,
+    });
   }
 }

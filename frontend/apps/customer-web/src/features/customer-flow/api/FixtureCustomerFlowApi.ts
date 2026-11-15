@@ -17,6 +17,9 @@ import type {
   PlanAlternatives,
   PlanComparison,
   PlanExplanation,
+  SpeechPurpose,
+  SpeechTranscription,
+  TeachBackOutcome,
 } from './CustomerFlowApi';
 import {
   buildFixtureConsentedPlan,
@@ -24,6 +27,7 @@ import {
   FIXTURE_ALTERNATIVES_FOR_NO_COST_PLAN,
   FIXTURE_COMFORT_CHECK_COMPLETED,
   FIXTURE_COMFORT_CHECK_SKIPPED,
+  FIXTURE_EXPLANATION_ID,
   FIXTURE_NO_COST_PLAN,
   FIXTURE_OTP,
   FIXTURE_PLANS_AT_DESIGN_BUDGET,
@@ -32,6 +36,11 @@ import {
   FIXTURE_CUSTOMER_SESSION,
   toFixtureBasePlan,
 } from './fixtureCustomerFlowData';
+import {
+  buildFixtureSilentWav,
+  buildFixtureTeachBack,
+  FIXTURE_TRANSCRIPTIONS,
+} from './fixtureVoiceData';
 
 /** Demo OTP rules from ADR 0022 decision 3: 3 tries, 5 minutes, resend after 30 seconds. */
 const OTP_ATTEMPT_COUNT = 3;
@@ -239,6 +248,32 @@ export class FixtureCustomerFlowApi implements CustomerFlowApi {
         plan: confirmation.plan,
       };
     });
+  }
+
+  // Gives the sample transcription for the purpose; like the server, it never sets the budget.
+  transcribeSpeech(_audio: Blob, purpose: SpeechPurpose): Promise<SpeechTranscription> {
+    return settle(() => {
+      this.requireSession();
+      return FIXTURE_TRANSCRIPTIONS[purpose];
+    });
+  }
+
+  // Gives a tiny silent WAV as the spoken explanation; any other id is not found, as on the server.
+  synthesiseExplanation(explanationId: string): Promise<Blob> {
+    return settle(() => {
+      this.requireSession();
+      if (explanationId !== FIXTURE_EXPLANATION_ID) throw problem(404, 'EXPLANATION_NOT_FOUND');
+      return buildFixtureSilentWav();
+    });
+  }
+
+  // Checks the own-words answer against the quoted plan's monthly figure (sample rule).
+  checkTeachBack(
+    offerId: string,
+    answerText: string,
+    language: SupportedLanguage,
+  ): Promise<TeachBackOutcome> {
+    return settle(() => buildFixtureTeachBack(this.findQuotedPlan(offerId), answerText, language));
   }
 
   // Finds a plan of the current ranking by offer id, or fails with OFFER_NOT_FOUND.

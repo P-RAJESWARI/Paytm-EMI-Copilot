@@ -4,27 +4,28 @@ import type {
   ConsentedPlanResponse,
   CustomerPlanResponse,
   CustomerPlansResponse,
-  CustomerSessionResponse,
   PlanAlternativesResponse,
   PlanExplanationResponse,
 } from './customerContractTypes';
+import type { Layer4CustomerSessionResponse } from './layer4ContractTypes';
 
 // The DESIGN_SPEC section 4 sample, copied from the Phase 3A contract examples (which the engines
 // computed), so the fixture and the real API agree. ADR 0020: a ₹4,000 down payment gives ₹3,000
 // a month at 3,667 bp, never the mockup's ₹2,999 / 36.6%.
 
 /** The session as screens see it: sample shop, item and session code 4821. */
-export const FIXTURE_CUSTOMER_SESSION: Omit<CustomerSessionResponse, 'sessionToken'> = {
+export const FIXTURE_CUSTOMER_SESSION: Omit<Layer4CustomerSessionResponse, 'sessionToken'> = {
   customerSessionId: 'fixture-customer-session-4821',
   sessionCode: '4821',
   shopName: 'Ravi Electronics',
   productName: 'Example phone, 128 GB',
   priceInPaise: 2200000,
   expiresAt: '2026-11-15T10:00:00Z',
+  isVoiceAvailable: true,
 };
 
 /** The QR exchange answer on the wire: the session plus its (fake) token. */
-export const FIXTURE_SESSION: CustomerSessionResponse = {
+export const FIXTURE_SESSION: Layer4CustomerSessionResponse = {
   ...FIXTURE_CUSTOMER_SESSION,
   sessionToken: 'fixture-session-token',
 };
@@ -266,16 +267,21 @@ export const FIXTURE_EXPLANATION_TEXTS: Record<string, Record<'en' | 'ta', strin
   },
 };
 
-// Gives the template explanation of one sample plan in the asked language.
+/** The fixture's one explanation id, so C7 can offer Listen against the fixture too. */
+export const FIXTURE_EXPLANATION_ID = 'fixture-explanation-1';
+
+// Gives the explanation of one sample plan in the asked language, labelled as audited AI text so
+// the fixture shows the Layer 4 note (the words are the template's; the figures are the plan's).
 export function buildFixtureExplanation(
   plan: CustomerPlanResponse,
   language: 'en' | 'ta',
 ): PlanExplanationResponse {
   const texts = FIXTURE_EXPLANATION_TEXTS[plan.offerId];
   return {
+    explanationId: FIXTURE_EXPLANATION_ID,
     text: texts === undefined ? '' : texts[language],
     language,
-    source: 'TEMPLATE',
+    source: 'AI_AUDITED',
     highlightedAmounts: [
       { kind: 'MONTHLY_INSTALLMENT', amountInPaise: plan.monthlyInstallmentInPaise },
       { kind: 'EXTRA_IN_TOTAL', amountInPaise: plan.extraInTotalInPaise },

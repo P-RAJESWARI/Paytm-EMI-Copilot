@@ -1,6 +1,6 @@
 import type { ComfortCheckResult, CustomerPlan } from '../api/CustomerFlowApi';
 
-/** Every screen the customer flow can show; C8 teach-back is Layer 4 and not a step here. */
+/** Every screen the customer flow can show; C8 teach-back is optional between C7 and C9. */
 export type CustomerFlowStep =
   | 'welcome'
   | 'budget'
@@ -9,6 +9,7 @@ export type CustomerFlowStep =
   | 'comfortDetail'
   | 'alternatives'
   | 'explanation'
+  | 'teachBack'
   | 'consent'
   | 'receipt'
   | 'sessionUnavailable';
@@ -45,6 +46,7 @@ export type CustomerFlowState =
     }
   | { step: 'alternatives'; answers: PlanAnswers }
   | { step: 'explanation'; answers: PlanAnswers }
+  | { step: 'teachBack'; answers: PlanAnswers }
   | { step: 'consent'; answers: PlanAnswers }
   | { step: 'receipt'; answers: PlanAnswers }
   | { step: 'sessionUnavailable' };
@@ -58,6 +60,7 @@ export type CustomerFlowAction =
   | { type: 'comfortDetailOpened'; plan: CustomerPlan }
   | { type: 'continuedToAlternatives' }
   | { type: 'continuedToExplanation' }
+  | { type: 'teachBackOpened' }
   | { type: 'continuedToConsent' }
   | { type: 'consentRecorded' }
   | { type: 'shownPlanChanged' }

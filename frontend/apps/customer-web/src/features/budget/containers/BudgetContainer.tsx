@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { getProblemMessageKey, useCustomerFlow } from '../../customer-flow';
 import { BudgetScreen } from '../components/BudgetScreen';
+import { BudgetVoiceSection } from '../components/BudgetVoiceSection';
+import { useBudgetVoiceEntry } from '../hooks/useBudgetVoiceEntry';
 import { useConfirmBudget } from '../hooks/useConfirmBudget';
 import {
   convertBudgetDigitsToPaise,
@@ -15,16 +17,21 @@ export interface BudgetContainerProps {
   previousBudgetInPaise: number | undefined;
 }
 
-// Holds C2's typed amount and the "Correct?" question, and sends the budget only once the
-// customer says yes; then the flow moves to the comfort check question.
+// Holds C2's typed or spoken amount and the "Correct?" question, and sends the budget only once
+// the customer says yes; then the flow moves to the comfort check question.
 export function BudgetContainer({ previousBudgetInPaise }: BudgetContainerProps) {
   const { t } = useTranslation();
-  const { dispatch } = useCustomerFlow();
+  const { dispatch, session } = useCustomerFlow();
   const confirmBudget = useConfirmBudget();
   const [budgetDigits, setBudgetDigits] = useState(() =>
     convertPaiseToBudgetDigits(previousBudgetInPaise),
   );
   const [isConfirming, setIsConfirming] = useState(false);
+  const voiceEntry = useBudgetVoiceEntry((heardDigits, isReadyToConfirm) => {
+    setBudgetDigits(heardDigits);
+    setIsConfirming(isReadyToConfirm);
+    confirmBudget.reset();
+  });
 
   // Sends the confirmed amount and moves on when the server has it.
   function handleConfirmBudget() {
@@ -42,6 +49,7 @@ export function BudgetContainer({ previousBudgetInPaise }: BudgetContainerProps)
       onChangeBudgetText={(typedText) => {
         setBudgetDigits(readBudgetDigits(typedText));
         setIsConfirming(false);
+        voiceEntry.clearMisheardBudget();
         confirmBudget.reset();
       }}
       isConfirming={isConfirming}
@@ -51,6 +59,7 @@ export function BudgetContainer({ previousBudgetInPaise }: BudgetContainerProps)
       }
       onContinue={() => {
         setIsConfirming(true);
+        voiceEntry.clearMisheardBudget();
       }}
       onEdit={() => {
         setIsConfirming(false);
@@ -60,6 +69,16 @@ export function BudgetContainer({ previousBudgetInPaise }: BudgetContainerProps)
       onBack={() => {
         dispatch({ type: 'wentBack' });
       }}
+      voiceSection={
+        session.isVoiceAvailable ? (
+          <BudgetVoiceSection
+            recorderStatus={voiceEntry.recorder.status}
+            misheardBudget={voiceEntry.misheardBudget}
+            onStartRecording={voiceEntry.recorder.startRecording}
+            onStopRecording={voiceEntry.recorder.stopRecording}
+          />
+        ) : undefined
+      }
     />
   );
 }

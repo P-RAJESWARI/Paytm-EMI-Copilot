@@ -6,15 +6,20 @@ import type {
   CustomerPlanResponse,
   CustomerPlansResponse,
   CustomerReceiptResponse,
-  CustomerSessionResponse,
   OtpChallengeResponse,
   PlanAlternativeResponse,
   PlanAlternativesResponse,
   PlanExplanationResponse,
 } from './customerContractTypes';
+import type {
+  Layer4CustomerSessionResponse,
+  SpeechPurpose,
+  SpeechTranscriptionResponse,
+  TeachBackResponse,
+} from './layer4ContractTypes';
 
 /** The session as screens see it: the shop, the item and the code; the token never leaves the API. */
-export type CustomerSession = Omit<CustomerSessionResponse, 'sessionToken'>;
+export type CustomerSession = Omit<Layer4CustomerSessionResponse, 'sessionToken'>;
 /** The comfort check outcome: completed with synthetic inflow and EMIs, or skipped. */
 export type ComfortCheckResult = ComfortCheckResponse;
 /** Every plan for the confirmed budget, ranked by the server; none is ever hidden. */
@@ -24,6 +29,9 @@ export type CustomerPlan = CustomerPlanResponse;
 export type PlanAlternatives = PlanAlternativesResponse;
 export type PlanAlternative = PlanAlternativeResponse;
 export type PlanExplanation = PlanExplanationResponse;
+export type SpeechTranscription = SpeechTranscriptionResponse;
+export type TeachBackOutcome = TeachBackResponse;
+export type { SpeechPurpose };
 export type OtpChallenge = OtpChallengeResponse;
 export type ConsentConfirmation = ConsentResponse;
 export type CustomerReceipt = CustomerReceiptResponse;
@@ -56,4 +64,14 @@ export interface CustomerFlowApi {
     language: SupportedLanguage,
   ) => Promise<ConsentConfirmation>;
   getReceipt: () => Promise<CustomerReceipt>;
+  /** Turns one short recording into text (and an amount for BUDGET); it never sets the budget. */
+  transcribeSpeech: (audio: Blob, purpose: SpeechPurpose) => Promise<SpeechTranscription>;
+  /** Reads an explanation aloud; the answer is the audio itself. */
+  synthesiseExplanation: (explanationId: string) => Promise<Blob>;
+  /** Checks the customer's own-words answer against the plan; advice only, never a gate. */
+  checkTeachBack: (
+    offerId: string,
+    answerText: string,
+    language: SupportedLanguage,
+  ) => Promise<TeachBackOutcome>;
 }

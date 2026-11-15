@@ -1,6 +1,6 @@
 import { formatRupeesFromPaise } from '@emi-copilot/shared-i18n';
 import { Button } from '@emi-copilot/ui-kit';
-import { useId, type FormEvent } from 'react';
+import { useId, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CalmErrorMessage } from '../../../shared/components/CalmErrorMessage';
@@ -22,12 +22,15 @@ export interface BudgetScreenProps {
   onEdit: () => void;
   onConfirm: () => void;
   onBack: () => void;
+  /** The microphone row and its misheard notice; undefined when voice is off for this phone. */
+  voiceSection?: ReactNode;
 }
 
 /** The form id, so the footer's Continue button submits the amount form. */
 const BUDGET_FORM_ID = 'budget-form';
 
-// C2: one large ₹ input per month (typed; the microphone is Layer 4), then "You said ₹X. Correct?".
+// C2: one large ₹ input per month, typed or spoken (the microphone only fills the field), then
+// "You said ₹X. Correct?"; the budget is sent only when the customer taps "Yes, correct".
 export function BudgetScreen(props: BudgetScreenProps) {
   const { t } = useTranslation();
   const inputId = useId();
@@ -81,7 +84,14 @@ export function BudgetScreen(props: BudgetScreenProps) {
           <span className="text-body text-slate">{t('budget.perMonth')}</span>
         </div>
       </form>
-      {hasAmount ? null : <p className="text-body text-slate">{t('budget.emptyHint')}</p>}
+      {props.voiceSection}
+      {hasAmount ? null : (
+        <p className="text-body text-slate">
+          {props.voiceSection === undefined
+            ? t('budget.emptyHint')
+            : t('budget.emptyHintWithVoice')}
+        </p>
+      )}
       {props.isConfirming ? (
         <BudgetConfirmation
           formattedAmount={formatRupeesFromPaise(convertBudgetDigitsToPaise(props.budgetDigits))}
