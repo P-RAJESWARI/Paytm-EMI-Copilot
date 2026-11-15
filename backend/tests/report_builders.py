@@ -1,16 +1,27 @@
 """Builders of report inputs on the design sample data (DESIGN_SPEC section 4), synthetic ids."""
 
+from dataclasses import replace
 from datetime import date
+from zoneinfo import ZoneInfo
 
 from emi_copilot.domain.catalogue import CatalogueProduct
+from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments import EmiOffer, EmiType, PricedEmiOffer, price_emi_offer
+from emi_copilot.domain.reports.budget_buckets import build_budget_bucket_report
+from emi_copilot.domain.reports.funnel_report import FunnelReport
 from emi_copilot.domain.reports.missed_sales import (
     MissedSalesAnalysis,
+    MissedSalesReport,
     MissedSalesTally,
     ProductMissedSales,
     ProductOffers,
 )
+from emi_copilot.domain.reports.money_due_report import MoneyDueReport
+from emi_copilot.domain.reports.reporting_period import ReportingPeriod
+from emi_copilot.domain.reports.small_count_suppression import SmallCountSuppressionPolicy
+from emi_copilot.domain.reports.suggested_actions import SuggestionContext, suggest_actions
+from emi_copilot.domain.reports.weekly_message_template import WeeklyMessageFacts
 from emi_copilot.domain.settlements import BrandSettlementBatch, BrandSettlementStatus
 
 REPORT_MERCHANT_ID = "01JCREPORTMERCHANT00000001"
@@ -128,4 +139,40 @@ def build_design_settlement_batches() -> tuple[BrandSettlementBatch, ...]:
             date(2027, 1, 28),
             BrandSettlementStatus.WAITING_FOR_BRAND,
         ),
+    )
+
+
+DESIGN_FUNNEL_COUNTS = {
+    FunnelStage.STARTED: 120,
+    FunnelStage.BUDGET_TOLD: 96,
+    FunnelStage.PLANS_VIEWED: 88,
+    FunnelStage.AGREED: 51,
+    FunnelStage.PAID: 44,
+}
+"""DESIGN_SPEC section 4's seven-day funnel."""
+
+
+def build_design_weekly_message_facts(
+    funnel_counts: dict[FunnelStage, int] | None = None, phone_missed_count: int = 12
+) -> WeeklyMessageFacts:
+    """The design week of 9 to 15 November 2026; counts can be changed to test suppression."""
+    policy = SmallCountSuppressionPolicy()
+    phone_128_gb, *other_products = build_design_missed_sales_analysis().products_missed_sales
+    analysis = MissedSalesAnalysis.from_products(
+        [
+            replace(
+                phone_128_gb, tally=replace(phone_128_gb.tally, missed_count=phone_missed_count)
+            ),
+            *other_products,
+        ]
+    )
+    empty_buckets = build_budget_bucket_report(
+        (0, 0, 0, 0, 0), None, (), policy, cohort_sale_count=0
+    )
+    return WeeklyMessageFacts(
+        period=ReportingPeriod.week_starting(date(2026, 11, 9), ZoneInfo("Asia/Kolkata")),
+        funnel=FunnelReport.from_stage_counts(funnel_counts or DESIGN_FUNNEL_COUNTS, policy),
+        missed_sales=MissedSalesReport.from_analysis(analysis, empty_buckets, policy),
+        money_due=MoneyDueReport.from_batches(build_design_settlement_batches()),
+        suggested_actions=suggest_actions(SuggestionContext(analysis, policy)),
     )

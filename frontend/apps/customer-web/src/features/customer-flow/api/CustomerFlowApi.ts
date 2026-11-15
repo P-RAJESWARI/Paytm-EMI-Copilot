@@ -11,6 +11,9 @@ import type {
   PlanAlternativeResponse,
   PlanAlternativesResponse,
   PlanExplanationResponse,
+  SpeechTranscriptionPurpose,
+  SpeechTranscriptionResponse,
+  TeachBackResponse,
 } from './customerContractTypes';
 
 /** The session as screens see it: the shop, the item and the code; the token never leaves the API. */
@@ -24,6 +27,9 @@ export type CustomerPlan = CustomerPlanResponse;
 export type PlanAlternatives = PlanAlternativesResponse;
 export type PlanAlternative = PlanAlternativeResponse;
 export type PlanExplanation = PlanExplanationResponse;
+export type SpeechTranscription = SpeechTranscriptionResponse;
+export type TeachBackOutcome = TeachBackResponse;
+export type SpeechPurpose = SpeechTranscriptionPurpose;
 export type OtpChallenge = OtpChallengeResponse;
 export type ConsentConfirmation = ConsentResponse;
 export type CustomerReceipt = CustomerReceiptResponse;
@@ -56,4 +62,19 @@ export interface CustomerFlowApi {
     language: SupportedLanguage,
   ) => Promise<ConsentConfirmation>;
   getReceipt: () => Promise<CustomerReceipt>;
+  /** Turns one short recording, spoken in the language given, into text (and an amount for
+   * BUDGET); it never sets the budget. */
+  transcribeSpeech: (
+    audio: Blob,
+    purpose: SpeechPurpose,
+    language: SupportedLanguage,
+  ) => Promise<SpeechTranscription>;
+  /** Reads an explanation aloud; the answer is the audio itself. */
+  synthesiseExplanation: (explanationId: string) => Promise<Blob>;
+  /** Checks the customer's own-words answer against the plan; advice only, never a gate. */
+  checkTeachBack: (
+    offerId: string,
+    answerText: string,
+    language: SupportedLanguage,
+  ) => Promise<TeachBackOutcome>;
 }

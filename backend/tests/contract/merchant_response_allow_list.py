@@ -168,7 +168,8 @@ ALLOWED_PROPERTIES_BY_SCHEMA: Mapping[str, frozenset[str]] = MappingProxyType(
             {"periodStartDate", "periodEndDate", "source", "messages", "isSent", "sentAt"}
         ),
         "WeeklyMessageLanguagesResponse": frozenset({"en", "ta"}),
-        "WeeklyMessageTextResponse": frozenset({"title", "paragraphs"}),
+        "WeeklyMessageTextResponse": frozenset({"title", "paragraphs", "source"}),
+        "AiTextSource": frozenset(),
         "ReportingRange": frozenset(),
         "FunnelStage": frozenset(),
         "BrandSettlementStatus": frozenset(),

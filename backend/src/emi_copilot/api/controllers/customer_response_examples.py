@@ -36,6 +36,7 @@ CUSTOMER_SESSION_RESPONSE_EXAMPLE: dict[str, Any] = {
     "productName": "Example phone, 128 GB",
     "priceInPaise": 2200000,
     "expiresAt": "2026-11-15T10:00:00Z",
+    "isVoiceAvailable": True,
 }
 BUDGET_RESPONSE_EXAMPLE: dict[str, Any] = {
     "monthlyBudgetInPaise": 300000,
@@ -208,6 +209,7 @@ PLAN_ALTERNATIVES_RESPONSE_EXAMPLE: dict[str, Any] = {
     ],
 }
 PLAN_EXPLANATION_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "explanationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
     "text": (
         "No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, "
         "so nothing is added to the price."
@@ -250,4 +252,5 @@ CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE: dict[str, Any] = {
     "hasConfirmedBudget": True,
     "comfortCheckStatus": "COMPLETED",
     "hasConsented": True,
+    "isVoiceAvailable": True,
 }

@@ -65,6 +65,11 @@ def provide_customer_consent_rate_limiter(
     return components.customer_consent_rate_limiter
 
 
+def provide_ai_session_rate_limiter(components: ComponentsDependency) -> FixedWindowRateLimiter:
+    """Gives the one limiter of AI calls (speech and teach-back) per client and session."""
+    return components.ai_session_rate_limiter
+
+
 PairingRateLimiterDependency = Annotated[
     FixedWindowRateLimiter, Depends(provide_pairing_rate_limiter)
 ]
@@ -83,6 +88,9 @@ ConsentOtpRequestRateLimiterDependency = Annotated[
 ]
 CustomerConsentRateLimiterDependency = Annotated[
     FixedWindowRateLimiter, Depends(provide_customer_consent_rate_limiter)
+]
+AiSessionRateLimiterDependency = Annotated[
+    FixedWindowRateLimiter, Depends(provide_ai_session_rate_limiter)
 ]
 
 
@@ -167,4 +175,16 @@ def enforce_customer_consent_rate_limit(
         raise RequestRateLimitedError(
             decision.retry_after_in_seconds,
             "Too many consent attempts for this session; try again after Retry-After.",
+        )
+
+
+def enforce_ai_session_rate_limit(
+    request: Request, limiter: AiSessionRateLimiterDependency
+) -> None:
+    """Counts one voice or teach-back call for the client and session; 429 when over."""
+    decision = limiter.try_acquire(find_client_and_customer_session_key(request))
+    if not decision.is_allowed:
+        raise RequestRateLimitedError(
+            decision.retry_after_in_seconds,
+            "Too many voice or teach-back requests for this session; try again after Retry-After.",
         )

@@ -9,7 +9,7 @@ export type PlanReasonCode = ApiSchemas['PlanReasonCode'];
 export type AlternativeKind = ApiSchemas['AlternativeKind'];
 export type ReceiptStatus = ApiSchemas['ReceiptStatus'];
 export type CoolingOffNoticeStatus = ApiSchemas['CoolingOffNoticeStatus'];
-/** Layer 3 serves only the template text; Layer 4 adds the audited AI source. */
+/** AI_AUDITED text passed the number audit; TEMPLATE is the standard text (Layer 4). */
 export type ExplanationSource = ApiSchemas['ExplanationSource'];
 /** Which plan figure a highlighted amount in the explanation is (ADR 0022, C7). */
 export type HighlightedAmountKind = ApiSchemas['HighlightedAmountKind'];
@@ -30,4 +30,11 @@ export type ConsentedPlanResponse = ApiSchemas['ConsentedPlanResponse'];
 export type ConsentResponse = ApiSchemas['ConsentResponse'];
 export type CustomerReceiptResponse = ApiSchemas['CustomerReceiptResponse'];
 /** RFC 7807 body; `attemptsRemaining` is the OTP_INCORRECT extension member (ADR 0022 decision 3). */
+/** What a recording is for: BUDGET (C2, an amount is read) or TEACH_BACK (C8). */
+export type SpeechTranscriptionPurpose = ApiSchemas['SpeechTranscriptionPurpose'];
+/** Speech-to-text answer; it never changes the budget. */
+export type SpeechTranscriptionResponse = ApiSchemas['SpeechTranscriptionResponse'];
+/** C8 outcome: advice only, the customer may always continue. */
+export type TeachBackResult = ApiSchemas['TeachBackResult'];
+export type TeachBackResponse = ApiSchemas['TeachBackResponse'];
 export type CustomerProblemDetailsResponse = ApiSchemas['CustomerProblemDetailsResponse'];

@@ -26,6 +26,7 @@ from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.events.sale_status_broadcaster import SaleStatusBroadcaster
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
+from emi_copilot.services.ai.shown_explanation_cache import ShownExplanationCache
 from emi_copilot.services.customer.consent_otp_service import ConsentOtpService
 from emi_copilot.services.customer.customer_choice_service import CustomerChoiceService
 from emi_copilot.services.customer.customer_consent_service import CustomerConsentService
@@ -33,6 +34,7 @@ from emi_copilot.services.customer.customer_explanation_service import CustomerE
 from emi_copilot.services.customer.customer_plan_service import CustomerPlanService
 from emi_copilot.services.customer.customer_receipt_service import CustomerReceiptService
 from emi_copilot.services.customer.customer_session_service import CustomerSessionService
+from emi_copilot.services.customer.session_plan_finder import SessionPlanFinder
 from emi_copilot.services.customer.template_explanation_service import (
     TemplateExplanationService,
 )
@@ -273,10 +275,9 @@ def _wire_consent_services(
         ),
         "receipt": CustomerReceiptService(unit_of_work_factory, clock, expiry),
         "explanation": CustomerExplanationService(
-            unit_of_work_factory,
-            clock,
-            expiry,
-            offer_source,
+            SessionPlanFinder(unit_of_work_factory, clock, expiry, offer_source),
             TemplateExplanationService(format_paise_as_whole_rupees),
+            ShownExplanationCache(clock),
+            id_generator,
         ),
     }

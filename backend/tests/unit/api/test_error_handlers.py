@@ -6,13 +6,14 @@ from typing import ClassVar
 
 import pytest
 
+from emi_copilot.api.ai_problem_mappings import AI_PROBLEM_MAPPINGS_BY_ERROR_TYPE
 from emi_copilot.api.error_handlers import (
     PROBLEM_MAPPINGS_BY_ERROR_TYPE,
     describe_field_location,
     find_problem_mapping,
     handle_domain_error,
 )
-from emi_copilot.domain import errors
+from emi_copilot.domain import ai_errors, errors
 from emi_copilot.dtos.problem_details_dto import build_problem_type_url
 
 
@@ -26,6 +27,34 @@ def list_every_domain_error_class() -> list[type[errors.DomainError]]:
         for error_class in found_classes
         if error_class.__module__ == errors.DomainError.__module__
     ]
+
+
+def test_every_ai_error_class_has_an_explicit_problem_mapping() -> None:
+    """A new AI error fails this test until someone decides its HTTP status."""
+    ai_error_classes = {
+        error_class
+        for error_class in vars(ai_errors).values()
+        if isinstance(error_class, type)
+        and issubclass(error_class, errors.DomainError)
+        and error_class.__module__ == ai_errors.__name__
+    }
+    assert ai_error_classes == set(AI_PROBLEM_MAPPINGS_BY_ERROR_TYPE)
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status"),
+    [
+        (ai_errors.AudioTooLargeError("x"), 422),
+        (ai_errors.SpeechUnavailableError("x"), 502),
+        (ai_errors.SpeechTimeoutError("x"), 504),
+        (ai_errors.ExplanationNotFoundError("x"), 404),
+    ],
+)
+def test_ai_errors_map_to_their_documented_status(
+    error: errors.DomainError, expected_status: int
+) -> None:
+    """Speech failures are calm 502 or 504 answers; the merged lookup finds the AI rows."""
+    assert find_problem_mapping(error).status == expected_status
 
 
 def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:

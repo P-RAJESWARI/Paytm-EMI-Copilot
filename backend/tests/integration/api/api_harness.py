@@ -16,6 +16,7 @@ from emi_copilot.api.dependencies import (
     provide_unit_of_work_factory,
 )
 from emi_copilot.api.rate_limiting import (
+    provide_ai_session_rate_limiter,
     provide_consent_otp_request_rate_limiter,
     provide_customer_consent_rate_limiter,
     provide_customer_session_start_rate_limiter,
@@ -23,6 +24,7 @@ from emi_copilot.api.rate_limiting import (
     provide_pairing_rate_limiter,
     provide_payment_webhook_rate_limiter,
 )
+from emi_copilot.config.ai_settings import AiProviderMode, AiSettings
 from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.core.fixed_window_rate_limiter import FixedWindowRateLimiter
 from emi_copilot.domain.payments import AuditEvent, AuditEventType, PaymentAttempt
@@ -77,9 +79,14 @@ def open_api_harness(
 ) -> Iterator[ApiHarness]:
     """Starts the application, lifespan included, with gateway, database and clock overridden.
 
-    The rate limiters are rebuilt on the test clock, so their windows move with the test.
+    The rate limiters are rebuilt on the test clock, so their windows move with the test. By
+    default AI text is switched off, so Layer 2 and 3 tests pin the template text; the Layer 4
+    tests pass settings with the labelled Mock text adapter instead. Speech stays the Mock.
     """
-    settings = settings or ApplicationSettings()
+    # Built here, after the autouse fixture has hidden every AI variable of the environment.
+    settings = settings or ApplicationSettings(
+        ai_settings=AiSettings(explanation_text_provider_mode=AiProviderMode.OFF)
+    )
     application = create_application(settings, id_generator=SequentialIdGenerator())
     application.dependency_overrides[provide_payment_gateway] = lambda: payment_gateway
     application.dependency_overrides[provide_unit_of_work_factory] = lambda: partial(
@@ -116,6 +123,11 @@ def open_api_harness(
             provide_customer_consent_rate_limiter,
             settings.customer_consent_rate_limit_max_requests,
             settings.customer_consent_rate_limit_window_in_seconds,
+        ),
+        (
+            provide_ai_session_rate_limiter,
+            settings.ai_settings.ai_session_rate_limit_max_requests,
+            settings.ai_settings.ai_session_rate_limit_window_in_seconds,
         ),
     ):
         application.dependency_overrides[limiter_provider] = keep_limiter(

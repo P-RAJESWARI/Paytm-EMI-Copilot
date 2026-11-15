@@ -1,0 +1,21 @@
+{
+  "id": "synthetic-chat-request-0001",
+  "object": "chat.completion",
+  "model": "sarvam-105b-conversations",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "No-cost EMI from Brand: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0.",
+        "reasoning_content": "Synthetic reasoning that mentions ₹9,999 and must never be read."
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 412,
+    "completion_tokens": 38,
+    "total_tokens": 450
+  }
+}

@@ -162,10 +162,12 @@ WEEKLY_MESSAGE_EXAMPLE = {
                 "One thing to do: ask the brand for a 9 or 12-month no-cost plan on Example "
                 "phone, 128 GB. That would be ₹2,444 or ₹1,833 a month.",
             ],
+            "source": "TEMPLATE",
         },
         "ta": {
             "title": "உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்",
             "paragraphs": ["120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்."],
+            "source": "TEMPLATE",
         },
     },
     "isSent": False,

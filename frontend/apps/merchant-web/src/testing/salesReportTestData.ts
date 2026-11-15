@@ -166,6 +166,7 @@ export const TEST_WEEKLY_MESSAGE: ApiSchemas['WeeklyMessageResponse'] = {
   source: 'TEMPLATE',
   messages: {
     en: {
+      source: 'TEMPLATE',
       title: 'Your EMI sales, 9 to 15 November',
       paragraphs: [
         '44 of 120 customers bought on EMI. The biggest drop was after seeing the plans.',
@@ -173,6 +174,7 @@ export const TEST_WEEKLY_MESSAGE: ApiSchemas['WeeklyMessageResponse'] = {
       ],
     },
     ta: {
+      source: 'TEMPLATE',
       title: 'உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்',
       paragraphs: ['120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்.'],
     },

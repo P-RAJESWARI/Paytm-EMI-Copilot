@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe('C7 explanation', () => {
-  it('shows the standard text, its two numbers, the standard note and the plan recap', async () => {
+  it('shows the AI-written text, its two numbers, the AI note, Listen and the plan recap', async () => {
     const customerFlowApi = await prepareFixtureWithAnswers();
     const { container } = renderCustomerFlow({
       customerFlowApi,
@@ -31,11 +31,17 @@ describe('C7 explanation', () => {
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toEqual(['₹3,667 a month', '₹0 extra in total']);
-    expect(screen.getByText('Showing the standard plan details.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Written by AI to explain the plans. It does not decide for you or approve anything.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Showing the standard plan details.')).toBeNull();
     const recap = within(screen.getByRole('region', { name: 'Plan you chose' }));
     expect(recap.getByText('₹22,000')).toBeTruthy();
     expect(recap.getByText('6 months')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Listen|Check my understanding/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Listen to this' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Check my understanding' })).toBeTruthy();
     await expectNoAccessibilityViolations(container);
   });
 

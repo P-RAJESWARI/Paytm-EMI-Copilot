@@ -168,7 +168,7 @@ def test_customer_paths_are_present_and_never_under_a_merchant_prefix(
     customer_paths = [
         path for path in committed_document["paths"] if path.startswith(CUSTOMER_PATH_PREFIXES)
     ]
-    assert len(customer_paths) == 10
+    assert len(customer_paths) == 13
     assert not [path for path in customer_paths if path.startswith(MERCHANT_PATH_PREFIXES)]
 
 

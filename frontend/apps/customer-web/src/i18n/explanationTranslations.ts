@@ -1,7 +1,7 @@
 import type { TranslationsMatching } from '@emi-copilot/shared-i18n';
 
-// English strings of C7 (explanation), from the C7 mockup. Layer 3 shows the standard (template)
-// text only: no audio, no teach-back (Layer 4), and never an error banner (DESIGN_SPEC 7.6).
+// English strings of C7 (explanation), from the C7 mockup: the audited AI note or the standard
+// note, Listen / Pause, and the way to C8. Never an error banner (DESIGN_SPEC 7.6).
 export const EXPLANATION_ENGLISH_TRANSLATIONS = {
   explanation: {
     title: 'Your plan in plain words',
@@ -12,6 +12,11 @@ export const EXPLANATION_ENGLISH_TRANSLATIONS = {
     extraAmount: '{{amount}} extra in total',
     recapTitle: 'Plan you chose',
     continue: 'Continue to confirm',
+    aiNote: 'Written by AI to explain the plans. It does not decide for you or approve anything.',
+    listen: 'Listen to this',
+    pause: 'Playing. Tap to pause.',
+    preparingAudio: 'Getting the audio',
+    checkUnderstanding: 'Check my understanding',
   },
 } as const;
 
@@ -28,5 +33,11 @@ export const EXPLANATION_TAMIL_TRANSLATIONS: TranslationsMatching<
     extraAmount: 'மொத்தக் கூடுதல் {{amount}}', // draft: needs native review
     recapTitle: 'நீங்கள் தேர்ந்தெடுத்த திட்டம்', // draft: needs native review
     continue: 'உறுதிசெய்யத் தொடர்க', // draft: needs native review
+    aiNote:
+      'திட்டங்களை விளக்க AI எழுதியது. இது உங்களுக்காக முடிவு எடுக்காது, எதையும் அங்கீகரிக்காது.', // draft: needs native review
+    listen: 'கேளுங்கள்', // draft: needs native review
+    pause: 'ஒலிக்கிறது. நிறுத்தத் தட்டவும்.', // draft: needs native review
+    preparingAudio: 'ஒலியைப் பெறுகிறோம்', // draft: needs native review
+    checkUnderstanding: 'நான் புரிந்துகொண்டதைச் சரிபார்', // draft: needs native review
   },
 };

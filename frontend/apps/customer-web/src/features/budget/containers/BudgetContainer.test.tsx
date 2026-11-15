@@ -22,7 +22,7 @@ describe('C2 budget', () => {
       'value',
       '',
     );
-    expect(screen.getByText('Type an amount to continue.')).toBeTruthy();
+    expect(screen.getByText('Type an amount or tap the microphone to continue.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' })).toHaveProperty('disabled', true);
     await expectNoAccessibilityViolations(container);
   });

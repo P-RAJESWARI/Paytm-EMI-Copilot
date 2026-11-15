@@ -10,7 +10,7 @@ import {
   formatShopTime,
   formatShopWeekdayAndDate,
 } from '../../../shared/formatting/formatShopTime';
-import type { WeeklyMessage } from '../api/weeklyMessageApi';
+import { isWrittenByAi, type WeeklyMessage } from '../api/weeklyMessageApi';
 import { MessageLanguageToggle } from './MessageLanguageToggle';
 
 export interface WeeklyMessagePhoneViewProps {
@@ -23,7 +23,8 @@ export interface WeeklyMessagePhoneViewProps {
 }
 
 // M8: the weekly message as it reads on the shop owner's phone, chat style, in the chosen
-// language, with the time it was sent and a way to the full report. No audio until Layer 4.
+// language, with the time it was sent and a way to the full report. AI-written text carries a
+// small note; there is no audio on the merchant side.
 export function WeeklyMessagePhoneView(props: WeeklyMessagePhoneViewProps) {
   const { weeklyMessage, messageLanguage, translateInMessageLanguage: t } = props;
   const messageText = weeklyMessage?.messages[messageLanguage];
@@ -64,6 +65,9 @@ export function WeeklyMessagePhoneView(props: WeeklyMessagePhoneViewProps) {
                 {paragraph}
               </p>
             ))}
+            {isWrittenByAi(messageText) ? (
+              <p className="text-caption text-slate">{t('weeklyMessage.writtenByAi')}</p>
+            ) : null}
             <p className="self-end text-caption text-slate">
               {sentAt === null
                 ? t('weeklyMessage.notSentYet')

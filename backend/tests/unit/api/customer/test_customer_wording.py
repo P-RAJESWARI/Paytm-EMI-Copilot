@@ -81,7 +81,7 @@ def collect_customer_contract(document: dict[str, Any]) -> dict[str, Any]:
 def test_customer_openapi_contract_has_no_banned_wording() -> None:
     """The customer operations and every schema they use avoid the same wording."""
     customer_contract = collect_customer_contract(build_openapi_document())
-    assert len(customer_contract["paths"]) == 10
+    assert len(customer_contract["paths"]) == 13
     document_text = json.dumps(customer_contract, ensure_ascii=False)
     assert find_banned_phrases(document_text) == []
 

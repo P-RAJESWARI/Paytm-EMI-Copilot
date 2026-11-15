@@ -16,6 +16,10 @@ dependencies = [
     "uvicorn==0.54.0",
 ]
 
+[project.optional-dependencies]
+# LangGraph runs the AI flows only (CLAUDE.md D5, plan step 4.5); the core never needs it.
+ai = ["langgraph==1.2.19"]
+
 [dependency-groups]
 dev = [
     "coverage==7.17.0",
@@ -34,6 +38,16 @@ dev = [
 [build-system]
 requires = ["uv_build==0.13.6"]
 build-backend = "uv_build"
+
+[tool.uv]
+# security-and-compliance.md section 5: a newly added package version must be at least two weeks
+# old. The ai extra's transitive packages are held to versions uploaded by 1 Nov 2026; packages
+# locked before Layer 4 are not affected.
+# Every langsmith from 0.12 on needs httpx2, which Starlette's TestClient then prefers over the
+# pinned httpx (ADR 0008), changing the backend of every API test. langsmith 0.11 still uses
+# httpx, and langchain-core up to 1.6.12 accepts it.
+constraint-dependencies = ["langsmith<0.12"]
+exclude-newer-package = { jsonpatch = "2026-11-02T00:00:00Z", jsonpointer = "2026-11-02T00:00:00Z", langchain-core = "2026-11-02T00:00:00Z", langchain-protocol = "2026-11-02T00:00:00Z", langgraph-checkpoint = "2026-11-02T00:00:00Z", langgraph-prebuilt = "2026-11-02T00:00:00Z", langgraph-sdk = "2026-11-02T00:00:00Z", langsmith = "2026-11-02T00:00:00Z", ormsgpack = "2026-11-02T00:00:00Z", xxhash = "2026-11-02T00:00:00Z" }
 
 [tool.uv.build-backend]
 module-name = "emi_copilot"
@@ -68,6 +82,7 @@ select = [
     "RUF",   # ruff-specific
     "S",     # flake8-bandit security checks
     "SIM",   # simplifications
+    "TID251", # banned imports: no LangChain anywhere, LangGraph only in its flow runner
     "T20",   # no print statements
     "TRY",   # exception hygiene
     "UP",    # modern Python syntax
@@ -79,10 +94,21 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# The one module allowed to import langgraph, and the test that spies on its compiled graph.
+"src/emi_copilot/adapters/ai/flows/langgraph_flow_runner.py" = ["TID251"]
+"tests/unit/adapters/ai/flows/test_langgraph_flow_runner.py" = ["TID251"]
 "tests/**/*.py" = [
     "PLR2004", # literal expected values read best inline in tests
     "S101",    # pytest uses bare assert
 ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# Owner rule (CLAUDE.md D5, ADR 0025): LangGraph runs the AI flows only, and LangChain is never
+# imported; langchain-core arrives only as a transitive dependency of langgraph.
+"langchain".msg = "LangChain is not used in this project (owner rule, ADR 0025)."
+"langchain_core".msg = "LangChain is not used in this project (owner rule, ADR 0025)."
+"langchain_community".msg = "LangChain is not used in this project (owner rule, ADR 0025)."
+"langgraph".msg = "Only adapters/ai/flows/langgraph_flow_runner.py may import langgraph (ADR 0025)."
 
 [tool.ruff.lint.isort]
 # scripts/ is a package so tests can import the seed helpers; it is our code, not a library.
@@ -118,7 +144,8 @@ warn_required_dynamic_aliases = true
 [tool.pytest.ini_options]
 minversion = "9.0"
 testpaths = ["tests/unit", "tests/contract", "tests/integration"]
-addopts = ["--strict-markers", "--strict-config", "-ra"]
+# langsmith (a transitive dependency of the ai extra) registers a pytest plugin; it is not used.
+addopts = ["--strict-markers", "--strict-config", "-ra", "-p", "no:langsmith_plugin"]
 markers = ["integration: needs the Docker Compose PostgreSQL test database"]
 xfail_strict = true
 filterwarnings = [

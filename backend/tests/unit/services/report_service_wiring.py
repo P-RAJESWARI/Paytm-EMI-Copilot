@@ -11,12 +11,10 @@ from emi_copilot.adapters.payment_gateway.mock_offer_catalogue import (
 )
 from emi_copilot.adapters.settlement.mock_adapter import MockSettlementAdapter
 from emi_copilot.adapters.weekly_message_delivery.port import WeeklyMessageDeliveryPort
-from emi_copilot.core.indian_rupee_formatter import format_paise_as_whole_rupees
 from emi_copilot.domain.funnel import FunnelEvent, FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.reports.small_count_suppression import SmallCountSuppressionPolicy
 from emi_copilot.domain.reports.weekly_message_record import WeeklyMessageDelivery
-from emi_copilot.domain.reports.weekly_message_template import WeeklyMessageTemplate
 from emi_copilot.domain.sales import SaleStatus, SessionCode
 from emi_copilot.services.missed_sales_analyser import MissedSalesAnalyser
 from emi_copilot.services.offer_discovery_service import OfferDiscoveryService
@@ -31,6 +29,7 @@ from emi_copilot.services.weekly_message_service import (
     WeeklyMessageReports,
     WeeklyMessageService,
 )
+from tests.ai_flow_builders import build_weekly_message_writer
 from tests.merchant_builders import OTHER_MERCHANT_ID, build_catalogue_product
 from tests.sale_builders import build_sale
 from tests.unit.services.conftest import ServiceTestKit
@@ -104,7 +103,7 @@ def build_report_services(kit: ServiceTestKit) -> ReportServices:
         id_generator=kit.id_generator,
         report_periods=periods,
         reports=WeeklyMessageReports(funnel, missed_sales, suggested_actions, money_due),
-        template=WeeklyMessageTemplate(format_paise_as_whole_rupees),
+        writer=build_weekly_message_writer(kit.clock),
         delivery=delivery,
     )
     return ReportServices(

@@ -47,6 +47,7 @@ const COMFORT_DETAIL: CustomerFlowState = {
 };
 const ALTERNATIVES: CustomerFlowState = { step: 'alternatives', answers: PLAN_ANSWERS };
 const EXPLANATION: CustomerFlowState = { step: 'explanation', answers: PLAN_ANSWERS };
+const TEACH_BACK: CustomerFlowState = { step: 'teachBack', answers: PLAN_ANSWERS };
 const CONSENT: CustomerFlowState = { step: 'consent', answers: PLAN_ANSWERS };
 const RECEIPT: CustomerFlowState = { step: 'receipt', answers: PLAN_ANSWERS };
 const SESSION_UNAVAILABLE: CustomerFlowState = { step: 'sessionUnavailable' };
@@ -60,6 +61,7 @@ const EVERY_STATE: readonly CustomerFlowState[] = [
   COMFORT_DETAIL,
   ALTERNATIVES,
   EXPLANATION,
+  TEACH_BACK,
   CONSENT,
   RECEIPT,
   SESSION_UNAVAILABLE,
@@ -94,6 +96,15 @@ describe('customerFlowReducer: the happy path', () => {
     expect(finalState).toEqual(RECEIPT);
   });
 
+  it('goes from C7 through the optional C8 teach-back to C9 with the plan kept', () => {
+    const finalState = applyActions(
+      [{ type: 'teachBackOpened' }, { type: 'continuedToConsent' }],
+      EXPLANATION,
+    );
+
+    expect(finalState).toEqual(CONSENT);
+  });
+
   it('starts at the welcome screen', () => {
     expect(INITIAL_CUSTOMER_FLOW_STATE).toEqual({ step: 'welcome' });
   });
@@ -101,7 +112,8 @@ describe('customerFlowReducer: the happy path', () => {
 
 describe('customerFlowReducer: consent is unreachable without a budget and a plan', () => {
   it.each([
-    ['continuedToConsent', { type: 'continuedToConsent' }, [EXPLANATION]],
+    ['continuedToConsent', { type: 'continuedToConsent' }, [EXPLANATION, TEACH_BACK]],
+    ['teachBackOpened', { type: 'teachBackOpened' }, [EXPLANATION]],
     ['consentRecorded', { type: 'consentRecorded' }, [CONSENT]],
     ['continuedToExplanation', { type: 'continuedToExplanation' }, [ALTERNATIVES]],
     ['continuedToAlternatives', { type: 'continuedToAlternatives' }, [PLANS_WITH_SELECTION]],
@@ -190,6 +202,7 @@ describe('customerFlowReducer: going back', () => {
     ['C5 to C4 with the selection kept', COMFORT_DETAIL, PLANS_WITH_SELECTION],
     ['C6 to C4 with the selection kept', ALTERNATIVES, PLANS_WITH_SELECTION],
     ['C7 to C6', EXPLANATION, ALTERNATIVES],
+    ['C8 to C7', TEACH_BACK, EXPLANATION],
     ['C9 to C7', CONSENT, EXPLANATION],
   ] as const)('goes %s', (_name, fromState, toState) => {
     expect(customerFlowReducer(fromState, { type: 'wentBack' })).toEqual(toState);

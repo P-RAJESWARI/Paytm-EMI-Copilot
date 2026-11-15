@@ -1,0 +1,144 @@
+"""SpokenAmountParser: one spoken amount becomes paise; anything unclear asks the customer again."""
+
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
+from emi_copilot.core.indian_rupee_formatter import group_digits_the_indian_way
+from emi_copilot.domain.number_audit import NumberTokenExtractor
+from emi_copilot.domain.speech import SpokenAmountParser
+from emi_copilot.domain.speech.spoken_amount_parser import read_spoken_numbers
+
+THREE_THOUSAND_RUPEES_IN_PAISE = 300_000
+PHONE_PRICE_IN_PAISE = 2_200_000
+# Written as an escape because it looks like the letter o.
+TAMIL_DIGIT_ZERO = "\u0be6"
+
+
+@pytest.mark.parametrize(
+    "transcript",
+    [
+        "3,000",
+        "3000",
+        "₹3,000 a month",
+        "Rs. 3000",
+        "3000 rupees",
+        "3 thousand",
+        "three thousand",
+        "Three Thousand rupees",
+        "மூன்று ஆயிரம்",
+        "மாதம் ₹3,000",
+        f"₹௩,{TAMIL_DIGIT_ZERO * 3}",
+        "3,000, yes 3,000",
+    ],
+)
+def test_spoken_amount_parser_one_amount_in_any_form_gives_its_paise(transcript: str) -> None:
+    """Digits, grouping, rupee markers, number words and magnitude words all read as ₹3,000."""
+    assert SpokenAmountParser().parse_amount_in_paise(transcript) == THREE_THOUSAND_RUPEES_IN_PAISE
+
+
+@pytest.mark.parametrize(
+    ("transcript", "expected_paise"),
+    [
+        ("a thousand", 100_000),
+        ("2 lakh", 20_000_000),
+        ("இரண்டு லட்சம்", 20_000_000),
+        ("five hundred", 50_000),
+        ("₹3,000 a month on the 1st", THREE_THOUSAND_RUPEES_IN_PAISE),
+    ],
+)
+def test_spoken_amount_parser_magnitudes_multiply_and_other_signs_are_ignored(
+    transcript: str, expected_paise: int
+) -> None:
+    """A lone magnitude counts once; ordinals and % are not amounts."""
+    assert SpokenAmountParser().parse_amount_in_paise(transcript) == expected_paise
+
+
+@pytest.mark.parametrize(
+    "transcript",
+    [
+        "",
+        "I am not sure",
+        "3000 or 4000",
+        "three thousand or four thousand",
+        "three hundred four hundred",
+        "three or four",
+        "3 thousand 4000",
+        "3000 twelve",
+    ],
+)
+def test_spoken_amount_parser_no_amount_or_several_amounts_gives_none(transcript: str) -> None:
+    """Unclear speech is never guessed; the customer types or says it again."""
+    assert SpokenAmountParser().parse_amount_in_paise(transcript) is None
+
+
+# The exact saaras:v4 transcript of the 2026-11-15 smoke check: Sarvam writes amounts as words.
+SARVAM_SPEECH_TO_TEXT_TRANSCRIPT = (
+    "You pay three thousand six hundred and sixty seven rupees each month for six months."
+)
+
+
+@pytest.mark.parametrize(
+    ("transcript", "expected_paise"),
+    [
+        (SARVAM_SPEECH_TO_TEXT_TRANSCRIPT, 366_700),
+        ("three thousand six hundred and sixty seven", 366_700),
+        ("three thousand five hundred", 350_000),
+        ("twenty five thousand", 2_500_000),
+        ("one lakh twenty thousand", 12_000_000),
+        ("three thousand rupees", 300_000),
+        ("my budget is three thousand rupees a month", 300_000),
+        ("ninety nine rupees", 9_900),
+        ("fifteen hundred", 150_000),
+        ("five hundred thousand", 50_000_000),
+        ("hundred", 10_000),
+        ("₹3,000 for 6 months", 300_000),
+        ("three thousand for twenty four months", 300_000),
+        ("மாதம் ₹3,000 ஆறு மாதங்களுக்கு", 300_000),
+    ],
+)
+def test_spoken_amount_parser_english_compound_words_compose_and_tenure_is_left_out(
+    transcript: str, expected_paise: int
+) -> None:
+    """Number words compose into one amount; "for six months" is the tenure, not an amount."""
+    assert SpokenAmountParser().parse_amount_in_paise(transcript) == expected_paise
+
+
+@pytest.mark.parametrize(
+    ("answer_text", "expected_numbers"),
+    [
+        ("three thousand six hundred and sixty seven for six months", [3667, 6]),
+        ("three thousand for six months", [3000, 6]),
+        ("₹3,667 a month, 6 months", [3667, 6]),
+    ],
+)
+def test_read_spoken_numbers_keeps_the_amount_and_the_tenure_apart(
+    answer_text: str, expected_numbers: list[int]
+) -> None:
+    """Teach-back reads the monthly amount and the months separately, never as 3,006."""
+    assert read_spoken_numbers(NumberTokenExtractor(), answer_text) == expected_numbers
+
+
+@given(rupees=st.integers(min_value=1, max_value=10_000_000))
+def test_spoken_amount_parser_any_indian_grouped_amount_reads_exactly(rupees: int) -> None:
+    """Every amount written with ₹ and Indian grouping reads back to the same paise."""
+    transcript = f"₹{group_digits_the_indian_way(rupees)} a month"
+    assert SpokenAmountParser().parse_amount_in_paise(transcript) == rupees * 100
+
+
+@pytest.mark.parametrize(
+    ("amount_in_paise", "expected_misheard"),
+    [
+        (None, True),
+        (0, True),
+        (THREE_THOUSAND_RUPEES_IN_PAISE, False),
+        (PHONE_PRICE_IN_PAISE, False),
+        (3_000_000, True),
+    ],
+)
+def test_spoken_amount_parser_is_likely_misheard_flags_missing_zero_and_above_price(
+    amount_in_paise: int | None, *, expected_misheard: bool
+) -> None:
+    """₹30,000 a month for a ₹22,000 phone is the design's misheard example."""
+    parser = SpokenAmountParser()
+    assert parser.is_likely_misheard(amount_in_paise, PHONE_PRICE_IN_PAISE) is expected_misheard

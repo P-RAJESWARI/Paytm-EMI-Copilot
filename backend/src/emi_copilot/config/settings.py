@@ -10,6 +10,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from emi_copilot.config.ai_settings import AiSettings
+
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 # The fixed one-time code the Mock OTP sender's customers type (ADR 0022); never a real code.
@@ -125,6 +127,8 @@ class ApplicationSettings(BaseSettings):
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"
+    # Speech and explanation text providers (Layer 4), read from their own variables.
+    ai_settings: AiSettings = Field(default_factory=AiSettings)
 
     @property
     def payment_link_creation_stale_after(self) -> timedelta:

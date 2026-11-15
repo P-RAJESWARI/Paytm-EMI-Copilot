@@ -11,9 +11,9 @@ from emi_copilot.dtos.wire_types import (
     NonNegativeAmountInPaise,
     OpaqueIdentifier,
 )
+from emi_copilot.services.ai.shown_explanation_cache import ShownExplanation
 from emi_copilot.services.customer.explanation_types import (
     ExplanationSource,
-    ExplanationText,
     HighlightedAmount,
     HighlightedAmountKind,
 )
@@ -44,9 +44,12 @@ class HighlightedAmountResponse(CamelCaseResponseModel):
 class PlanExplanationResponse(CamelCaseResponseModel):
     """The explanation text and the figures it mentions; source TEMPLATE is the standard text.
 
-    Every rupee amount in the text is one of highlightedAmounts, shown in whole rupees.
+    source AI_AUDITED is AI text whose every number passed the number audit. Every rupee amount
+    in the text is one of highlightedAmounts, shown in whole rupees. explanationId names this
+    shown text for speech synthesis.
     """
 
+    explanation_id: Annotated[str, Field(examples=["01JD5Z0Q8M6X3V2N7B4C9K1T0F"])]
     text: Annotated[
         str,
         Field(
@@ -61,9 +64,11 @@ class PlanExplanationResponse(CamelCaseResponseModel):
     highlighted_amounts: list[HighlightedAmountResponse]
 
     @classmethod
-    def from_explanation(cls, explanation: ExplanationText) -> "PlanExplanationResponse":
-        """Converts the explanation, keeping the order of its highlighted amounts."""
+    def from_shown_explanation(cls, shown: ShownExplanation) -> "PlanExplanationResponse":
+        """Converts the shown explanation, keeping the order of its highlighted amounts."""
+        explanation = shown.explanation
         return cls(
+            explanation_id=shown.explanation_id,
             text=explanation.text,
             language=explanation.language,
             source=explanation.source,

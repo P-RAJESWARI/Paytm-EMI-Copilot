@@ -48,7 +48,6 @@ personal data and vendor payloads (domain/errors.py); it is never logged or trac
 
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, cast
 
@@ -58,6 +57,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import HTTPExceptionHandler
 
+from emi_copilot.api.ai_problem_mappings import AI_PROBLEM_MAPPINGS_BY_ERROR_TYPE
+from emi_copilot.api.problem_mapping import ProblemMapping
 from emi_copilot.core.request_context import get_current_correlation_id
 from emi_copilot.domain import errors
 from emi_copilot.dtos.problem_details_dto import (
@@ -75,14 +76,6 @@ MALFORMED_REQUEST_CODE = "MALFORMED_REQUEST"
 UNEXPECTED_ERROR_CODE = "INTERNAL_SERVER_ERROR"
 _JSON_INVALID_ERROR_TYPE = "json_invalid"
 UNAUTHORISED_STATUS = 401
-
-
-@dataclass(frozen=True, slots=True)
-class ProblemMapping:
-    """How one error class is answered: its HTTP status and a short English title."""
-
-    status: int
-    title: str
 
 
 PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping] = (
@@ -181,6 +174,11 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
     )
 )
 
+# The AI errors' rows live in ai_problem_mappings.py (Layer 4).
+ALL_PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping] = (
+    MappingProxyType({**PROBLEM_MAPPINGS_BY_ERROR_TYPE, **AI_PROBLEM_MAPPINGS_BY_ERROR_TYPE})
+)
+
 # Framework-raised HTTP errors (unknown route, wrong method, oversized or unparseable body).
 HTTP_ERROR_CODES_BY_STATUS: Mapping[int, str] = MappingProxyType(
     {
@@ -200,9 +198,9 @@ def find_problem_mapping(error: errors.DomainError) -> ProblemMapping:
     DomainError itself is in the table, so every domain error finds a mapping.
     """
     return next(
-        PROBLEM_MAPPINGS_BY_ERROR_TYPE[error_class]
+        ALL_PROBLEM_MAPPINGS_BY_ERROR_TYPE[error_class]
         for error_class in type(error).__mro__
-        if error_class in PROBLEM_MAPPINGS_BY_ERROR_TYPE
+        if error_class in ALL_PROBLEM_MAPPINGS_BY_ERROR_TYPE
     )
 
 

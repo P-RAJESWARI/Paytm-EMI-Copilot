@@ -24,11 +24,14 @@ backend/
       emi/                      EMI calculation strategies
       comfort/                  comfort ratio and band classification (Layer 3)
       ranking/                  plan ranking and reason codes (Layer 3)
+      number_audit/             AI number audit and wording guard (Layer 4, ADR 0023)
       errors.py                 typed domain errors
       events.py                 domain event classes
     adapters/                   everything that talks to the outside world
       payment_gateway/          port.py, paytm_adapter.py, mock_adapter.py, factory.py, checksum_signer.py
-      ai/                       Layer 4: speech, text, number audit, LangGraph flows
+      ai/                       Layer 4: speech and text ports, Mock and Sarvam adapters, flow runners
+                                (LangGraph only here); the number audit is pure domain code in
+                                domain/number_audit/ (ADR 0023)
     events/                     event bus and subscribers (Observer)
     core/                       logging, resilient HTTP client, clock, id generation
   tests/

@@ -23,6 +23,20 @@ const TRANSLATION_SOURCES_BY_FILE = import.meta.glob<string>('./*Translations.ts
 const BANNED_CUSTOMER_WORDING =
   /approv|declin|reject|eligib|interest rate|best for you|recommended|hurry|act now|limited time|only today|last chance|expires soon|don't miss/i;
 
+// The one allow-listed key: the C7 mockup's AI note says AI does "not ... approve anything", a
+// denial of a credit decision, which the banned-word pattern would otherwise reject.
+const ALLOW_LISTED_SENTENCE =
+  'Written by AI to explain the plans. It does not decide for you or approve anything.';
+
+// Gives the English strings with the allow-listed AI note removed, after checking it is unchanged.
+function withoutAllowListedSentences(translations: typeof CUSTOMER_ENGLISH_TRANSLATIONS): object {
+  expect(translations.explanation.aiNote).toBe(ALLOW_LISTED_SENTENCE);
+  const explanationWithoutNote = Object.fromEntries(
+    Object.entries(translations.explanation).filter(([key]) => key !== 'aiNote'),
+  );
+  return { ...translations, explanation: explanationWithoutNote };
+}
+
 // Lists the names of the exported Tamil translation objects in one file's source.
 function findTamilObjectNames(source: string): string[] {
   return [...source.matchAll(/export const (\w+_TAMIL_TRANSLATIONS)/g)].map(
@@ -51,7 +65,7 @@ describe('customer translations', () => {
 
   it('never uses credit-decision, "interest rate", "best for you" or urgency wording', () => {
     const englishTexts = [
-      JSON.stringify(CUSTOMER_ENGLISH_TRANSLATIONS),
+      JSON.stringify(withoutAllowListedSentences(CUSTOMER_ENGLISH_TRANSLATIONS)),
       JSON.stringify(SHARED_ENGLISH_TRANSLATIONS),
     ];
 

@@ -41,6 +41,8 @@ function goBack(state: CustomerFlowState): CustomerFlowState {
       };
     case 'explanation':
       return { step: 'alternatives', answers: state.answers };
+    case 'teachBack':
+      return { step: 'explanation', answers: state.answers };
     case 'consent':
       return { step: 'explanation', answers: state.answers };
     default:
@@ -74,18 +76,27 @@ function openComfortDetail(
   };
 }
 
-// Moves forward from C6, C7 and C9; each move needs the step before it, so no step is skipped.
+// Moves forward from C6, C7, C8 and C9; each move needs the step before it, so no step is
+// skipped. C8 is optional: C7 goes to C9 directly or through C8.
 function continueForward(
   state: CustomerFlowState,
   action: Extract<
     CustomerFlowAction,
-    { type: 'continuedToExplanation' | 'continuedToConsent' | 'consentRecorded' }
+    {
+      type: 'continuedToExplanation' | 'teachBackOpened' | 'continuedToConsent' | 'consentRecorded';
+    }
   >,
 ): CustomerFlowState {
   if (action.type === 'continuedToExplanation' && state.step === 'alternatives') {
     return { step: 'explanation', answers: state.answers };
   }
-  if (action.type === 'continuedToConsent' && state.step === 'explanation') {
+  if (action.type === 'teachBackOpened' && state.step === 'explanation') {
+    return { step: 'teachBack', answers: state.answers };
+  }
+  if (
+    action.type === 'continuedToConsent' &&
+    (state.step === 'explanation' || state.step === 'teachBack')
+  ) {
     return { step: 'consent', answers: state.answers };
   }
   if (action.type === 'consentRecorded' && state.step === 'consent') {

@@ -11,6 +11,8 @@ from emi_copilot.api.controllers.customer_explanation_controller import (
 from emi_copilot.api.controllers.customer_plan_controller import customer_plan_router
 from emi_copilot.api.controllers.customer_receipt_controller import customer_receipt_router
 from emi_copilot.api.controllers.customer_session_controller import customer_session_router
+from emi_copilot.api.controllers.customer_speech_controller import customer_speech_router
+from emi_copilot.api.controllers.customer_teach_back_controller import customer_teach_back_router
 
 CUSTOMER_ROUTERS: tuple[APIRouter, ...] = (
     customer_session_router,
@@ -18,6 +20,8 @@ CUSTOMER_ROUTERS: tuple[APIRouter, ...] = (
     comfort_check_router,
     customer_plan_router,
     customer_explanation_router,
+    customer_speech_router,
+    customer_teach_back_router,
     customer_consent_router,
     customer_receipt_router,
 )

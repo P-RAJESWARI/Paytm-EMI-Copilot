@@ -47,10 +47,10 @@ def find_operation(document: dict[str, Any], wanted_operation_id: str) -> dict[s
     return operation
 
 
-def test_main_document_mounts_exactly_the_ten_customer_operations(
+def test_main_document_mounts_exactly_the_thirteen_customer_operations(
     openapi_document: dict[str, Any],
 ) -> None:
-    """The customer routers live in the main app (ADR 0022 decision 6), explanation included."""
+    """The customer routers live in the main app (ADR 0022 decision 6), voice included."""
     assert {operation_id for operation_id, _ in list_customer_operations(openapi_document)} == {
         SESSION_CREATION_OPERATION,
         f"GET {SESSION_PATH}",
@@ -59,6 +59,9 @@ def test_main_document_mounts_exactly_the_ten_customer_operations(
         f"GET {SESSION_PATH}/plans",
         f"POST {SESSION_PATH}/alternatives",
         EXPLANATION_OPERATION,
+        f"POST {SESSION_PATH}/speech/transcriptions",
+        f"POST {SESSION_PATH}/speech/synthesis",
+        f"POST {SESSION_PATH}/teach-back",
         f"POST {SESSION_PATH}/consent/otp",
         CONSENT_OPERATION,
         f"GET {SESSION_PATH}/receipt",

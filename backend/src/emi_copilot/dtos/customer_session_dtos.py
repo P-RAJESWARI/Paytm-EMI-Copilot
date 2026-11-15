@@ -46,10 +46,17 @@ class CustomerSessionResponse(CamelCaseResponseModel):
     product_name: Annotated[str, Field(examples=["Example phone, 128 GB"])]
     price_in_paise: Annotated[PositiveAmountInPaise, Field(examples=[2_200_000])]
     expires_at: Annotated[datetime, Field(examples=["2026-11-15T10:00:00Z"])]
+    is_voice_available: Annotated[
+        bool,
+        Field(
+            description="Whether to offer the microphone: speech is not switched off.",
+            examples=[True],
+        ),
+    ]
 
     @classmethod
     def from_started_session(
-        cls, started_session: StartedCustomerSession
+        cls, started_session: StartedCustomerSession, *, is_voice_available: bool
     ) -> "CustomerSessionResponse":
         """Converts the started session, with the price in integer paise."""
         return cls(
@@ -60,6 +67,7 @@ class CustomerSessionResponse(CamelCaseResponseModel):
             product_name=started_session.product_name,
             price_in_paise=started_session.price.to_paise(),
             expires_at=started_session.expires_at,
+            is_voice_available=is_voice_available,
         )
 
 
@@ -78,9 +86,18 @@ class CustomerSessionSummaryResponse(CamelCaseResponseModel):
     has_confirmed_budget: Annotated[bool, Field(examples=[True])]
     comfort_check_status: ComfortCheckStatus | None
     has_consented: Annotated[bool, Field(examples=[False])]
+    is_voice_available: Annotated[
+        bool,
+        Field(
+            description="Whether to offer the microphone: speech is not switched off.",
+            examples=[True],
+        ),
+    ]
 
     @classmethod
-    def from_summary(cls, summary: CustomerSessionSummary) -> "CustomerSessionSummaryResponse":
+    def from_summary(
+        cls, summary: CustomerSessionSummary, *, is_voice_available: bool
+    ) -> "CustomerSessionSummaryResponse":
         """Converts the summary, with the price in integer paise."""
         return cls(
             customer_session_id=summary.customer_session_id,
@@ -92,4 +109,5 @@ class CustomerSessionSummaryResponse(CamelCaseResponseModel):
             has_confirmed_budget=summary.has_confirmed_budget,
             comfort_check_status=describe_comfort_check_answer(summary.comfort_check_status),
             has_consented=summary.has_consented,
+            is_voice_available=is_voice_available,
         )
