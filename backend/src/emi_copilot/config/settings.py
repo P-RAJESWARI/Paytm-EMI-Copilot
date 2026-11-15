@@ -1,5 +1,6 @@
 """Typed application settings read from environment variables."""
 
+import re
 from datetime import timedelta
 from enum import StrEnum
 from typing import Literal, Self
@@ -10,6 +11,10 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+# The fixed one-time code the Mock OTP sender's customers type (ADR 0022); never a real code.
+DEFAULT_MOCK_CONSENT_OTP_CODE = "123456"  # pragma: allowlist secret
+_SIX_DIGITS_PATTERN = re.compile(r"[0-9]{6}")
 
 # The Vite dev server of customer-web (frontend/apps/customer-web); the QR code opens it.
 LOCAL_CUSTOMER_WEB_BASE_URL = "http://localhost:5174"
@@ -83,6 +88,19 @@ class ApplicationSettings(BaseSettings):
     # MockCustomerSimulator (plan step 2.3, rules 9 and 10): demo-only endpoints that play the
     # customer agreeing to a plan and paying a Mock link. Off by default; refused in paytm mode.
     mock_customer_simulator_enabled: bool = False
+    # Customer sessions and consent one-time codes (ADR 0022 decision 3, demo values). A session
+    # lasts 30 minutes; a code allows 3 attempts, lasts 5 minutes and can be resent after 30 s.
+    customer_session_lifetime_in_seconds: int = Field(default=1_800, ge=60, le=86_400)
+    consent_otp_lifetime_in_seconds: int = Field(default=300, ge=30, le=3_600)
+    consent_otp_maximum_attempts: int = Field(default=3, ge=1, le=10)
+    consent_otp_resend_wait_in_seconds: int = Field(default=30, ge=1, le=600)
+    # The Mock OTP sender sends nothing, so its customers type this fixed six-digit code. It is
+    # never logged; a real sender would use random codes instead.
+    mock_consent_otp_code: SecretStr = SecretStr(DEFAULT_MOCK_CONSENT_OTP_CODE)
+    # HMAC-SHA256 key for the customer's phone hash and consent code hashes, at least 32 bytes.
+    # When unset in Mock gateway mode a random per-process key is drawn (stored phone hashes
+    # then differ after a restart); Paytm mode refuses to start without it.
+    customer_phone_hash_secret: SecretStr | None = None
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"
@@ -109,6 +127,7 @@ class ApplicationSettings(BaseSettings):
         "paytm_transaction_status_base_url",
         "paytm_webhook_callback_url",
         "customer_qr_signing_secret",
+        "customer_phone_hash_secret",
         mode="before",
     )
     @classmethod
@@ -131,6 +150,14 @@ class ApplicationSettings(BaseSettings):
         if parts.query or parts.fragment:
             raise ValueError("CUSTOMER_WEB_BASE_URL must not have a query or a fragment")
         return value.rstrip("/")
+
+    @field_validator("mock_consent_otp_code")
+    @classmethod
+    def check_mock_consent_otp_code(cls, value: SecretStr) -> SecretStr:
+        """Accepts exactly six digits, the code length the consent screen asks for."""
+        if _SIX_DIGITS_PATTERN.fullmatch(value.get_secret_value()) is None:
+            raise ValueError("MOCK_CONSENT_OTP_CODE must be exactly six digits")
+        return value
 
     @field_validator("reporting_time_zone")
     @classmethod
@@ -166,5 +193,14 @@ class ApplicationSettings(BaseSettings):
             raise ValueError(
                 "PAYMENT_GATEWAY_RETRY_BASE_DELAY_IN_SECONDS must not exceed "
                 "PAYMENT_GATEWAY_RETRY_MAX_DELAY_IN_SECONDS"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def check_consent_otp_resend_wait_is_within_its_lifetime(self) -> Self:
+        """Rejects a resend wait as long as the code's lifetime, which would block every resend."""
+        if self.consent_otp_resend_wait_in_seconds >= self.consent_otp_lifetime_in_seconds:
+            raise ValueError(
+                "CONSENT_OTP_RESEND_WAIT_IN_SECONDS must be below CONSENT_OTP_LIFETIME_IN_SECONDS"
             )
         return self

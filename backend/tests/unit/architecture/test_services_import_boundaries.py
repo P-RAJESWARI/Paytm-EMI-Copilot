@@ -23,6 +23,10 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.adapters.settlement.port",
     "emi_copilot.adapters.weekly_message_delivery.port",
     "emi_copilot.adapters.financial_profile.port",
+    # The consent ports (ADR 0022): the customer's phone number, code delivery and code source.
+    "emi_copilot.adapters.customer_contact.port",
+    "emi_copilot.adapters.consent_otp.port",
+    "emi_copilot.adapters.consent_otp.code_generator_port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
     # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens
@@ -31,6 +35,9 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.core.pin_hasher",
     "emi_copilot.core.qr_token_signer",
     "emi_copilot.core.session_code_generator",
+    # Keyed hashes of the customer's phone and codes, and consent reference serials (ADR 0022).
+    "emi_copilot.core.keyed_hasher",
+    "emi_copilot.core.consent_reference_serial_generator",
     "emi_copilot.domain",
     "emi_copilot.events",
     "emi_copilot.repositories.unit_of_work_protocol",

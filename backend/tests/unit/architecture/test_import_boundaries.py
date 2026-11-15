@@ -97,11 +97,16 @@ def test_mock_payment_simulator_port_imports_only_standard_library_and_domain() 
     [
         ADAPTERS_DIRECTORY / "settlement" / "port.py",
         ADAPTERS_DIRECTORY / "weekly_message_delivery" / "port.py",
+        ADAPTERS_DIRECTORY / "customer_contact" / "port.py",
+        ADAPTERS_DIRECTORY / "consent_otp" / "port.py",
+        ADAPTERS_DIRECTORY / "consent_otp" / "code_generator_port.py",
     ],
     ids=describe_source_file,
 )
-def test_report_ports_import_only_standard_library_and_domain(port_file: Path) -> None:
-    """The settlement and weekly message ports are in domain terms, like the gateway port."""
+def test_report_and_consent_ports_import_only_standard_library_and_domain(
+    port_file: Path,
+) -> None:
+    """The report and consent ports are in domain terms, like the gateway port."""
     assert port_file.is_file()
     assert find_disallowed_imports(port_file) == []
 
