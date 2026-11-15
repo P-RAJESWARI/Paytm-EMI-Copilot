@@ -14,6 +14,16 @@ const SENT_WEEKLY_MESSAGE = {
   sentAt: '2026-11-16T03:30:00Z',
 };
 
+/** Layer 4: the English text written by the audited AI, the Tamil one by the template. */
+const AI_WRITTEN_WEEKLY_MESSAGE: typeof TEST_WEEKLY_MESSAGE = {
+  ...SENT_WEEKLY_MESSAGE,
+  source: 'AI_AUDITED',
+  messages: {
+    en: { ...TEST_WEEKLY_MESSAGE.messages.en, source: 'AI_AUDITED' },
+    ta: { ...TEST_WEEKLY_MESSAGE.messages.ta, source: 'TEMPLATE' },
+  },
+};
+
 // Renders M8 with a sent message unless a test replaces the route.
 function renderWeeklyMessage(routes: FakeRoutes = {}) {
   return renderMerchantApp({
@@ -116,6 +126,42 @@ describe('M8 weekly message on the phone', () => {
     const { container } = renderWeeklyMessage();
     await screen.findByRole('article');
 
+    await expectNoAccessibilityViolations(container);
+  });
+
+  it('notes AI-written text only for the language the AI wrote, with no Listen', async () => {
+    const { container } = renderWeeklyMessage({
+      'GET /api/v1/reports/weekly-message': () => jsonResponse(AI_WRITTEN_WEEKLY_MESSAGE),
+    });
+
+    const message = await screen.findByRole('article');
+    expect(within(message).getByText('Written by AI from your shop’s numbers')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Listen/ })).toBeNull();
+    await expectNoAccessibilityViolations(container);
+
+    await userEvent.click(screen.getByRole('button', { name: 'தமிழ்' }));
+    expect(screen.queryByText('உங்கள் கடையின் எண்களிலிருந்து AI எழுதியது')).toBeNull();
+  });
+
+  it('shows no AI note for template text', async () => {
+    renderWeeklyMessage();
+
+    await screen.findByRole('article');
+
+    expect(screen.queryByText('Written by AI from your shop’s numbers')).toBeNull();
+  });
+
+  it('notes AI-written text on the M5 summary card too', async () => {
+    const { container } = renderMerchantApp({
+      path: '/report',
+      routes: {
+        'GET /api/v1/reports/funnel': () => jsonResponse(TEST_FUNNEL_REPORT),
+        'GET /api/v1/reports/weekly-message': () => jsonResponse(AI_WRITTEN_WEEKLY_MESSAGE),
+      },
+    });
+
+    const summary = await screen.findByRole('region', { name: 'This week in short' });
+    expect(await within(summary).findByText('Written by AI from your shop’s numbers')).toBeTruthy();
     await expectNoAccessibilityViolations(container);
   });
 });

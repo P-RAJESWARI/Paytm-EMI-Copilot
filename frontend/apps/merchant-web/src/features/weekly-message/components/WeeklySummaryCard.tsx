@@ -5,7 +5,7 @@ import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { MERCHANT_PATHS } from '../../../app/merchantPaths';
-import type { WeeklyMessage } from '../api/weeklyMessageApi';
+import { isWrittenByAi, type WeeklyMessage } from '../api/weeklyMessageApi';
 import { MessageLanguageToggle } from './MessageLanguageToggle';
 
 export interface WeeklySummaryCardProps {
@@ -22,7 +22,8 @@ export interface WeeklySummaryCardProps {
 }
 
 // M5's navy "This week in short" card: the backend's message in the chosen language, "Send to
-// my phone" (or "Sent to your phone") and a link to the phone view (M8). No audio until Layer 4.
+// my phone" (or "Sent to your phone") and a link to the phone view (M8). AI-written text carries
+// a small note; there is no audio on the merchant side.
 export function WeeklySummaryCard(props: WeeklySummaryCardProps) {
   const { weeklyMessage, messageLanguage, translateInMessageLanguage: t } = props;
   const headingId = useId();
@@ -52,6 +53,9 @@ export function WeeklySummaryCard(props: WeeklySummaryCardProps) {
               {paragraph}
             </p>
           ))}
+          {isWrittenByAi(messageText) ? (
+            <p className="text-caption text-cyan-soft">{t('weeklyMessage.writtenByAi')}</p>
+          ) : null}
         </div>
       )}
       {weeklyMessage === undefined ? null : (
