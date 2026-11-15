@@ -17,6 +17,11 @@ from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
 from emi_copilot.domain.reports.missed_sales import MissedSalesTally
 from emi_copilot.domain.reports.weekly_message_record import WeeklyMessageSentRecord
 from emi_copilot.domain.sales import Sale, SaleStatus
+from emi_copilot.repositories.customer_flow_store_protocols import (
+    ConsentRecordStore,
+    CustomerSessionStore,
+    OtpChallengeStore,
+)
 
 AfterCommitCallback = Callable[[], None]
 """Work to run once a transaction has committed, such as telling live streams what changed."""
@@ -274,6 +279,21 @@ class UnitOfWork(Protocol):
     @property
     def weekly_messages(self) -> WeeklyMessageStore:
         """Gives the weekly message repository of this transaction."""
+        ...
+
+    @property
+    def customer_sessions(self) -> CustomerSessionStore:
+        """Gives the customer session repository of this transaction."""
+        ...
+
+    @property
+    def otp_challenges(self) -> OtpChallengeStore:
+        """Gives the one-time code challenge repository of this transaction."""
+        ...
+
+    @property
+    def consent_records(self) -> ConsentRecordStore:
+        """Gives the consent record repository of this transaction."""
         ...
 
     def call_after_commit(self, callback: AfterCommitCallback) -> None:

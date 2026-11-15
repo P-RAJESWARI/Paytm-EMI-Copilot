@@ -97,6 +97,9 @@ def test_audit_subscriber_maps_subject_moment_correlation_and_details(
         (7, "sale", "01JCSALE000000000000000001"),
         (8, "sale", "01JCSALE000000000000000001"),
         (9, "sale", "01JCSALE000000000000000001"),
+        (10, "customer_session", "01JCSESSION000000000000001"),
+        (11, "consent_otp_challenge", "01JCOTP0000000000000000001"),
+        (12, "consent_record", "01JCCONSENT000000000000001"),
     ],
 )
 def test_audit_subscriber_uses_the_subject_that_identifies_each_non_attempt_event(
@@ -105,7 +108,7 @@ def test_audit_subscriber_uses_the_subject_that_identifies_each_non_attempt_even
     expected_subject_type: str,
     expected_subject_id: str,
 ) -> None:
-    """Rejected webhooks, unknown orders, offers and sales are audited under their own subjects."""
+    """Webhooks, orders, offers, sales, sessions, codes and consents have their own subjects."""
     event = build_every_domain_event()[event_index]
     (audit_event,) = _publish_through_audit([event], unit_of_work_factory)
     assert (audit_event.subject_type, audit_event.subject_id) == (

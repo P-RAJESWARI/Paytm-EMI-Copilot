@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from emi_copilot.domain.consent.otp_challenge import OtpVerificationOutcome
 from emi_copilot.domain.errors import PaymentLinkFailureCode
 from emi_copilot.domain.payments.gateway_payment_status import GatewayPaymentStatus
 from emi_copilot.domain.payments.payment_attempt_status import PaymentAttemptStatus
@@ -200,3 +201,41 @@ class SalePaymentOutcomeIgnored(DomainEvent):
     payment_outcome: SalePaymentOutcome
     payment_attempt_id: str
     ignored_reason: SalePaymentOutcomeIgnoredReason
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CustomerSessionStarted(DomainEvent):
+    """A customer's phone exchanged the sale's QR token for a new session (ADR 0022 decision 4).
+
+    Neither token is part of the event; only ids.
+    """
+
+    customer_session_id: str
+    sale_id: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class OtpVerificationFailed(DomainEvent):
+    """An entered one-time code was refused: wrong with attempts left (INCORRECT) or EXPIRED.
+
+    The code, its hash and the phone number are never part of the event.
+    """
+
+    otp_challenge_id: str
+    customer_session_id: str
+    outcome: OtpVerificationOutcome
+    attempts_remaining: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ConsentRecorded(DomainEvent):
+    """A hash-chained consent record was appended for a sale's agreed plan (CLAUDE.md rule 8).
+
+    The evidence itself lives in consent_record; the event names it by id and chain position.
+    """
+
+    consent_id: str
+    sale_id: str
+    customer_session_id: str
+    offer_id: str
+    chain_position: int

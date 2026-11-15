@@ -7,6 +7,8 @@ from typing import Self
 
 from emi_copilot.core.clock import Clock
 from emi_copilot.domain.catalogue import CatalogueProduct
+from emi_copilot.domain.consent import ConsentRecord, OtpChallenge
+from emi_copilot.domain.customer_sessions import CustomerSession
 from emi_copilot.domain.errors import PaymentAttemptAlreadyExistsError, PaymentAttemptNotFoundError
 from emi_copilot.domain.funnel import FunnelEvent
 from emi_copilot.domain.merchants import DevicePairing, Merchant
@@ -14,6 +16,11 @@ from emi_copilot.domain.payments import AuditEvent, PaymentAttempt
 from emi_copilot.domain.sales import Sale
 from emi_copilot.repositories.after_commit_callbacks import AfterCommitCallbacks
 from emi_copilot.repositories.unit_of_work_protocol import AfterCommitCallback
+from tests.fakes.fake_customer_flow_repositories import (
+    FakeConsentRecordRepository,
+    FakeCustomerSessionRepository,
+    FakeOtpChallengeRepository,
+)
 from tests.fakes.fake_merchant_repositories import (
     FakeDevicePairingRepository,
     FakeMerchantRepository,
@@ -38,6 +45,9 @@ class InMemoryDatabase:
     sales_by_id: dict[str, Sale] = field(default_factory=dict)
     funnel_events: list[FunnelEvent] = field(default_factory=list)
     weekly_message_sent_at_by_week: dict[tuple[str, date], datetime] = field(default_factory=dict)
+    customer_sessions_by_id: dict[str, CustomerSession] = field(default_factory=dict)
+    otp_challenges_by_id: dict[str, OtpChallenge] = field(default_factory=dict)
+    consent_records: list[ConsentRecord] = field(default_factory=list)
     commit_count: int = 0
     rollback_count: int = 0
 
@@ -147,6 +157,9 @@ class FakeUnitOfWork:
     funnel_events: FakeFunnelEventRepository
     report_queries: FakeReportQueryRepository
     weekly_messages: FakeWeeklyMessageRepository
+    customer_sessions: FakeCustomerSessionRepository
+    otp_challenges: FakeOtpChallengeRepository
+    consent_records: FakeConsentRecordRepository
 
     def __init__(self, database: InMemoryDatabase, clock: Clock) -> None:
         """Keeps the shared in-memory database and the clock for updated_at."""
@@ -160,6 +173,9 @@ class FakeUnitOfWork:
         self._working_sales: dict[str, Sale] = {}
         self._working_funnel_events: list[FunnelEvent] = []
         self._working_weekly_messages: dict[tuple[str, date], datetime] = {}
+        self._working_customer_sessions: dict[str, CustomerSession] = {}
+        self._working_otp_challenges: dict[str, OtpChallenge] = {}
+        self._working_consent_records: list[ConsentRecord] = []
         self._after_commit_callbacks = AfterCommitCallbacks()
 
     def __enter__(self) -> Self:
@@ -172,6 +188,9 @@ class FakeUnitOfWork:
         self._working_sales = dict(self._database.sales_by_id)
         self._working_funnel_events = list(self._database.funnel_events)
         self._working_weekly_messages = dict(self._database.weekly_message_sent_at_by_week)
+        self._working_customer_sessions = dict(self._database.customer_sessions_by_id)
+        self._working_otp_challenges = dict(self._database.otp_challenges_by_id)
+        self._working_consent_records = list(self._database.consent_records)
         self._after_commit_callbacks = AfterCommitCallbacks()
         self.payment_attempts = FakePaymentAttemptRepository(self._working_attempts, self._clock)
         self.audit_events = FakeAuditEventRepository(self._working_audit_events)
@@ -184,6 +203,9 @@ class FakeUnitOfWork:
             self._working_sales, self._working_funnel_events
         )
         self.weekly_messages = FakeWeeklyMessageRepository(self._working_weekly_messages)
+        self.customer_sessions = FakeCustomerSessionRepository(self._working_customer_sessions)
+        self.otp_challenges = FakeOtpChallengeRepository(self._working_otp_challenges)
+        self.consent_records = FakeConsentRecordRepository(self._working_consent_records)
         return self
 
     def call_after_commit(self, callback: AfterCommitCallback) -> None:
@@ -206,6 +228,9 @@ class FakeUnitOfWork:
             self._database.sales_by_id = self._working_sales
             self._database.funnel_events = self._working_funnel_events
             self._database.weekly_message_sent_at_by_week = self._working_weekly_messages
+            self._database.customer_sessions_by_id = self._working_customer_sessions
+            self._database.otp_challenges_by_id = self._working_otp_challenges
+            self._database.consent_records = self._working_consent_records
             self._database.commit_count += 1
             self._after_commit_callbacks.run_all()
         else:

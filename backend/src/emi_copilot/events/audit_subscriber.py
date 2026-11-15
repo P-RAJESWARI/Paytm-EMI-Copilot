@@ -1,4 +1,4 @@
-"""AuditSubscriber: writes one append-only audit row for every payment and sale domain event."""
+"""AuditSubscriber: writes one append-only audit row for every domain event that has a mapping."""
 
 import dataclasses
 from collections.abc import Callable, Mapping
@@ -9,8 +9,11 @@ from typing import cast
 from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.core.request_context import get_current_correlation_id
 from emi_copilot.domain.events import (
+    ConsentRecorded,
+    CustomerSessionStarted,
     DomainEvent,
     OfferQuoteMismatch,
+    OtpVerificationFailed,
     PaymentLinkCreated,
     PaymentLinkCreationFailed,
     PaymentLinkOutcomeUnknown,
@@ -30,6 +33,9 @@ WEBHOOK_DELIVERY_SUBJECT_TYPE = "webhook_delivery"
 PAYMENT_ORDER_SUBJECT_TYPE = "payment_order"
 EMI_OFFER_SUBJECT_TYPE = "emi_offer"
 SALE_SUBJECT_TYPE = "sale"
+CUSTOMER_SESSION_SUBJECT_TYPE = "customer_session"
+OTP_CHALLENGE_SUBJECT_TYPE = "consent_otp_challenge"
+CONSENT_RECORD_SUBJECT_TYPE = "consent_record"
 _OCCURRED_AT_FIELD = "occurred_at"
 
 
@@ -78,6 +84,17 @@ AUDIT_MAPPINGS_BY_EVENT_TYPE: Mapping[type[DomainEvent], AuditMapping] = Mapping
         SalePaymentOutcomeIgnored: AuditMapping(
             AuditEventType.SALE_PAYMENT_OUTCOME_IGNORED, SALE_SUBJECT_TYPE, "sale_id"
         ),
+        CustomerSessionStarted: AuditMapping(
+            AuditEventType.CUSTOMER_SESSION_STARTED,
+            CUSTOMER_SESSION_SUBJECT_TYPE,
+            "customer_session_id",
+        ),
+        OtpVerificationFailed: AuditMapping(
+            AuditEventType.OTP_VERIFICATION_FAILED, OTP_CHALLENGE_SUBJECT_TYPE, "otp_challenge_id"
+        ),
+        ConsentRecorded: AuditMapping(
+            AuditEventType.CONSENT_RECORDED, CONSENT_RECORD_SUBJECT_TYPE, "consent_id"
+        ),
     }
 )
 
@@ -102,7 +119,7 @@ def build_audit_details(event: DomainEvent, subject_id_field: str) -> dict[str, 
 
 
 class AuditSubscriber:
-    """Turns each payment and sale domain event into an AuditEvent in the publisher's unit of work.
+    """Turns each mapped domain event into an AuditEvent in the publisher's unit of work.
 
     The row commits with the business write or not at all (security-and-compliance.md section
     9). The correlation id is the current request's, when there is one.

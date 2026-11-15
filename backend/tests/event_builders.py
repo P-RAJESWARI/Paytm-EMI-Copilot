@@ -2,9 +2,13 @@
 
 from dataclasses import replace
 
+from emi_copilot.domain.consent import OtpVerificationOutcome
 from emi_copilot.domain.events import (
+    ConsentRecorded,
+    CustomerSessionStarted,
     DomainEvent,
     OfferQuoteMismatch,
+    OtpVerificationFailed,
     PaymentLinkCreated,
     PaymentLinkCreationFailed,
     PaymentLinkOutcomeUnknown,
@@ -30,6 +34,9 @@ SAMPLE_ATTEMPT_ID = "01JCSAMPLEATTEMPT000000001"
 SAMPLE_ORDER_ID = "ORDER-SAMPLE-0001"
 SAMPLE_SALE_ID = "01JCSALE000000000000000001"
 SAMPLE_MERCHANT_ID = "01JCMERCHANT00000000000001"
+SAMPLE_CUSTOMER_SESSION_ID = "01JCSESSION000000000000001"
+SAMPLE_OTP_CHALLENGE_ID = "01JCOTP0000000000000000001"
+SAMPLE_CONSENT_ID = "01JCCONSENT000000000000001"
 
 
 def build_every_domain_event() -> list[DomainEvent]:
@@ -91,6 +98,33 @@ def build_every_domain_event() -> list[DomainEvent]:
             payment_outcome=SalePaymentOutcome.PAID,
             payment_attempt_id=SAMPLE_ATTEMPT_ID,
             ignored_reason=SalePaymentOutcomeIgnoredReason.SALE_NOT_AWAITING_PAYMENT,
+        ),
+        *build_customer_flow_events(),
+    ]
+
+
+def build_customer_flow_events() -> list[DomainEvent]:
+    """Gives one customer session, OTP and consent event each, in AuditEventType order."""
+    return [
+        CustomerSessionStarted(
+            occurred_at=CREATED_AT,
+            customer_session_id=SAMPLE_CUSTOMER_SESSION_ID,
+            sale_id=SAMPLE_SALE_ID,
+        ),
+        OtpVerificationFailed(
+            occurred_at=CREATED_AT,
+            otp_challenge_id=SAMPLE_OTP_CHALLENGE_ID,
+            customer_session_id=SAMPLE_CUSTOMER_SESSION_ID,
+            outcome=OtpVerificationOutcome.INCORRECT,
+            attempts_remaining=2,
+        ),
+        ConsentRecorded(
+            occurred_at=CREATED_AT,
+            consent_id=SAMPLE_CONSENT_ID,
+            sale_id=SAMPLE_SALE_ID,
+            customer_session_id=SAMPLE_CUSTOMER_SESSION_ID,
+            offer_id="offer-plan-a",
+            chain_position=1,
         ),
     ]
 

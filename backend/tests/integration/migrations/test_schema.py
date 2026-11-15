@@ -23,6 +23,9 @@ APPLICATION_TABLES = {
     "sale",
     "funnel_event",
     "weekly_message",
+    "customer_session",
+    "consent_otp_challenge",
+    "consent_record",
 }
 MERCHANT_TABLES = ("merchant", "device_pairing", "product")
 CARD_FIELD_WORDS = ("card", "cvv", "expiry", "bin")

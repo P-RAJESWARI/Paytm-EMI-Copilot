@@ -2,6 +2,9 @@
 
 from emi_copilot.models.audit_event import AuditEventModel
 from emi_copilot.models.base import Base
+from emi_copilot.models.consent_otp_challenge import ConsentOtpChallengeModel
+from emi_copilot.models.consent_record import ConsentRecordModel
+from emi_copilot.models.customer_session import CustomerSessionModel
 from emi_copilot.models.device_pairing import DevicePairingModel
 from emi_copilot.models.funnel_event import FunnelEventModel
 from emi_copilot.models.merchant import MerchantModel
@@ -13,6 +16,9 @@ from emi_copilot.models.weekly_message import WeeklyMessageModel
 __all__ = [
     "AuditEventModel",
     "Base",
+    "ConsentOtpChallengeModel",
+    "ConsentRecordModel",
+    "CustomerSessionModel",
     "DevicePairingModel",
     "FunnelEventModel",
     "MerchantModel",
