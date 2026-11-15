@@ -1,10 +1,12 @@
 """Wire schemas of the comfort check (C3) and the comfort figures shown beside each plan (C5)."""
 
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import Field
 
 from emi_copilot.domain.comfort import ComfortAssessment, ComfortBand
+from emi_copilot.domain.customer_sessions import ComfortCheckStatus as StoredComfortCheckStatus
 from emi_copilot.dtos.wire_types import (
     MAXIMUM_SAFE_JAVASCRIPT_INTEGER,
     CamelCaseRequestBodyModel,
@@ -12,10 +14,24 @@ from emi_copilot.dtos.wire_types import (
     NonNegativeAmountInPaise,
     PositiveAmountInPaise,
 )
-from emi_copilot.services.customer_flow.customer_flow_types import (
-    ComfortCheckOutcome,
-    ComfortCheckStatus,
-)
+from emi_copilot.services.customer.customer_session_types import ComfortCheckOutcome
+
+
+class ComfortCheckStatus(StrEnum):
+    """The customer's C3 answer on the wire; before any answer the field is null instead."""
+
+    COMPLETED = "COMPLETED"
+    SKIPPED = "SKIPPED"
+
+
+def describe_comfort_check_answer(
+    stored_status: StoredComfortCheckStatus,
+) -> ComfortCheckStatus | None:
+    """Gives the wire answer of a stored status: None until the customer has answered C3."""
+    if stored_status is StoredComfortCheckStatus.NOT_ASKED:
+        return None
+    return ComfortCheckStatus(stored_status.value)
+
 
 BasisPoints = Annotated[int, Field(ge=0, le=MAXIMUM_SAFE_JAVASCRIPT_INTEGER)]
 """A share as an integer in basis points: 3890 means 38.90% (api-conventions.md section 2)."""
@@ -43,7 +59,7 @@ class ComfortCheckResponse(CamelCaseResponseModel):
         """Converts the outcome to integer paise; a skipped check carries no figures."""
         profile = outcome.financial_profile
         return cls(
-            status=outcome.status,
+            status=ComfortCheckStatus(outcome.status.value),
             is_synthetic_data=outcome.is_synthetic_data,
             monthly_inflow_in_paise=profile.monthly_inflow.to_paise() if profile else None,
             existing_emis_in_paise=profile.existing_emis_per_month.to_paise() if profile else None,

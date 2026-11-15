@@ -1,16 +1,36 @@
-"""Documented success bodies of the customer flow: a real run of the stub, ids replaced.
+"""Documented success bodies of the customer flow: a real run of the services, ids replaced.
 
-They were produced by the Phase 3A contract application at 2026-11-15T09:30:00Z with the
-design sample (standard QR, ₹3,000 budget, comfort check allowed, no-cost plan chosen); the
-session summary is read last. A test replays that run and requires these bodies, so the
-documented numbers cannot drift.
+They come from the main application on PostgreSQL at 2026-11-15T09:30:00Z with the design data
+(Ravi Electronics, the ₹22,000 phone on the Mock gateway, ₹3,000 budget, comfort check allowed
+with the synthetic profile, the no-cost plan explained and agreed, reference serial 42); the
+session summary is read last. An integration test replays that run and requires these bodies
+(ids, tokens and the random session code aside), so the documented numbers cannot drift.
 """
 
 from typing import Any
 
+EXAMPLE_CUSTOMER_SESSION_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0E"
+EXAMPLE_PHONE_128_GB_PRODUCT_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0F"
+EXAMPLE_PHONE_64_GB_PRODUCT_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0G"
+EXAMPLE_CONSENTED_PLAN: dict[str, Any] = {
+    "offerId": "mock-offer-no-cost-6m",
+    "lenderLabel": "Brand",
+    "emiType": "NO_COST",
+    "tenureInMonths": 6,
+    "regularInstallmentInPaise": 366667,
+    "lastInstallmentInPaise": 366665,
+    "extraInTotalInPaise": 0,
+    "totalPayableInPaise": 2200000,
+    "priceInPaise": 2200000,
+    "productId": EXAMPLE_PHONE_128_GB_PRODUCT_ID,
+    "productName": "Example phone, 128 GB",
+    "downPaymentInPaise": 0,
+    "financedAmountInPaise": 2200000,
+}
+
 CUSTOMER_SESSION_RESPONSE_EXAMPLE: dict[str, Any] = {
-    "customerSessionId": "stub-customer-session-4821",
-    "sessionToken": "01JD5Z0Q8M6X3V2N7B4C9K1T0C",
+    "customerSessionId": EXAMPLE_CUSTOMER_SESSION_ID,
+    "sessionToken": "<session-token>",
     "sessionCode": "4821",
     "shopName": "Ravi Electronics",
     "productName": "Example phone, 128 GB",
@@ -169,7 +189,7 @@ PLAN_ALTERNATIVES_RESPONSE_EXAMPLE: dict[str, Any] = {
             "tenureInMonths": 6,
             "downPaymentInPaise": 0,
             "financedAmountInPaise": 1800000,
-            "productId": "stub-product-phone-64gb",
+            "productId": EXAMPLE_PHONE_64_GB_PRODUCT_ID,
             "productName": "Example phone, 64 GB",
             "priceInPaise": 1800000,
             "monthlyInstallmentInPaise": 300000,
@@ -187,56 +207,41 @@ PLAN_ALTERNATIVES_RESPONSE_EXAMPLE: dict[str, Any] = {
         },
     ],
 }
+PLAN_EXPLANATION_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "text": (
+        "No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, "
+        "so nothing is added to the price."
+    ),
+    "language": "en",
+    "source": "TEMPLATE",
+    "highlightedAmounts": [
+        {"kind": "MONTHLY_INSTALLMENT", "amountInPaise": 366667},
+        {"kind": "EXTRA_IN_TOTAL", "amountInPaise": 0},
+    ],
+}
 OTP_CHALLENGE_RESPONSE_EXAMPLE: dict[str, Any] = {
     "phoneLastTwoDigits": "42",
     "expiresAt": "2026-11-15T09:35:00Z",
     "resendAvailableAt": "2026-11-15T09:30:30Z",
+    "attemptsRemaining": 3,
 }
 CONSENT_RESPONSE_EXAMPLE: dict[str, Any] = {
     "consentId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
-    "reference": "EMI-2611-0042",
+    "reference": "EMI-1511-0042",
     "consentedAt": "2026-11-15T09:30:00Z",
     "status": "READY_TO_PAY",
-    "plan": {
-        "offerId": "mock-offer-no-cost-6m",
-        "lenderLabel": "Brand",
-        "emiType": "NO_COST",
-        "tenureInMonths": 6,
-        "regularInstallmentInPaise": 366667,
-        "lastInstallmentInPaise": 366665,
-        "extraInTotalInPaise": 0,
-        "totalPayableInPaise": 2200000,
-        "priceInPaise": 2200000,
-        "productId": "stub-product-phone-128gb",
-        "productName": "Example phone, 128 GB",
-        "downPaymentInPaise": 0,
-        "financedAmountInPaise": 2200000,
-    },
+    "plan": EXAMPLE_CONSENTED_PLAN,
 }
 RECEIPT_RESPONSE_EXAMPLE: dict[str, Any] = {
     "status": "READY_TO_PAY",
-    "reference": "EMI-2611-0042",
+    "reference": "EMI-1511-0042",
     "phoneLastTwoDigits": "42",
     "consentedAt": "2026-11-15T09:30:00Z",
     "coolingOffNoticeStatus": "PLACEHOLDER",
-    "plan": {
-        "offerId": "mock-offer-no-cost-6m",
-        "lenderLabel": "Brand",
-        "emiType": "NO_COST",
-        "tenureInMonths": 6,
-        "regularInstallmentInPaise": 366667,
-        "lastInstallmentInPaise": 366665,
-        "extraInTotalInPaise": 0,
-        "totalPayableInPaise": 2200000,
-        "priceInPaise": 2200000,
-        "productId": "stub-product-phone-128gb",
-        "productName": "Example phone, 128 GB",
-        "downPaymentInPaise": 0,
-        "financedAmountInPaise": 2200000,
-    },
+    "plan": EXAMPLE_CONSENTED_PLAN,
 }
 CUSTOMER_SESSION_SUMMARY_RESPONSE_EXAMPLE: dict[str, Any] = {
-    "customerSessionId": "stub-customer-session-4821",
+    "customerSessionId": EXAMPLE_CUSTOMER_SESSION_ID,
     "sessionCode": "4821",
     "shopName": "Ravi Electronics",
     "productName": "Example phone, 128 GB",

@@ -40,3 +40,20 @@ class ProblemDetailsResponse(CamelCaseResponseModel):
         list[FieldErrorResponse] | None,
         Field(description="Set only on request validation problems."),
     ] = None
+
+
+class CustomerProblemDetailsResponse(ProblemDetailsResponse):
+    """The problem body of the customer endpoints, with one RFC 7807 extension member.
+
+    attemptsRemaining is set only on OTP_INCORRECT: how many more tries the one-time code allows
+    (ADR 0022 decision 3). Merchant endpoints never answer with this schema.
+    """
+
+    attempts_remaining: Annotated[
+        int | None,
+        Field(
+            ge=1,
+            description="Set only on OTP_INCORRECT: the tries the one-time code still allows.",
+            examples=[2],
+        ),
+    ] = None

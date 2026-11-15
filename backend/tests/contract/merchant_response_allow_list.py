@@ -22,6 +22,10 @@ reports."""
 LAYER_1_GATEWAY_PATH_PREFIXES = ("/api/v1/offers", "/api/v1/webhooks/")
 """The unauthenticated Layer 1 gateway endpoints (ADR 0009); they carry no customer data."""
 
+CUSTOMER_PATH_PREFIXES = ("/api/v1/customer-sessions",)
+"""The customer's own endpoints (Layer 3): only the customer's session token opens them, so they
+may show the customer their own figures; no merchant response may reach their schemas."""
+
 MERCHANT_SALE_STATUSES = ("CHOOSING", "READY_TO_PAY", "PAID", "PAYMENT_NOT_COMPLETED", "EXPIRED")
 """Plan Q2: the five sale statuses a merchant may see, and no customer step."""
 

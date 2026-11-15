@@ -6,10 +6,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from emi_copilot.domain.consent import ConsentRecord
+from emi_copilot.domain.consent import ConsentPlanSnapshot, ConsentRecord
 from emi_copilot.domain.customer_sessions import CustomerLanguage
+from emi_copilot.domain.emi import EmiSchedule, NoCostStrategy, QuotedTotalStrategy
 from emi_copilot.domain.errors import InvalidConsentDataError
 from emi_copilot.domain.money import Money
+from emi_copilot.domain.payments import EmiType
 
 
 class CoolingOffNoticeStatus(StrEnum):
@@ -95,3 +97,18 @@ class CustomerReceipt:
     status: ReceiptStatus
     consent_record: ConsentRecord
     cooling_off_notice_status: CoolingOffNoticeStatus
+
+
+def rebuild_agreed_schedule(plan_snapshot: ConsentPlanSnapshot) -> EmiSchedule:
+    """Rebuilds the agreed plan's installments from its frozen price, tenure, kind and extra.
+
+    Every quoted offer is scheduled by NoCostStrategy or QuotedTotalStrategy (ADR 0001), so the
+    same strategy on the frozen figures gives back exactly the schedule that was shown.
+    """
+    chosen_plan = plan_snapshot.chosen_plan
+    strategy = (
+        NoCostStrategy()
+        if chosen_plan.plan_kind is EmiType.NO_COST
+        else QuotedTotalStrategy(chosen_plan.extra_in_total)
+    )
+    return strategy.calculate_schedule(plan_snapshot.price, chosen_plan.tenure_in_months)

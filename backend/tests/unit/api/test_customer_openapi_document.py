@@ -1,128 +1,171 @@
-"""The committed customer contract is current, valid and keeps the money, card and STUB rules."""
+"""The customer operations in openapi.json: mounted, documented, token-guarded and calm."""
 
-from pathlib import Path
+import json
 from typing import Any
 
 import pytest
-from openapi_spec_validator import validate
 
-from emi_copilot.api.customer_contract_openapi_export import (
-    build_customer_openapi_document,
-    render_customer_openapi_document,
-)
+from emi_copilot.api.openapi_export import build_openapi_document
 from tests.unit.api.test_openapi_document import (
-    CAMEL_CASE_HUMP,
-    CARD_LIKE_WORDS,
     iterate_property_schemas,
     list_non_null_types,
     list_operations,
-    list_parameter_and_property_names,
 )
 
-COMMITTED_CUSTOMER_OPENAPI_PATH = Path(__file__).resolve().parents[3] / "openapi.customer.json"
-STUB_DESCRIPTION_START = (
-    "STUB (DESIGN_SPEC §4 sample data) until Phase 3C; not mounted in the main app (ADR 0012)."
-)
+CUSTOMER_PATH_PREFIX = "/api/v1/customer-sessions"
+SESSION_PATH = CUSTOMER_PATH_PREFIX + "/{customerSessionId}"
 SESSION_CREATION_OPERATION = "POST /api/v1/customer-sessions"
-CONSENT_OPERATION = "POST /api/v1/customer-sessions/{customerSessionId}/consent"
+CONSENT_OPERATION = f"POST {SESSION_PATH}/consent"
+EXPLANATION_OPERATION = f"POST {SESSION_PATH}/explanation"
 SESSION_TOKEN_SCHEME: dict[str, list[str]] = {"CustomerSessionToken": []}
-INTEGER_SUFFIXES = ("InPaise", "InBasisPoints")
+CUSTOMER_PROBLEM_SCHEMA = {"$ref": "#/components/schemas/CustomerProblemDetailsResponse"}
+CUSTOMER_DESCRIPTION_START = "Customer endpoint, opened from the shop's QR"
 
 
 @pytest.fixture(scope="module")
-def customer_openapi_document() -> dict[str, Any]:
-    """Builds the customer document once for the module."""
-    return build_customer_openapi_document()
+def openapi_document() -> dict[str, Any]:
+    """Builds the main document once for the module."""
+    return build_openapi_document()
 
 
-def test_committed_customer_openapi_document_matches_a_fresh_export() -> None:
-    """`make openapi-customer` was run after the last customer API change."""
-    committed_text = COMMITTED_CUSTOMER_OPENAPI_PATH.read_text(encoding="utf-8")
-    assert committed_text == render_customer_openapi_document()
-
-
-def test_customer_openapi_document_is_valid(customer_openapi_document: dict[str, Any]) -> None:
-    """The document validates against the OpenAPI specification."""
-    validate(customer_openapi_document)
-
-
-def test_every_money_and_basis_point_property_is_an_integer(
-    customer_openapi_document: dict[str, Any],
-) -> None:
-    """Paise and basis points are integers on the wire, never numbers or strings."""
-    integer_property_types = [
-        (name, list_non_null_types(schema))
-        for name, schema in iterate_property_schemas(customer_openapi_document)
-        if name.endswith(INTEGER_SUFFIXES)
+def list_customer_operations(document: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """Lists the operations under /api/v1/customer-sessions as ("POST /path", operation)."""
+    return [
+        (operation_id, operation)
+        for operation_id, operation in list_operations(document)
+        if operation_id.split(" ")[1].startswith(CUSTOMER_PATH_PREFIX)
     ]
-    assert len(integer_property_types) >= 20
-    assert any(name.endswith("InBasisPoints") for name, _ in integer_property_types)
-    assert all(types == ["integer"] for _, types in integer_property_types), integer_property_types
 
 
-def test_no_customer_property_is_number_typed(customer_openapi_document: dict[str, Any]) -> None:
-    """No field is a JSON number, so no money or ratio travels as a float."""
-    number_typed = [
-        name
-        for name, schema in iterate_property_schemas(customer_openapi_document)
-        if "number" in list_non_null_types(schema)
-    ]
-    assert number_typed == []
-
-
-def test_no_customer_property_or_parameter_has_a_card_like_name(
-    customer_openapi_document: dict[str, Any],
-) -> None:
-    """No card number, CVV, expiry, PAN or BIN field exists in the customer contract."""
-    offending_names = [
-        name
-        for name in list_parameter_and_property_names(customer_openapi_document)
-        if CARD_LIKE_WORDS & set(CAMEL_CASE_HUMP.sub(" ", name).replace("_", " ").lower().split())
-    ]
-    assert offending_names == []
-
-
-def test_every_customer_operation_is_labelled_stub_and_documents_problems(
-    customer_openapi_document: dict[str, Any],
-) -> None:
-    """Each operation starts with the STUB note and documents application/problem+json errors."""
-    operations = list_operations(customer_openapi_document)
-    assert len(operations) == 9
-    for operation_id, operation in operations:
-        assert operation["summary"], operation_id
-        assert operation["description"].startswith(STUB_DESCRIPTION_START), operation_id
-        assert any(
-            int(status) >= 400 and "application/problem+json" in response.get("content", {})
-            for status, response in operation["responses"].items()
-        ), operation_id
-
-
-def test_consent_requires_an_idempotency_key(customer_openapi_document: dict[str, Any]) -> None:
-    """Consent records evidence, so the Idempotency-Key header is required."""
-    (consent_operation,) = [
+def find_operation(document: dict[str, Any], wanted_operation_id: str) -> dict[str, Any]:
+    """Gives one operation by its "METHOD /path" id."""
+    (operation,) = [
         operation
-        for operation_id, operation in list_operations(customer_openapi_document)
-        if operation_id == CONSENT_OPERATION
+        for operation_id, operation in list_operations(document)
+        if operation_id == wanted_operation_id
     ]
-    (idempotency_key_parameter,) = [
-        parameter
-        for parameter in consent_operation["parameters"]
-        if parameter["name"] == "Idempotency-Key"
-    ]
-    assert idempotency_key_parameter["in"] == "header"
-    assert idempotency_key_parameter["required"] is True
+    return operation
 
 
-def test_session_token_header_guards_every_operation_but_session_creation(
-    customer_openapi_document: dict[str, Any],
+def test_main_document_mounts_exactly_the_ten_customer_operations(
+    openapi_document: dict[str, Any],
 ) -> None:
-    """X-Customer-Session-Token is an API-key header on every call after the QR is scanned."""
-    security_scheme = customer_openapi_document["components"]["securitySchemes"]
-    assert security_scheme["CustomerSessionToken"]["type"] == "apiKey"
-    assert security_scheme["CustomerSessionToken"]["in"] == "header"
-    assert security_scheme["CustomerSessionToken"]["name"] == "X-Customer-Session-Token"
-    for operation_id, operation in list_operations(customer_openapi_document):
+    """The customer routers live in the main app (ADR 0022 decision 6), explanation included."""
+    assert {operation_id for operation_id, _ in list_customer_operations(openapi_document)} == {
+        SESSION_CREATION_OPERATION,
+        f"GET {SESSION_PATH}",
+        f"PUT {SESSION_PATH}/budget",
+        f"POST {SESSION_PATH}/comfort-check",
+        f"GET {SESSION_PATH}/plans",
+        f"POST {SESSION_PATH}/alternatives",
+        EXPLANATION_OPERATION,
+        f"POST {SESSION_PATH}/consent/otp",
+        CONSENT_OPERATION,
+        f"GET {SESSION_PATH}/receipt",
+    }
+
+
+def test_every_customer_operation_is_described_and_answers_customer_problems(
+    openapi_document: dict[str, Any],
+) -> None:
+    """Each starts with the customer note, and every problem uses the customer problem schema."""
+    for operation_id, operation in list_customer_operations(openapi_document):
+        assert operation["summary"], operation_id
+        assert operation["description"].startswith(CUSTOMER_DESCRIPTION_START), operation_id
+        problem_contents = [
+            response["content"]["application/problem+json"]
+            for status, response in operation["responses"].items()
+            if int(status) >= 400
+        ]
+        assert problem_contents, operation_id
+        assert all(content["schema"] == CUSTOMER_PROBLEM_SCHEMA for content in problem_contents), (
+            operation_id
+        )
+
+
+def test_session_token_header_guards_every_operation_but_the_qr_exchange(
+    openapi_document: dict[str, Any],
+) -> None:
+    """X-Customer-Session-Token is an API-key header on every call after the QR exchange."""
+    security_scheme = openapi_document["components"]["securitySchemes"]["CustomerSessionToken"]
+    assert security_scheme["type"] == "apiKey"
+    assert security_scheme["in"] == "header"
+    assert security_scheme["name"] == "X-Customer-Session-Token"
+    for operation_id, operation in list_customer_operations(openapi_document):
         expected_security = (
             [] if operation_id == SESSION_CREATION_OPERATION else [SESSION_TOKEN_SCHEME]
         )
         assert operation.get("security", []) == expected_security, operation_id
+    assert (
+        "No credentials"
+        in find_operation(openapi_document, SESSION_CREATION_OPERATION)["description"]
+    )
+
+
+def test_consent_requires_an_idempotency_key_and_reads_the_language(
+    openapi_document: dict[str, Any],
+) -> None:
+    """Consent records evidence, so Idempotency-Key is required; Accept-Language is optional."""
+    parameters = {
+        parameter["name"]: parameter
+        for parameter in find_operation(openapi_document, CONSENT_OPERATION)["parameters"]
+    }
+    assert parameters["Idempotency-Key"]["in"] == "header"
+    assert parameters["Idempotency-Key"]["required"] is True
+    assert parameters["Accept-Language"]["in"] == "header"
+    assert parameters["Accept-Language"]["required"] is False
+
+
+def test_consent_request_names_only_the_offer_the_shown_figures_and_the_code(
+    openapi_document: dict[str, Any],
+) -> None:
+    """ADR 0022 decision 1 removed productId and downPaymentInPaise from consent."""
+    request_schema = openapi_document["components"]["schemas"]["GiveConsentRequest"]
+    assert set(request_schema["properties"]) == {
+        "offerId",
+        "shownMonthlyInstallmentInPaise",
+        "shownTotalPayableInPaise",
+        "otp",
+        "hasAgreedToPlan",
+    }
+
+
+def test_explanation_reads_accept_language(openapi_document: dict[str, Any]) -> None:
+    """The explanation's language comes from an optional Accept-Language header."""
+    (accept_language,) = [
+        parameter
+        for parameter in find_operation(openapi_document, EXPLANATION_OPERATION)["parameters"]
+        if parameter["name"] == "Accept-Language"
+    ]
+    assert accept_language["in"] == "header"
+    assert accept_language["required"] is False
+
+
+def test_wrong_code_problem_documents_attempts_remaining(openapi_document: dict[str, Any]) -> None:
+    """OTP_INCORRECT carries attemptsRemaining in its example and in the problem schema."""
+    consent_operation = find_operation(openapi_document, CONSENT_OPERATION)
+    examples = consent_operation["responses"]["422"]["content"]["application/problem+json"][
+        "examples"
+    ]
+    assert examples["OTP_INCORRECT"]["value"]["attemptsRemaining"] == 2
+    assert "attemptsRemaining" not in examples["OTP_EXPIRED"]["value"]
+    problem_schema = openapi_document["components"]["schemas"]["CustomerProblemDetailsResponse"]
+    assert list_non_null_types(problem_schema["properties"]["attemptsRemaining"]) == ["integer"]
+    assert "attemptsRemaining" not in problem_schema.get("required", [])
+
+
+def test_every_basis_point_property_is_an_integer(openapi_document: dict[str, Any]) -> None:
+    """Shares travel as integer basis points, never as a float percentage."""
+    basis_point_types = [
+        (name, list_non_null_types(schema))
+        for name, schema in iterate_property_schemas(openapi_document)
+        if name.endswith("InBasisPoints")
+    ]
+    assert len(basis_point_types) >= 3
+    assert all(types == ["integer"] for _, types in basis_point_types), basis_point_types
+
+
+def test_no_stub_wording_is_left_in_the_document(openapi_document: dict[str, Any]) -> None:
+    """The Phase 3A stub notes and sample tokens are gone with the stubs."""
+    document_text = json.dumps(openapi_document).lower()
+    assert "stub" not in document_text

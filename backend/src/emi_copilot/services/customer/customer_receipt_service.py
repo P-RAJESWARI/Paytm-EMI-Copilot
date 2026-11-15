@@ -19,7 +19,7 @@ from emi_copilot.services.sale_expiry import SaleExpiryStep
 
 
 def describe_receipt_status(sale: Sale, latest_attempt: PaymentAttempt | None) -> ReceiptStatus:
-    """Gives where the purchase stands; a payment that did not go through is never "declined".
+    """Gives where the purchase stands; a payment that did not go through names the next step.
 
     A READY_TO_PAY sale whose latest payment attempt may still be paid (in progress, created,
     pending or of unknown outcome) is PAYMENT_PENDING; with no attempt, or one that ended without

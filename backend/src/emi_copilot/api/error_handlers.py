@@ -35,7 +35,8 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | InvalidReportingPeriodError             | 422    | not a Monday, or a week still to come     |
 | InvalidReportDataError                  | 422    | a report figure would be inconsistent     |
 | InvalidSaleDataError                    | 422    | a sale record would be inconsistent       |
-| OtpIncorrectError, OtpExpiredError      | 422    | wrong or spent one-time code (ADR 0022)   |
+| OtpIncorrectError, OtpExpiredError      | 422    | wrong or spent one-time code (ADR 0022);  |
+|                                         |        |   OTP_INCORRECT adds attemptsRemaining    |
 | OtpResendNotYetAvailableError           | 429    | resend wait not over; Retry-After is set  |
 | ConsentRecordChainConflictError         | 409    | another consent took the chain head       |
 | every other DomainError                 | 422    | a business rule refused the request       |
@@ -61,6 +62,7 @@ from emi_copilot.core.request_context import get_current_correlation_id
 from emi_copilot.domain import errors
 from emi_copilot.dtos.problem_details_dto import (
     PROBLEM_JSON_MEDIA_TYPE,
+    CustomerProblemDetailsResponse,
     FieldErrorResponse,
     ProblemDetailsResponse,
     build_problem_type_url,
@@ -252,6 +254,17 @@ def build_problem_headers(error: errors.DomainError) -> dict[str, str]:
     return {}
 
 
+def add_problem_extension_members(
+    problem: ProblemDetailsResponse, error: errors.DomainError
+) -> ProblemDetailsResponse:
+    """Adds an error's RFC 7807 extension members: attemptsRemaining on a wrong one-time code."""
+    if not isinstance(error, errors.OtpIncorrectError):
+        return problem
+    return CustomerProblemDetailsResponse(
+        **problem.model_dump(exclude_unset=True), attempts_remaining=error.attempts_remaining
+    )
+
+
 def handle_domain_error(_request: Request, error: errors.DomainError) -> JSONResponse:
     """Answers a typed domain error with its mapped status, code, detail and any headers."""
     mapping = find_problem_mapping(error)
@@ -262,9 +275,9 @@ def handle_domain_error(_request: Request, error: errors.DomainError) -> JSONRes
         "request refused",
         extra={"error_code": error.code, "http_status_code": mapping.status},
     )
+    problem = build_problem(mapping.status, error.code, mapping.title, error.detail)
     return build_problem_response(
-        build_problem(mapping.status, error.code, mapping.title, error.detail),
-        build_problem_headers(error),
+        add_problem_extension_members(problem, error), build_problem_headers(error)
     )
 
 

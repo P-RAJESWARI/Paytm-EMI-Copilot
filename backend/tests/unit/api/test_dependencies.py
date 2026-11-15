@@ -1,12 +1,23 @@
 """The composition root builds the configured gateway at startup and fails fast (ADR 0004)."""
 
+import logging
 from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
+from emi_copilot.adapters.consent_otp.mock_adapter import MockConsentOtpSenderAdapter
+from emi_copilot.adapters.customer_contact.mock_adapter import MockPaytmCustomerContactAdapter
+from emi_copilot.adapters.financial_profile.mock_adapter import (
+    MockSyntheticFinancialProfileAdapter,
+)
 from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayConfigurationError
 from emi_copilot.adapters.payment_gateway.mock_adapter import MockPaymentGatewayAdapter
+from emi_copilot.api.customer_dependencies import (
+    provide_consent_reference_serial_generator,
+    provide_customer_contact,
+    provide_financial_profile_port,
+)
 from emi_copilot.api.dependencies import (
     ApplicationComponents,
     provide_clock,
@@ -20,11 +31,17 @@ from emi_copilot.api.merchant_dependencies import (
     provide_pin_hasher,
 )
 from emi_copilot.api.rate_limiting import (
+    provide_consent_otp_request_rate_limiter,
+    provide_customer_consent_rate_limiter,
+    provide_customer_session_start_rate_limiter,
     provide_merchant_payment_rate_limiter,
     provide_pairing_rate_limiter,
     provide_payment_webhook_rate_limiter,
 )
 from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
+from emi_copilot.core.consent_reference_serial_generator import (
+    RandomConsentReferenceSerialGenerator,
+)
 from emi_copilot.main import create_application
 
 
@@ -79,3 +96,47 @@ def test_merchant_providers_give_the_startup_hasher_limiter_and_token_lifetime()
             is components.payment_webhook_rate_limiter
         )
         assert provide_access_token_lifetime(components) == timedelta(hours=1)
+
+
+def test_startup_builds_the_labelled_customer_flow_mocks_and_announces_them(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Profile, phone number and code sender are Mocks, each named in the startup log (rule 10)."""
+    application = create_application(ApplicationSettings())
+    with caplog.at_level(logging.WARNING), TestClient(application):
+        components = application.state.application_components
+        assert isinstance(components.financial_profile, MockSyntheticFinancialProfileAdapter)
+        assert components.are_financial_profiles_synthetic is True
+        assert isinstance(components.customer_contact, MockPaytmCustomerContactAdapter)
+        assert isinstance(components.consent_otp.sender, MockConsentOtpSenderAdapter)
+        assert provide_financial_profile_port(components) is components.financial_profile
+        assert provide_customer_contact(components) is components.customer_contact
+    announced_messages = " ".join(record.getMessage() for record in caplog.records)
+    for mock_name in (
+        "MockSyntheticFinancialProfileAdapter",
+        "MockPaytmCustomerContactAdapter",
+        "MockConsentOtpSenderAdapter",
+    ):
+        assert mock_name in announced_messages
+
+
+def test_customer_rate_limiters_are_built_once_from_their_settings() -> None:
+    """Each customer limiter is one startup instance; the serial source is random by default."""
+    application = create_application(ApplicationSettings())
+    with TestClient(application):
+        components = application.state.application_components
+        assert (
+            provide_customer_session_start_rate_limiter(components)
+            is components.customer_session_start_rate_limiter
+        )
+        assert (
+            provide_consent_otp_request_rate_limiter(components)
+            is components.consent_otp_request_rate_limiter
+        )
+        assert (
+            provide_customer_consent_rate_limiter(components)
+            is components.customer_consent_rate_limiter
+        )
+    assert isinstance(
+        provide_consent_reference_serial_generator(), RandomConsentReferenceSerialGenerator
+    )

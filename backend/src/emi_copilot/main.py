@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, FastAPI
 
+from emi_copilot.api.controllers.customer_routers import CUSTOMER_ROUTERS
 from emi_copilot.api.controllers.health_controller import health_router
 from emi_copilot.api.controllers.merchant_controller import merchant_router
 from emi_copilot.api.controllers.mock_customer_simulator_controller import (
@@ -50,6 +51,7 @@ API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
     sale_handoff_router,
     report_router,
     weekly_message_router,
+    *CUSTOMER_ROUTERS,
 )
 
 

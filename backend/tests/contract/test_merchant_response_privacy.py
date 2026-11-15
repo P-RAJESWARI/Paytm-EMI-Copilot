@@ -16,6 +16,7 @@ import pytest
 
 from tests.contract.merchant_response_allow_list import (
     ALLOWED_PROPERTIES_BY_SCHEMA,
+    CUSTOMER_PATH_PREFIXES,
     LAYER_1_GATEWAY_PATH_PREFIXES,
     MERCHANT_PATH_PREFIXES,
     MERCHANT_SALE_STATUSES,
@@ -145,17 +146,30 @@ def committed_document() -> dict[str, Any]:
     return document
 
 
-def test_every_api_path_is_classified_as_merchant_or_layer_1_gateway(
+def test_every_api_path_is_classified_as_merchant_layer_1_gateway_or_customer(
     committed_document: dict[str, Any],
 ) -> None:
     """A new endpoint cannot slip past this test by sitting under an unlisted prefix."""
+    classified_prefixes = (
+        MERCHANT_PATH_PREFIXES + LAYER_1_GATEWAY_PATH_PREFIXES + CUSTOMER_PATH_PREFIXES
+    )
     unclassified_paths = [
         path
         for path in committed_document["paths"]
-        if path.startswith("/api/v1/")
-        and not path.startswith(MERCHANT_PATH_PREFIXES + LAYER_1_GATEWAY_PATH_PREFIXES)
+        if path.startswith("/api/v1/") and not path.startswith(classified_prefixes)
     ]
     assert unclassified_paths == [], f"Classify these paths in the allow-list: {unclassified_paths}"
+
+
+def test_customer_paths_are_present_and_never_under_a_merchant_prefix(
+    committed_document: dict[str, Any],
+) -> None:
+    """The customer endpoints are mounted, and no prefix counts a path as both kinds."""
+    customer_paths = [
+        path for path in committed_document["paths"] if path.startswith(CUSTOMER_PATH_PREFIXES)
+    ]
+    assert len(customer_paths) == 10
+    assert not [path for path in customer_paths if path.startswith(MERCHANT_PATH_PREFIXES)]
 
 
 def test_merchant_operations_include_pairing_profile_products_sales_and_reports(

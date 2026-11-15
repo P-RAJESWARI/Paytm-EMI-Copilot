@@ -49,6 +49,37 @@ def test_values_are_read_from_the_environment_and_secrets_stay_out_of_repr(
     assert SYNTHETIC_HASH_KEY_TEXT not in repr(settings)
 
 
+def test_customer_rate_limits_default_to_the_documented_demo_values() -> None:
+    """20 QR exchanges a minute per address; 5 code requests and 10 consents per 10 minutes."""
+    settings = ApplicationSettings()
+    assert settings.customer_session_start_rate_limit_max_requests == 20
+    assert settings.customer_session_start_rate_limit_window_in_seconds == 60
+    assert settings.consent_otp_request_rate_limit_max_requests == 5
+    assert settings.consent_otp_request_rate_limit_window_in_seconds == 600
+    assert settings.customer_consent_rate_limit_max_requests == 10
+    assert settings.customer_consent_rate_limit_window_in_seconds == 600
+
+
+@pytest.mark.parametrize(
+    "variable_name",
+    [
+        "CUSTOMER_SESSION_START_RATE_LIMIT_MAX_REQUESTS",
+        "CUSTOMER_SESSION_START_RATE_LIMIT_WINDOW_IN_SECONDS",
+        "CONSENT_OTP_REQUEST_RATE_LIMIT_MAX_REQUESTS",
+        "CONSENT_OTP_REQUEST_RATE_LIMIT_WINDOW_IN_SECONDS",
+        "CUSTOMER_CONSENT_RATE_LIMIT_MAX_REQUESTS",
+        "CUSTOMER_CONSENT_RATE_LIMIT_WINDOW_IN_SECONDS",
+    ],
+)
+def test_customer_rate_limits_refuse_zero(
+    monkeypatch: pytest.MonkeyPatch, variable_name: str
+) -> None:
+    """A limit or window of zero would refuse every customer, so it fails at startup."""
+    monkeypatch.setenv(variable_name, "0")
+    with pytest.raises(ValidationError, match=f"(?i){variable_name}"):
+        ApplicationSettings()
+
+
 def test_a_blank_hash_secret_copied_from_env_example_means_not_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

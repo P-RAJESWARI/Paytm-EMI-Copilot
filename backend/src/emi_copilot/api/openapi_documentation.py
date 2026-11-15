@@ -10,6 +10,7 @@ from fastapi.openapi.utils import get_openapi
 
 from emi_copilot.dtos.problem_details_dto import (
     PROBLEM_JSON_MEDIA_TYPE,
+    CustomerProblemDetailsResponse,
     ProblemDetailsResponse,
     build_problem_type_url,
 )
@@ -38,7 +39,10 @@ _RETRY_AFTER_HEADER = {
         "schema": {"type": "integer", "minimum": 1},
     }
 }
-_PROBLEM_SCHEMA_REFERENCE = "#/components/schemas/" + ProblemDetailsResponse.__name__
+_PROBLEM_SCHEMA_REFERENCES = frozenset(
+    "#/components/schemas/" + problem_model.__name__
+    for problem_model in (ProblemDetailsResponse, CustomerProblemDetailsResponse)
+)
 _OPENAPI_DESCRIPTION = (
     "REST contract for the merchant and customer apps. JSON is camelCase, money is integer "
     "paise (never a float) and every error is an RFC 7807 problem with a stable code."
@@ -54,6 +58,7 @@ class ProblemExample:
     title: str
     detail: str
     description: str
+    attempts_remaining: int | None = None
 
     def to_example_body(self) -> dict[str, object]:
         """Gives the problem body this error is answered with, as a documentation example."""
@@ -69,28 +74,35 @@ class ProblemExample:
             example_body["fieldErrors"] = [
                 {"field": "priceInPaise", "message": "Input should be greater than 0"}
             ]
+        if self.attempts_remaining is not None:
+            example_body["attemptsRemaining"] = self.attempts_remaining
         return example_body
 
 
-def describe_problem_responses(*problem_examples: ProblemExample) -> dict[int | str, Any]:
+def describe_problem_responses(
+    *problem_examples: ProblemExample,
+    problem_model: type[ProblemDetailsResponse] = ProblemDetailsResponse,
+) -> dict[int | str, Any]:
     """Builds the FastAPI `responses` entry for the given errors, grouped by status code.
 
     Every operation also documents the generic 500 problem, which any request can meet, and a
-    429 answer documents its Retry-After header.
+    429 answer documents its Retry-After header. Customer operations pass their problem model.
     """
     examples_by_status: dict[int, list[ProblemExample]] = defaultdict(list)
     for problem_example in (*problem_examples, UNEXPECTED_ERROR_PROBLEM):
         examples_by_status[problem_example.status].append(problem_example)
     return {
-        status: _describe_problem_status(status, examples)
+        status: _describe_problem_status(status, examples, problem_model)
         for status, examples in sorted(examples_by_status.items())
     }
 
 
-def _describe_problem_status(status: int, examples: list[ProblemExample]) -> dict[str, Any]:
+def _describe_problem_status(
+    status: int, examples: list[ProblemExample], problem_model: type[ProblemDetailsResponse]
+) -> dict[str, Any]:
     """Builds one status entry: the problem model, its joined description and its examples."""
     response: dict[str, Any] = {
-        "model": ProblemDetailsResponse,
+        "model": problem_model,
         "description": " ".join(example.description for example in examples if example.description),
         "content": {
             PROBLEM_JSON_MEDIA_TYPE: {
@@ -116,10 +128,11 @@ def move_problem_schemas_to_problem_media_type(openapi_schema: dict[str, Any]) -
             for response in operation.get("responses", {}).values():
                 content = response.get("content", {})
                 json_content = content.get(JSON_MEDIA_TYPE, {})
-                if json_content.get("schema", {}).get("$ref") == _PROBLEM_SCHEMA_REFERENCE:
+                problem_reference = json_content.get("schema", {}).get("$ref")
+                if problem_reference in _PROBLEM_SCHEMA_REFERENCES:
                     del content[JSON_MEDIA_TYPE]
                     content.setdefault(PROBLEM_JSON_MEDIA_TYPE, {})["schema"] = {
-                        "$ref": _PROBLEM_SCHEMA_REFERENCE
+                        "$ref": problem_reference
                     }
 
 

@@ -189,3 +189,27 @@ def test_handle_domain_error_without_special_headers_adds_neither(
     response = handle_domain_error(None, error)  # type: ignore[arg-type]
     assert "retry-after" not in response.headers
     assert "www-authenticate" not in response.headers
+
+
+def test_handle_domain_error_adds_attempts_remaining_to_a_wrong_one_time_code() -> None:
+    """OTP_INCORRECT carries the RFC 7807 extension member attemptsRemaining (ADR 0022)."""
+    response = handle_domain_error(
+        None,  # type: ignore[arg-type]
+        errors.OtpIncorrectError("Does not match.", attempts_remaining=2),
+    )
+    assert response.status_code == 422
+    assert json.loads(bytes(response.body)) == {
+        "type": "https://emicopilot.example/problems/otp-incorrect",
+        "title": "One-time code does not match",
+        "status": 422,
+        "detail": "Does not match.",
+        "code": "OTP_INCORRECT",
+        "correlationId": None,
+        "attemptsRemaining": 2,
+    }
+
+
+def test_handle_domain_error_gives_no_attempts_remaining_to_an_expired_code() -> None:
+    """Only a wrong code that still has tries names them; a spent code says OTP_EXPIRED."""
+    response = handle_domain_error(None, errors.OtpExpiredError("Expired."))  # type: ignore[arg-type]
+    assert "attemptsRemaining" not in json.loads(bytes(response.body))

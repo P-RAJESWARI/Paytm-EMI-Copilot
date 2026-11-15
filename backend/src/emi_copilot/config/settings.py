@@ -101,6 +101,16 @@ class ApplicationSettings(BaseSettings):
     # When unset in Mock gateway mode a random per-process key is drawn (stored phone hashes
     # then differ after a restart); Paytm mode refuses to start without it.
     customer_phone_hash_secret: SecretStr | None = None
+    # Customer rate limits (security-and-compliance.md section 4; in-memory, per process). The QR
+    # exchange is counted per client address; one-time code requests and consent (which verifies
+    # the code) per client address and customer session together, so one phone cannot use up
+    # another's allowance.
+    customer_session_start_rate_limit_max_requests: int = Field(default=20, ge=1)
+    customer_session_start_rate_limit_window_in_seconds: int = Field(default=60, ge=1)
+    consent_otp_request_rate_limit_max_requests: int = Field(default=5, ge=1)
+    consent_otp_request_rate_limit_window_in_seconds: int = Field(default=600, ge=1)
+    customer_consent_rate_limit_max_requests: int = Field(default=10, ge=1)
+    customer_consent_rate_limit_window_in_seconds: int = Field(default=600, ge=1)
     # The shop's calendar: "today" on the counter list and the report periods (plan Q21).
     reporting_time_zone: str = "Asia/Kolkata"
     log_level: LogLevel = "INFO"

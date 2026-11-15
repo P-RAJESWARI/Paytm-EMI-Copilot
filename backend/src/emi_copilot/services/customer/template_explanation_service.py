@@ -50,7 +50,7 @@ WORDING_BY_LANGUAGE = MappingProxyType(
 class TemplateExplanationService:
     """Explains a plan in plain words from its figures alone; it never fails and never guesses.
 
-    It says "extra you pay", never an interest rate, and nothing is called best or urgent. The
+    It says "extra you pay", never a rate of interest, and nothing is called best or urgent. The
     rupee amounts in the text are exactly the highlighted amounts, formatted as whole rupees
     rounded half-up, like the customer app's formatRupeesFromPaise.
     """

@@ -162,7 +162,3 @@ e2e: db-up ## Recreate, migrate and seed the e2e database, then run the Playwrig
 	E2E_DATABASE_URL='$(E2E_DATABASE_URL)' E2E_MERCHANT_PIN=$(E2E_MERCHANT_PIN) \
 		E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) E2E_MERCHANT_WEB_PORT=$(E2E_MERCHANT_WEB_PORT) \
 		$(PNPM) --filter @emi-copilot/e2e run test:e2e
-
-.PHONY: openapi-customer
-openapi-customer: ## Export and validate the Phase 3A customer contract to backend/openapi.customer.json
-	cd $(BACKEND_DIRECTORY) && $(UV_RUN) python scripts/export_customer_openapi.py

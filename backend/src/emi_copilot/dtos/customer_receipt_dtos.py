@@ -10,7 +10,7 @@ from emi_copilot.dtos.customer_consent_dtos import (
     ConsentedPlanResponse,
 )
 from emi_copilot.dtos.wire_types import CamelCaseResponseModel
-from emi_copilot.services.customer_flow.customer_flow_types import (
+from emi_copilot.services.customer.consent_types import (
     CoolingOffNoticeStatus,
     CustomerReceipt,
     ReceiptStatus,
@@ -20,27 +20,30 @@ from emi_copilot.services.customer_flow.customer_flow_types import (
 class CustomerReceiptResponse(CamelCaseResponseModel):
     """The receipt; READY_TO_PAY means the merchant now takes payment on Paytm.
 
-    There is no payment URL: the merchant performs the payment step (CLAUDE.md section 2, rule 9).
+    PAYMENT_PENDING, PAID and PAYMENT_NOT_COMPLETED follow the merchant's payment step; a
+    payment that did not go through is worded as a next step, never as a refusal. There
+    is no payment URL: the merchant performs the payment step (CLAUDE.md section 2, rule 9).
     coolingOffNoticeStatus PLACEHOLDER means the cooling-off wording awaits the lender's period.
     """
 
     status: ReceiptStatus
-    reference: Annotated[str, Field(examples=["EMI-2611-0042"])]
+    reference: Annotated[str, Field(examples=["EMI-1511-0042"])]
     phone_last_two_digits: Annotated[
         str, Field(pattern=PHONE_LAST_TWO_DIGITS_PATTERN, examples=["42"])
     ]
-    consented_at: Annotated[datetime, Field(examples=["2026-11-15T09:31:00Z"])]
+    consented_at: Annotated[datetime, Field(examples=["2026-11-15T09:30:00Z"])]
     cooling_off_notice_status: CoolingOffNoticeStatus
     plan: ConsentedPlanResponse
 
     @classmethod
     def from_receipt(cls, receipt: CustomerReceipt) -> "CustomerReceiptResponse":
-        """Converts the receipt, with the plan in integer paise."""
+        """Converts the receipt, with the frozen plan in integer paise."""
+        evidence = receipt.consent_record.evidence
         return cls(
             status=receipt.status,
-            reference=receipt.reference,
-            phone_last_two_digits=receipt.phone_last_two_digits,
-            consented_at=receipt.consented_at,
+            reference=evidence.consent_reference.value,
+            phone_last_two_digits=evidence.phone_last_two_digits,
+            consented_at=evidence.consented_at,
             cooling_off_notice_status=receipt.cooling_off_notice_status,
-            plan=ConsentedPlanResponse.from_consented_plan(receipt.consented_plan),
+            plan=ConsentedPlanResponse.from_plan_snapshot(evidence.plan_snapshot),
         )

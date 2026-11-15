@@ -3,32 +3,44 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, StringConstraints
 
+from emi_copilot.dtos.comfort_check_dtos import ComfortCheckStatus, describe_comfort_check_answer
 from emi_copilot.dtos.wire_types import (
+    VISIBLE_ASCII_PATTERN,
     CamelCaseRequestBodyModel,
     CamelCaseResponseModel,
-    OpaqueIdentifier,
     PositiveAmountInPaise,
 )
-from emi_copilot.services.customer_flow.customer_flow_types import (
-    ComfortCheckStatus,
+from emi_copilot.services.customer.customer_session_types import (
     CustomerSessionSummary,
     StartedCustomerSession,
 )
+
+EXAMPLE_CUSTOMER_SESSION_ID = "01JD5Z0Q8M6X3V2N7B4C9K1T0E"
+MAXIMUM_QR_TOKEN_LENGTH = 512
+"""A signed QR token is about 170 characters (ADR 0015); the cap only bounds the input."""
 
 
 class StartCustomerSessionRequest(CamelCaseRequestBodyModel):
     """The token read from the QR the merchant shows; it is never logged."""
 
-    qr_token: Annotated[OpaqueIdentifier, Field(examples=["stub-qr-4821"])]
+    qr_token: Annotated[
+        str,
+        StringConstraints(
+            min_length=1, max_length=MAXIMUM_QR_TOKEN_LENGTH, pattern=VISIBLE_ASCII_PATTERN
+        ),
+        Field(
+            description="The token after #t= in the QR link, sent as is.", examples=["<qr-token>"]
+        ),
+    ]
 
 
 class CustomerSessionResponse(CamelCaseResponseModel):
     """The session opened by the QR: send sessionToken as X-Customer-Session-Token from now on."""
 
-    customer_session_id: Annotated[str, Field(examples=["stub-customer-session-4821"])]
-    session_token: Annotated[str, Field(examples=["01JD5Z0Q8M6X3V2N7B4C9K1T0C"])]
+    customer_session_id: Annotated[str, Field(examples=[EXAMPLE_CUSTOMER_SESSION_ID])]
+    session_token: Annotated[str, Field(examples=["<session-token>"])]
     session_code: Annotated[str, Field(examples=["4821"])]
     shop_name: Annotated[str, Field(examples=["Ravi Electronics"])]
     product_name: Annotated[str, Field(examples=["Example phone, 128 GB"])]
@@ -57,7 +69,7 @@ class CustomerSessionSummaryResponse(CamelCaseResponseModel):
     comfortCheckStatus is null until the customer answers the comfort check.
     """
 
-    customer_session_id: Annotated[str, Field(examples=["stub-customer-session-4821"])]
+    customer_session_id: Annotated[str, Field(examples=[EXAMPLE_CUSTOMER_SESSION_ID])]
     session_code: Annotated[str, Field(examples=["4821"])]
     shop_name: Annotated[str, Field(examples=["Ravi Electronics"])]
     product_name: Annotated[str, Field(examples=["Example phone, 128 GB"])]
@@ -78,6 +90,6 @@ class CustomerSessionSummaryResponse(CamelCaseResponseModel):
             price_in_paise=summary.price.to_paise(),
             expires_at=summary.expires_at,
             has_confirmed_budget=summary.has_confirmed_budget,
-            comfort_check_status=summary.comfort_check_status,
+            comfort_check_status=describe_comfort_check_answer(summary.comfort_check_status),
             has_consented=summary.has_consented,
         )

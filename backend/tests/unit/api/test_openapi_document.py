@@ -24,6 +24,8 @@ UNAUTHENTICATED_PATH_PREFIXES = (
     "/api/v1/webhooks/",
     "/api/v1/merchants/pairing",
 )
+# The customer endpoints use the customer session token instead (test_customer_openapi_document).
+CUSTOMER_PATH_PREFIX = "/api/v1/customer-sessions"
 
 
 @pytest.fixture(scope="module")
@@ -150,12 +152,14 @@ def test_gateway_operations_say_they_are_unauthenticated(
 def test_merchant_operations_require_the_merchant_bearer_token(
     openapi_document: dict[str, Any],
 ) -> None:
-    """Every other /api/v1 operation declares the bearer scheme and documents its 401."""
+    """Every other non-customer /api/v1 operation declares the bearer scheme and its 401."""
     merchant_operations = [
         (operation_id, operation)
         for operation_id, operation in list_operations(openapi_document)
         if operation_id.split(" ")[1].startswith("/api/v1/")
-        and not operation_id.split(" ")[1].startswith(UNAUTHENTICATED_PATH_PREFIXES)
+        and not operation_id.split(" ")[1].startswith(
+            (*UNAUTHENTICATED_PATH_PREFIXES, CUSTOMER_PATH_PREFIX)
+        )
     ]
     assert {operation_id for operation_id, _ in merchant_operations} >= {
         "GET /api/v1/merchants/me",
@@ -193,6 +197,9 @@ def test_every_too_many_requests_answer_documents_retry_after(
         "POST /api/v1/payment-links",
         "GET /api/v1/payments/{orderId}/status",
         "POST /api/v1/webhooks/paytm",
+        "POST /api/v1/customer-sessions",
+        "POST /api/v1/customer-sessions/{customerSessionId}/consent/otp",
+        "POST /api/v1/customer-sessions/{customerSessionId}/consent",
     }
     for _, response in too_many_requests_answers:
         assert response["headers"]["Retry-After"]["schema"] == {"type": "integer", "minimum": 1}

@@ -429,10 +429,274 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a customer session from the shop's QR
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. No credentials: the QR token itself is the credential. It is single-use: it is traded once for a session token, sent as X-Customer-Session-Token on every later call, and a second exchange of the same QR answers 401 (ADR 0022). A new QR from the shop ends the sale's earlier session. Limited per client address (429 with Retry-After). Location points at the session.
+         */
+        post: operations["start_customer_session_api_v1_customer_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the customer session and the customer's progress
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. The C1 facts (shop, item, price, session code, expiry) and the customer's own progress: whether the budget is confirmed, the comfort check answer (null before answering) and whether consent was given. The token is never returned. A token used with another session's id answers 404.
+         */
+        get: operations["get_customer_session_api_v1_customer_sessions__customerSessionId__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Confirm the customer's monthly budget
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Stores the monthly amount the customer confirmed on screen; hasCustomerConfirmed must be true. A spoken amount counts only once the customer confirms it. Sending it again replaces the budget. Only while the plan is not yet agreed.
+         */
+        put: operations["confirm_customer_budget_api_v1_customer_sessions__customerSessionId__budget_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/comfort-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Allow or skip the comfort check
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. With consent, reads the customer's synthetic monthly inflow and existing EMIs and returns them to the customer; they are not stored and the shop never sees them. Skipping reads nothing and plans then show without bands. The comfort check is advice, not a credit decision. Needs the confirmed budget.
+         */
+        post: operations["run_comfort_check_api_v1_customer_sessions__customerSessionId__comfort_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare every EMI plan for the budget
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Lists every plan quoted for the item: plans within the budget first, then by amount above it, then by extra in total, tenure and offer id (ADR 0020). No plan is ever hidden: when none fits, all are listed with amountAboveBudgetInPaise. reasonCodes state facts only. comfort is null when the comfort check was skipped. Needs the confirmed budget.
+         */
+        get: operations["list_customer_plans_api_v1_customer_sessions__customerSessionId__plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Find smarter alternatives to a plan
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Recomputes, with the EMI engine, a down payment (the gap to the budget over the plan's tenure, rounded up to ₹1,000), every longer plan for the item and the shop's cheaper model of the same brand. Every option is kept, even one that does not lower the monthly amount; hasLowerMonthlyAlternative false is the 'nothing better' state. Only LONGER_TENURE can be agreed to here; a down payment or the cheaper model needs the shop (ADR 0022). Needs the confirmed budget.
+         */
+        post: operations["find_plan_alternatives_api_v1_customer_sessions__customerSessionId__alternatives_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/explanation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explain one plan in plain words
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. The standard text (source TEMPLATE) about the plan as quoted now for the session's item: each month, for how many months, and the extra in total. Accept-Language en or ta picks the language (English by default; the Tamil text is a draft awaiting native review). Every rupee amount in the text is one of highlightedAmounts, computed by the engine, never by AI. Reading it changes nothing, so it can be asked again.
+         */
+        post: operations["explain_customer_plan_api_v1_customer_sessions__customerSessionId__explanation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/consent/otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the one-time code for consent
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Sends a 6-digit code to the phone the payment side knows for this sale (a labelled Mock in this build, ending 42; the demo code is fixed and nothing is sent). The code lasts 5 minutes and allows 3 tries. A new code can be asked for 30 seconds after the last (429 with Retry-After before then), or at once when the last one expired or its tries are used. Limited per client and session. Needs the confirmed budget and a plan not yet agreed.
+         */
+        post: operations["request_consent_one_time_code_api_v1_customer_sessions__customerSessionId__consent_otp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agree to the chosen plan with the one-time code
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Names the plan (an offer on the session's item at the sale price) and the monthly amount and total shown on C9. It is re-quoted server-side; if the figures no longer match, the answer is 409 SHOWN_PLAN_CHANGED and nothing is recorded. A wrong code answers 422 OTP_INCORRECT with attemptsRemaining; after the last try the code is spent (OTP_EXPIRED). The plan is stored once per sale as hash-chained evidence, in the language of Accept-Language, and the shop sees the sale READY_TO_PAY with this plan. The same Idempotency-Key and plan return the original 201 response (the code is not part of the comparison). No payment link is made: the shop takes payment on Paytm. Limited per client and session. Location points at the receipt.
+         */
+        post: operations["give_customer_consent_api_v1_customer_sessions__customerSessionId__consent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer-sessions/{customerSessionId}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the receipt after consent
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. READY_TO_PAY means the shop now takes payment on Paytm; PAYMENT_PENDING means the shop started a payment whose outcome is not known yet; PAID is confirmed server-side; PAYMENT_NOT_COMPLETED explains the next step. The cooling-off wording is a placeholder until the lender confirms its period. There is no payment URL.
+         */
+        get: operations["get_customer_receipt_api_v1_customer_sessions__customerSessionId__receipt_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AlternativeKind
+         * @description How an alternative changes the purchase; values travel on the wire.
+         * @enum {string}
+         */
+        AlternativeKind: "DOWN_PAYMENT" | "LONGER_TENURE" | "CHEAPER_MODEL";
+        /**
+         * BasePlanResponse
+         * @description The chosen plan ("Your plan" on C6) with its budget fit and comfort.
+         */
+        BasePlanResponse: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+            /**
+             * Lenderlabel
+             * @example Brand
+             */
+            lenderLabel: string;
+            emiType: components["schemas"]["EmiType"];
+            /**
+             * Tenureinmonths
+             * @example 6
+             */
+            tenureInMonths: number;
+            /**
+             * Monthlyinstallmentinpaise
+             * @example 366667
+             */
+            monthlyInstallmentInPaise: number;
+            /**
+             * Lastinstallmentinpaise
+             * @example 366665
+             */
+            lastInstallmentInPaise: number;
+            /**
+             * Extraintotalinpaise
+             * @example 0
+             */
+            extraInTotalInPaise: number;
+            /**
+             * Totalpayableinpaise
+             * @example 2200000
+             */
+            totalPayableInPaise: number;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Iswithinbudget
+             * @example false
+             */
+            isWithinBudget: boolean;
+            /**
+             * Amountabovebudgetinpaise
+             * @example 66667
+             */
+            amountAboveBudgetInPaise: number;
+            comfort: components["schemas"]["PlanComfortResponse"] | null;
+        };
         /**
          * BrandSettlementBatchResponse
          * @description One batch of no-cost EMI sales a brand is expected to pay for, with an estimated date.
@@ -599,6 +863,192 @@ export interface components {
             totalPayableInPaise: number;
         };
         /**
+         * ComfortBand
+         * @description How a plan's monthly amount sits against the customer's monthly inflow (ADR 0020).
+         *
+         *     There are exactly three bands (CLAUDE.md section 2, rule 5). Values travel on the wire and are
+         *     mapped to translated words with an icon by the frontend; colour is never the only signal.
+         * @enum {string}
+         */
+        ComfortBand: "COMFORTABLE" | "STRETCHING" | "RISKY";
+        /**
+         * ComfortCheckRequest
+         * @description The customer's C3 choice: allow the comfort check, or skip it (always allowed).
+         */
+        ComfortCheckRequest: {
+            /**
+             * Hascustomerconsented
+             * @example true
+             */
+            hasCustomerConsented: boolean;
+        };
+        /**
+         * ComfortCheckResponse
+         * @description The customer's own monthly figures read for the check; both are null when skipped.
+         *
+         *     This is a customer endpoint: the merchant never sees these figures (CLAUDE.md section 2).
+         */
+        ComfortCheckResponse: {
+            status: components["schemas"]["ComfortCheckStatus"];
+            /**
+             * Issyntheticdata
+             * @example true
+             */
+            isSyntheticData: boolean;
+            /**
+             * Monthlyinflowinpaise
+             * @example 3000000
+             */
+            monthlyInflowInPaise: number | null;
+            /**
+             * Existingemisinpaise
+             * @example 800000
+             */
+            existingEmisInPaise: number | null;
+        };
+        /**
+         * ComfortCheckStatus
+         * @description The customer's C3 answer on the wire; before any answer the field is null instead.
+         * @enum {string}
+         */
+        ComfortCheckStatus: "COMPLETED" | "SKIPPED";
+        /**
+         * ConfirmBudgetRequest
+         * @description The monthly amount the customer is comfortable paying, confirmed on screen by them.
+         *
+         *     hasCustomerConfirmed must be true: a typed or spoken amount counts only once confirmed.
+         */
+        ConfirmBudgetRequest: {
+            /**
+             * Monthlybudgetinpaise
+             * @example 300000
+             */
+            monthlyBudgetInPaise: number;
+            /**
+             * Hascustomerconfirmed
+             * @example true
+             * @constant
+             */
+            hasCustomerConfirmed: true;
+        };
+        /**
+         * ConfirmedBudgetResponse
+         * @description The monthly budget now held for the session.
+         */
+        ConfirmedBudgetResponse: {
+            /**
+             * Monthlybudgetinpaise
+             * @example 300000
+             */
+            monthlyBudgetInPaise: number;
+            /**
+             * Hascustomerconfirmed
+             * @example true
+             */
+            hasCustomerConfirmed: boolean;
+        };
+        /**
+         * ConsentResponse
+         * @description The recorded consent: the exact plan agreed to, frozen, and the hand-off status.
+         */
+        ConsentResponse: {
+            /**
+             * Consentid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0D
+             */
+            consentId: string;
+            /**
+             * Reference
+             * @example EMI-1511-0042
+             */
+            reference: string;
+            /**
+             * Consentedat
+             * Format: date-time
+             * @example 2026-11-15T09:30:00Z
+             */
+            consentedAt: string;
+            status: components["schemas"]["ReceiptStatus"];
+            plan: components["schemas"]["ConsentedPlanResponse"];
+        };
+        /**
+         * ConsentedPlanResponse
+         * @description The frozen plan: tenure - 1 regular installments then a last, totals, product and price.
+         *
+         *     The installments are our exact schedule, so they add up to totalPayableInPaise to the paisa.
+         *     There is no down payment in this build (ADR 0022 decision 1): downPaymentInPaise is 0 and
+         *     financedAmountInPaise equals priceInPaise.
+         */
+        ConsentedPlanResponse: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+            /**
+             * Lenderlabel
+             * @example Brand
+             */
+            lenderLabel: string;
+            emiType: components["schemas"]["EmiType"];
+            /**
+             * Tenureinmonths
+             * @example 6
+             */
+            tenureInMonths: number;
+            /**
+             * Regularinstallmentinpaise
+             * @example 366667
+             */
+            regularInstallmentInPaise: number;
+            /**
+             * Lastinstallmentinpaise
+             * @example 366665
+             */
+            lastInstallmentInPaise: number;
+            /**
+             * Extraintotalinpaise
+             * @example 0
+             */
+            extraInTotalInPaise: number;
+            /**
+             * Totalpayableinpaise
+             * @example 2200000
+             */
+            totalPayableInPaise: number;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Productid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0F
+             */
+            productId: string;
+            /**
+             * Productname
+             * @example Example phone, 128 GB
+             */
+            productName: string;
+            /**
+             * Downpaymentinpaise
+             * @example 0
+             */
+            downPaymentInPaise: number;
+            /**
+             * Financedamountinpaise
+             * @example 2200000
+             */
+            financedAmountInPaise: number;
+        };
+        /**
+         * CoolingOffNoticeStatus
+         * @description Whether the cooling-off wording is the lender's confirmed text or still a placeholder.
+         * @enum {string}
+         */
+        CoolingOffNoticeStatus: "PLACEHOLDER";
+        /**
          * CounterSalesResponse
          * @description Today's sales at the counter, newest first; another shop's sales never appear.
          */
@@ -638,6 +1088,154 @@ export interface components {
             categoryId: string;
         };
         /**
+         * CustomerLanguage
+         * @description English or Tamil, by the language tag also used in Accept-Language; stored by value.
+         * @enum {string}
+         */
+        CustomerLanguage: "en" | "ta";
+        /**
+         * CustomerPlanResponse
+         * @description One plan card: each month and extra in total side by side, budget fit and comfort.
+         *
+         *     monthlyInstallmentInPaise is the lender's quoted figure; the other amounts are our exact
+         *     schedule (ADR 0001). Budget fit uses the largest single installment (ADR 0020 decision 3).
+         *     reasonCodes state facts only. comfort is null when the comfort check was skipped.
+         */
+        CustomerPlanResponse: {
+            /**
+             * Position
+             * @example 1
+             */
+            position: number;
+            /**
+             * Offerid
+             * @example mock-offer-cardless-12m
+             */
+            offerId: string;
+            /**
+             * Lenderlabel
+             * @example Demo cardless lender (Mock)
+             */
+            lenderLabel: string;
+            emiType: components["schemas"]["EmiType"];
+            /**
+             * Tenureinmonths
+             * @example 12
+             */
+            tenureInMonths: number;
+            /**
+             * Monthlyinstallmentinpaise
+             * @example 205000
+             */
+            monthlyInstallmentInPaise: number;
+            /**
+             * Lastinstallmentinpaise
+             * @example 205000
+             */
+            lastInstallmentInPaise: number;
+            /**
+             * Extraintotalinpaise
+             * @example 260000
+             */
+            extraInTotalInPaise: number;
+            /**
+             * Totalpayableinpaise
+             * @example 2460000
+             */
+            totalPayableInPaise: number;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Iswithinbudget
+             * @example true
+             */
+            isWithinBudget: boolean;
+            /**
+             * Amountabovebudgetinpaise
+             * @example 0
+             */
+            amountAboveBudgetInPaise: number;
+            /** Reasoncodes */
+            reasonCodes: components["schemas"]["PlanReasonCode"][];
+            comfort: components["schemas"]["PlanComfortResponse"] | null;
+        };
+        /**
+         * CustomerPlansResponse
+         * @description Every plan for the budget; when none fits, all are still listed as above budget.
+         */
+        CustomerPlansResponse: {
+            /**
+             * Monthlybudgetinpaise
+             * @example 300000
+             */
+            monthlyBudgetInPaise: number;
+            /**
+             * Hasanyplanwithinbudget
+             * @example true
+             */
+            hasAnyPlanWithinBudget: boolean;
+            /**
+             * Hascomfortcheck
+             * @example true
+             */
+            hasComfortCheck: boolean;
+            /** Plans */
+            plans: components["schemas"]["CustomerPlanResponse"][];
+        };
+        /**
+         * CustomerProblemDetailsResponse
+         * @description The problem body of the customer endpoints, with one RFC 7807 extension member.
+         *
+         *     attemptsRemaining is set only on OTP_INCORRECT: how many more tries the one-time code allows
+         *     (ADR 0022 decision 3). Merchant endpoints never answer with this schema.
+         */
+        CustomerProblemDetailsResponse: {
+            /**
+             * Type
+             * @example https://emicopilot.example/problems/offer-not-found
+             */
+            type: string;
+            /**
+             * Title
+             * @example Offer not found
+             */
+            title: string;
+            /**
+             * Status
+             * @example 404
+             */
+            status: number;
+            /**
+             * Detail
+             * @example The chosen offer is not quoted for this item and price.
+             */
+            detail: string;
+            /**
+             * Code
+             * @example OFFER_NOT_FOUND
+             */
+            code: string;
+            /**
+             * Correlationid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0B
+             */
+            correlationId: string | null;
+            /**
+             * Fielderrors
+             * @description Set only on request validation problems.
+             */
+            fieldErrors?: components["schemas"]["FieldErrorResponse"][] | null;
+            /**
+             * Attemptsremaining
+             * @description Set only on OTP_INCORRECT: the tries the one-time code still allows.
+             * @example 2
+             */
+            attemptsRemaining?: number | null;
+        };
+        /**
          * CustomerQrResponse
          * @description What the QR code encodes and when it stops working; shown once, never stored.
          */
@@ -655,6 +1253,128 @@ export interface components {
              * @example 2026-11-15T09:45:00Z
              */
             expiresAt: string;
+        };
+        /**
+         * CustomerReceiptResponse
+         * @description The receipt; READY_TO_PAY means the merchant now takes payment on Paytm.
+         *
+         *     PAYMENT_PENDING, PAID and PAYMENT_NOT_COMPLETED follow the merchant's payment step; a
+         *     payment that did not go through is worded as a next step, never as a refusal. There
+         *     is no payment URL: the merchant performs the payment step (CLAUDE.md section 2, rule 9).
+         *     coolingOffNoticeStatus PLACEHOLDER means the cooling-off wording awaits the lender's period.
+         */
+        CustomerReceiptResponse: {
+            status: components["schemas"]["ReceiptStatus"];
+            /**
+             * Reference
+             * @example EMI-1511-0042
+             */
+            reference: string;
+            /**
+             * Phonelasttwodigits
+             * @example 42
+             */
+            phoneLastTwoDigits: string;
+            /**
+             * Consentedat
+             * Format: date-time
+             * @example 2026-11-15T09:30:00Z
+             */
+            consentedAt: string;
+            coolingOffNoticeStatus: components["schemas"]["CoolingOffNoticeStatus"];
+            plan: components["schemas"]["ConsentedPlanResponse"];
+        };
+        /**
+         * CustomerSessionResponse
+         * @description The session opened by the QR: send sessionToken as X-Customer-Session-Token from now on.
+         */
+        CustomerSessionResponse: {
+            /**
+             * Customersessionid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0E
+             */
+            customerSessionId: string;
+            /**
+             * Sessiontoken
+             * @example <session-token>
+             */
+            sessionToken: string;
+            /**
+             * Sessioncode
+             * @example 4821
+             */
+            sessionCode: string;
+            /**
+             * Shopname
+             * @example Ravi Electronics
+             */
+            shopName: string;
+            /**
+             * Productname
+             * @example Example phone, 128 GB
+             */
+            productName: string;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Expiresat
+             * Format: date-time
+             * @example 2026-11-15T10:00:00Z
+             */
+            expiresAt: string;
+        };
+        /**
+         * CustomerSessionSummaryResponse
+         * @description The session as C1 shows it and the customer's own progress; the token is never echoed.
+         *
+         *     comfortCheckStatus is null until the customer answers the comfort check.
+         */
+        CustomerSessionSummaryResponse: {
+            /**
+             * Customersessionid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0E
+             */
+            customerSessionId: string;
+            /**
+             * Sessioncode
+             * @example 4821
+             */
+            sessionCode: string;
+            /**
+             * Shopname
+             * @example Ravi Electronics
+             */
+            shopName: string;
+            /**
+             * Productname
+             * @example Example phone, 128 GB
+             */
+            productName: string;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Expiresat
+             * Format: date-time
+             * @example 2026-11-15T10:00:00Z
+             */
+            expiresAt: string;
+            /**
+             * Hasconfirmedbudget
+             * @example true
+             */
+            hasConfirmedBudget: boolean;
+            comfortCheckStatus: components["schemas"]["ComfortCheckStatus"] | null;
+            /**
+             * Hasconsented
+             * @example false
+             */
+            hasConsented: boolean;
         };
         /**
          * DevicePairingResponse
@@ -772,6 +1492,12 @@ export interface components {
          */
         EmiType: "NO_COST" | "STANDARD";
         /**
+         * ExplanationSource
+         * @description Who wrote the explanation; Layer 4 adds the audited AI source beside the template.
+         * @enum {string}
+         */
+        ExplanationSource: "TEMPLATE";
+        /**
          * FieldErrorResponse
          * @description One invalid request field, named as on the wire, with an English message.
          */
@@ -846,6 +1572,42 @@ export interface components {
             isSuppressed: boolean;
         };
         /**
+         * GiveConsentRequest
+         * @description The plan agreed to, the figures C9 showed for it, the 6-digit code and the agreement.
+         *
+         *     The plan is an offer on the session's item at the sale price (ADR 0022 decision 1). It is
+         *     re-quoted server-side; if the shown monthly or total no longer match, the answer is 409
+         *     SHOWN_PLAN_CHANGED and nothing is recorded.
+         */
+        GiveConsentRequest: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+            /**
+             * Shownmonthlyinstallmentinpaise
+             * @example 366667
+             */
+            shownMonthlyInstallmentInPaise: number;
+            /**
+             * Showntotalpayableinpaise
+             * @example 2200000
+             */
+            shownTotalPayableInPaise: number;
+            /**
+             * Otp
+             * @example 123456
+             */
+            otp: string;
+            /**
+             * Hasagreedtoplan
+             * @example true
+             * @constant
+             */
+            hasAgreedToPlan: true;
+        };
+        /**
          * HandoffPaymentStatus
          * @description Where an agreed sale's payment stands, as M4 shows it; never "declined" (spec 7.5).
          * @enum {string}
@@ -861,6 +1623,24 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /**
+         * HighlightedAmountKind
+         * @description Which plan figure a highlighted amount is (C7 shows two beside the text).
+         * @enum {string}
+         */
+        HighlightedAmountKind: "MONTHLY_INSTALLMENT" | "EXTRA_IN_TOTAL";
+        /**
+         * HighlightedAmountResponse
+         * @description One figure the text mentions, exactly as the engine computed it, in integer paise.
+         */
+        HighlightedAmountResponse: {
+            kind: components["schemas"]["HighlightedAmountKind"];
+            /**
+             * Amountinpaise
+             * @example 366667
+             */
+            amountInPaise: number;
         };
         /**
          * LatestPaymentLinkResponse
@@ -1050,6 +1830,34 @@ export interface components {
             offers: components["schemas"]["EmiOfferResponse"][];
         };
         /**
+         * OtpChallengeResponse
+         * @description Where the code went (only the last two digits), when it ends, resends and how many tries.
+         */
+        OtpChallengeResponse: {
+            /**
+             * Phonelasttwodigits
+             * @example 42
+             */
+            phoneLastTwoDigits: string;
+            /**
+             * Expiresat
+             * Format: date-time
+             * @example 2026-11-15T09:35:00Z
+             */
+            expiresAt: string;
+            /**
+             * Resendavailableat
+             * Format: date-time
+             * @example 2026-11-15T09:30:30Z
+             */
+            resendAvailableAt: string;
+            /**
+             * Attemptsremaining
+             * @example 3
+             */
+            attemptsRemaining: number;
+        };
+        /**
          * PairDeviceRequest
          * @description The shop id and 6-digit pairing PIN typed on the counter device (M1).
          */
@@ -1111,6 +1919,171 @@ export interface components {
              */
             amountPaidInPaise: number | null;
         };
+        /**
+         * PlanAlternativeResponse
+         * @description One option: down payment, longer tenure or cheaper model, kept even if it costs more.
+         *
+         *     financedAmountInPaise is what the plan spreads over its months: the price less any down
+         *     payment. The two monthly figures are the lender's quoted ones; isLowerMonthlyAmount and the
+         *     budget fit compare the largest single installments (ADR 0020 decision 3).
+         */
+        PlanAlternativeResponse: {
+            kind: components["schemas"]["AlternativeKind"];
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+            /**
+             * Tenureinmonths
+             * @example 6
+             */
+            tenureInMonths: number;
+            /**
+             * Downpaymentinpaise
+             * @example 400000
+             */
+            downPaymentInPaise: number;
+            /**
+             * Financedamountinpaise
+             * @example 1800000
+             */
+            financedAmountInPaise: number;
+            /**
+             * Productid
+             * @example null
+             */
+            productId: string | null;
+            /**
+             * Productname
+             * @example null
+             */
+            productName: string | null;
+            /**
+             * Priceinpaise
+             * @example 2200000
+             */
+            priceInPaise: number;
+            /**
+             * Monthlyinstallmentinpaise
+             * @example 300000
+             */
+            monthlyInstallmentInPaise: number;
+            /**
+             * Previousmonthlyinstallmentinpaise
+             * @example 366667
+             */
+            previousMonthlyInstallmentInPaise: number;
+            /**
+             * Extraintotalinpaise
+             * @example 0
+             */
+            extraInTotalInPaise: number;
+            /**
+             * Totalpayableinpaise
+             * @example 1800000
+             */
+            totalPayableInPaise: number;
+            /**
+             * Islowermonthlyamount
+             * @example true
+             */
+            isLowerMonthlyAmount: boolean;
+            /**
+             * Iswithinbudget
+             * @example true
+             */
+            isWithinBudget: boolean;
+            comfort: components["schemas"]["PlanComfortResponse"] | null;
+        };
+        /**
+         * PlanAlternativesRequest
+         * @description The plan the customer is looking at; alternatives are found for it.
+         */
+        PlanAlternativesRequest: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+        };
+        /**
+         * PlanAlternativesResponse
+         * @description The chosen plan and every option; hasLowerMonthlyAlternative false is "nothing better".
+         */
+        PlanAlternativesResponse: {
+            basePlan: components["schemas"]["BasePlanResponse"];
+            /**
+             * Haslowermonthlyalternative
+             * @example true
+             */
+            hasLowerMonthlyAlternative: boolean;
+            /** Alternatives */
+            alternatives: components["schemas"]["PlanAlternativeResponse"][];
+        };
+        /**
+         * PlanComfortResponse
+         * @description One plan's band and shares of monthly inflow; advice, not a credit decision.
+         *
+         *     comfortRatioInBasisPoints is (existing EMIs + this plan) / inflow, rounded half-up once, and
+         *     the band is classified on it. The two shares are rounded on their own, so they may add up to
+         *     one basis point more or less than the total (ADR 0020 decision 4).
+         */
+        PlanComfortResponse: {
+            band: components["schemas"]["ComfortBand"];
+            /**
+             * Comfortratioinbasispoints
+             * @example 3889
+             */
+            comfortRatioInBasisPoints: number;
+            /**
+             * Planshareinbasispoints
+             * @example 1222
+             */
+            planShareInBasisPoints: number;
+            /**
+             * Existingemisshareinbasispoints
+             * @example 2667
+             */
+            existingEmisShareInBasisPoints: number;
+        };
+        /**
+         * PlanExplanationRequest
+         * @description The plan the customer wants explained; the language comes from Accept-Language.
+         */
+        PlanExplanationRequest: {
+            /**
+             * Offerid
+             * @example mock-offer-no-cost-6m
+             */
+            offerId: string;
+        };
+        /**
+         * PlanExplanationResponse
+         * @description The explanation text and the figures it mentions; source TEMPLATE is the standard text.
+         *
+         *     Every rupee amount in the text is one of highlightedAmounts, shown in whole rupees.
+         */
+        PlanExplanationResponse: {
+            /**
+             * Text
+             * @example No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, so nothing is added to the price.
+             */
+            text: string;
+            language: components["schemas"]["CustomerLanguage"];
+            source: components["schemas"]["ExplanationSource"];
+            /** Highlightedamounts */
+            highlightedAmounts: components["schemas"]["HighlightedAmountResponse"][];
+        };
+        /**
+         * PlanReasonCode
+         * @description A fact about a plan that the frontend turns into translated text (ADR 0020 decision 5).
+         *
+         *     Declaration order is the order codes are listed on a plan. There is deliberately no code that
+         *     recommends a plan (CLAUDE.md section 2, rule 7).
+         * @enum {string}
+         */
+        PlanReasonCode: "WITHIN_BUDGET" | "ABOVE_BUDGET" | "NO_EXTRA_COST" | "LOWEST_MONTHLY_AMOUNT" | "LOWEST_EXTRA_IN_TOTAL";
         /**
          * ProblemDetailsResponse
          * @description An error: a stable code for the UI to translate and an English detail for developers.
@@ -1183,6 +2156,15 @@ export interface components {
          * @enum {string}
          */
         PublicPaymentStatus: "CREATING_LINK" | "LINK_FAILED" | "OUTCOME_UNKNOWN" | "AWAITING_PAYMENT" | "PAYMENT_PENDING" | "PAID" | "PAYMENT_FAILED";
+        /**
+         * ReceiptStatus
+         * @description Where the purchase stands on C10; a payment that did not go through explains the next step.
+         *
+         *     READY_TO_PAY is the hand-off: the merchant now takes payment on Paytm. PAYMENT_PENDING means
+         *     the merchant started a payment whose outcome is not known yet.
+         * @enum {string}
+         */
+        ReceiptStatus: "READY_TO_PAY" | "PAYMENT_PENDING" | "PAID" | "PAYMENT_NOT_COMPLETED";
         /**
          * ReportingRange
          * @description Which span of the shop's calendar a report covers (M5's Today, This week, This month).
@@ -1370,6 +2352,18 @@ export interface components {
              * @example 2026-11-09
              */
             periodStartDate: string;
+        };
+        /**
+         * StartCustomerSessionRequest
+         * @description The token read from the QR the merchant shows; it is never logged.
+         */
+        StartCustomerSessionRequest: {
+            /**
+             * Qrtoken
+             * @description The token after #t= in the QR link, sent as is.
+             * @example <qr-token>
+             */
+            qrToken: string;
         };
         /**
          * StartSaleRequest
@@ -3421,6 +4415,1121 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    start_customer_session_api_v1_customer_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartCustomerSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description The session for C1: shop, item and price. */
+            201: {
+                headers: {
+                    /** @description The URL of this customer session. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "customerSessionId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+                     *       "sessionToken": "<session-token>",
+                     *       "sessionCode": "4821",
+                     *       "shopName": "Ravi Electronics",
+                     *       "productName": "Example phone, 128 GB",
+                     *       "priceInPaise": 2200000,
+                     *       "expiresAt": "2026-11-15T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CustomerSessionResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The QR token is unknown, already used, replaced, expired, or its sale is no longer open; the shop can show a new QR. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description This client exchanged too many QR codes in this minute. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    get_customer_session_api_v1_customer_sessions__customerSessionId__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "customerSessionId": "01JD5Z0Q8M6X3V2N7B4C9K1T0E",
+                     *       "sessionCode": "4821",
+                     *       "shopName": "Ravi Electronics",
+                     *       "productName": "Example phone, 128 GB",
+                     *       "priceInPaise": 2200000,
+                     *       "expiresAt": "2026-11-15T10:00:00Z",
+                     *       "hasConfirmedBudget": true,
+                     *       "comfortCheckStatus": "COMPLETED",
+                     *       "hasConsented": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CustomerSessionSummaryResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    confirm_customer_budget_api_v1_customer_sessions__customerSessionId__budget_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description The budget now held for the session. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "monthlyBudgetInPaise": 300000,
+                     *       "hasCustomerConfirmed": true
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ConfirmedBudgetResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    run_comfort_check_api_v1_customer_sessions__customerSessionId__comfort_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComfortCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description COMPLETED with the customer's figures, or SKIPPED with none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "COMPLETED",
+                     *       "isSyntheticData": true,
+                     *       "monthlyInflowInPaise": 3000000,
+                     *       "existingEmisInPaise": 800000
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ComfortCheckResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The monthly budget has not been confirmed yet. The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    list_customer_plans_api_v1_customer_sessions__customerSessionId__plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every plan in order, with budget fit and comfort. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "monthlyBudgetInPaise": 300000,
+                     *       "hasAnyPlanWithinBudget": true,
+                     *       "hasComfortCheck": true,
+                     *       "plans": [
+                     *         {
+                     *           "position": 1,
+                     *           "offerId": "mock-offer-cardless-12m",
+                     *           "lenderLabel": "Demo cardless lender (Mock)",
+                     *           "emiType": "STANDARD",
+                     *           "tenureInMonths": 12,
+                     *           "monthlyInstallmentInPaise": 205000,
+                     *           "lastInstallmentInPaise": 205000,
+                     *           "extraInTotalInPaise": 260000,
+                     *           "totalPayableInPaise": 2460000,
+                     *           "priceInPaise": 2200000,
+                     *           "isWithinBudget": true,
+                     *           "amountAboveBudgetInPaise": 0,
+                     *           "reasonCodes": [
+                     *             "WITHIN_BUDGET",
+                     *             "LOWEST_MONTHLY_AMOUNT"
+                     *           ],
+                     *           "comfort": {
+                     *             "band": "COMFORTABLE",
+                     *             "comfortRatioInBasisPoints": 3350,
+                     *             "planShareInBasisPoints": 683,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         },
+                     *         {
+                     *           "position": 2,
+                     *           "offerId": "mock-offer-no-cost-6m",
+                     *           "lenderLabel": "Brand",
+                     *           "emiType": "NO_COST",
+                     *           "tenureInMonths": 6,
+                     *           "monthlyInstallmentInPaise": 366667,
+                     *           "lastInstallmentInPaise": 366665,
+                     *           "extraInTotalInPaise": 0,
+                     *           "totalPayableInPaise": 2200000,
+                     *           "priceInPaise": 2200000,
+                     *           "isWithinBudget": false,
+                     *           "amountAboveBudgetInPaise": 66667,
+                     *           "reasonCodes": [
+                     *             "ABOVE_BUDGET",
+                     *             "NO_EXTRA_COST",
+                     *             "LOWEST_EXTRA_IN_TOTAL"
+                     *           ],
+                     *           "comfort": {
+                     *             "band": "STRETCHING",
+                     *             "comfortRatioInBasisPoints": 3889,
+                     *             "planShareInBasisPoints": 1222,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         },
+                     *         {
+                     *           "position": 3,
+                     *           "offerId": "mock-offer-card-6m",
+                     *           "lenderLabel": "Your card's bank",
+                     *           "emiType": "STANDARD",
+                     *           "tenureInMonths": 6,
+                     *           "monthlyInstallmentInPaise": 385000,
+                     *           "lastInstallmentInPaise": 385000,
+                     *           "extraInTotalInPaise": 110000,
+                     *           "totalPayableInPaise": 2310000,
+                     *           "priceInPaise": 2200000,
+                     *           "isWithinBudget": false,
+                     *           "amountAboveBudgetInPaise": 85000,
+                     *           "reasonCodes": [
+                     *             "ABOVE_BUDGET"
+                     *           ],
+                     *           "comfort": {
+                     *             "band": "STRETCHING",
+                     *             "comfortRatioInBasisPoints": 3950,
+                     *             "planShareInBasisPoints": 1283,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CustomerPlansResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The monthly budget has not been confirmed yet. The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway could not quote plans right now. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway did not answer in time. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    find_plan_alternatives_api_v1_customer_sessions__customerSessionId__alternatives_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanAlternativesRequest"];
+            };
+        };
+        responses: {
+            /** @description The chosen plan and every alternative, in C6 order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "basePlan": {
+                     *         "offerId": "mock-offer-no-cost-6m",
+                     *         "lenderLabel": "Brand",
+                     *         "emiType": "NO_COST",
+                     *         "tenureInMonths": 6,
+                     *         "monthlyInstallmentInPaise": 366667,
+                     *         "lastInstallmentInPaise": 366665,
+                     *         "extraInTotalInPaise": 0,
+                     *         "totalPayableInPaise": 2200000,
+                     *         "priceInPaise": 2200000,
+                     *         "isWithinBudget": false,
+                     *         "amountAboveBudgetInPaise": 66667,
+                     *         "comfort": {
+                     *           "band": "STRETCHING",
+                     *           "comfortRatioInBasisPoints": 3889,
+                     *           "planShareInBasisPoints": 1222,
+                     *           "existingEmisShareInBasisPoints": 2667
+                     *         }
+                     *       },
+                     *       "hasLowerMonthlyAlternative": true,
+                     *       "alternatives": [
+                     *         {
+                     *           "kind": "DOWN_PAYMENT",
+                     *           "offerId": "mock-offer-no-cost-6m",
+                     *           "tenureInMonths": 6,
+                     *           "downPaymentInPaise": 400000,
+                     *           "financedAmountInPaise": 1800000,
+                     *           "priceInPaise": 2200000,
+                     *           "monthlyInstallmentInPaise": 300000,
+                     *           "previousMonthlyInstallmentInPaise": 366667,
+                     *           "extraInTotalInPaise": 0,
+                     *           "totalPayableInPaise": 1800000,
+                     *           "isLowerMonthlyAmount": true,
+                     *           "isWithinBudget": true,
+                     *           "comfort": {
+                     *             "band": "STRETCHING",
+                     *             "comfortRatioInBasisPoints": 3667,
+                     *             "planShareInBasisPoints": 1000,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         },
+                     *         {
+                     *           "kind": "LONGER_TENURE",
+                     *           "offerId": "mock-offer-cardless-12m",
+                     *           "tenureInMonths": 12,
+                     *           "downPaymentInPaise": 0,
+                     *           "financedAmountInPaise": 2200000,
+                     *           "priceInPaise": 2200000,
+                     *           "monthlyInstallmentInPaise": 205000,
+                     *           "previousMonthlyInstallmentInPaise": 366667,
+                     *           "extraInTotalInPaise": 260000,
+                     *           "totalPayableInPaise": 2460000,
+                     *           "isLowerMonthlyAmount": true,
+                     *           "isWithinBudget": true,
+                     *           "comfort": {
+                     *             "band": "COMFORTABLE",
+                     *             "comfortRatioInBasisPoints": 3350,
+                     *             "planShareInBasisPoints": 683,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         },
+                     *         {
+                     *           "kind": "CHEAPER_MODEL",
+                     *           "offerId": "mock-offer-no-cost-6m",
+                     *           "tenureInMonths": 6,
+                     *           "downPaymentInPaise": 0,
+                     *           "financedAmountInPaise": 1800000,
+                     *           "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0G",
+                     *           "productName": "Example phone, 64 GB",
+                     *           "priceInPaise": 1800000,
+                     *           "monthlyInstallmentInPaise": 300000,
+                     *           "previousMonthlyInstallmentInPaise": 366667,
+                     *           "extraInTotalInPaise": 0,
+                     *           "totalPayableInPaise": 1800000,
+                     *           "isLowerMonthlyAmount": true,
+                     *           "isWithinBudget": true,
+                     *           "comfort": {
+                     *             "band": "STRETCHING",
+                     *             "comfortRatioInBasisPoints": 3667,
+                     *             "planShareInBasisPoints": 1000,
+                     *             "existingEmisShareInBasisPoints": 2667
+                     *           }
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlanAlternativesResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The monthly budget has not been confirmed yet. The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway could not quote plans right now. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway did not answer in time. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    explain_customer_plan_api_v1_customer_sessions__customerSessionId__explanation_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English. */
+                "Accept-Language"?: string | null;
+            };
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanExplanationRequest"];
+            };
+        };
+        responses: {
+            /** @description The explanation and the two figures it mentions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "text": "No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, so nothing is added to the price.",
+                     *       "language": "en",
+                     *       "source": "TEMPLATE",
+                     *       "highlightedAmounts": [
+                     *         {
+                     *           "kind": "MONTHLY_INSTALLMENT",
+                     *           "amountInPaise": 366667
+                     *         },
+                     *         {
+                     *           "kind": "EXTRA_IN_TOTAL",
+                     *           "amountInPaise": 0
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PlanExplanationResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. The chosen offer is not quoted for the session's item. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway could not quote plans right now. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway did not answer in time. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    request_consent_one_time_code_api_v1_customer_sessions__customerSessionId__consent_otp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Where the code went, when it ends and how many tries it allows. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "phoneLastTwoDigits": "42",
+                     *       "expiresAt": "2026-11-15T09:35:00Z",
+                     *       "resendAvailableAt": "2026-11-15T09:30:30Z",
+                     *       "attemptsRemaining": 3
+                     *     }
+                     */
+                    "application/json": components["schemas"]["OtpChallengeResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The monthly budget has not been confirmed yet. The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. The payment side knows no phone number for this sale, so no code can be sent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The current code can be replaced 30 seconds after it was sent; Retry-After says when. This phone asked for too many codes for the session in this window. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    give_customer_consent_api_v1_customer_sessions__customerSessionId__consent_post: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required. 8 to 255 visible ASCII characters, no spaces (a UUID or ULID is ideal). The same key with the same body returns the original 201 response; with a different body it is refused with 422 IDEMPOTENCY_KEY_REUSED (ADR 0005). */
+                "Idempotency-Key": string;
+                /** @description en or ta, the language the customer chose on C1; a browser list such as ta-IN,ta;q=0.9 also works. Anything else, or no header, means English. */
+                "Accept-Language"?: string | null;
+            };
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiveConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description The consent was recorded (or this is the replay of it). */
+            201: {
+                headers: {
+                    /** @description The receipt URL of this session. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "consentId": "01JD5Z0Q8M6X3V2N7B4C9K1T0D",
+                     *       "reference": "EMI-1511-0042",
+                     *       "consentedAt": "2026-11-15T09:30:00Z",
+                     *       "status": "READY_TO_PAY",
+                     *       "plan": {
+                     *         "offerId": "mock-offer-no-cost-6m",
+                     *         "lenderLabel": "Brand",
+                     *         "emiType": "NO_COST",
+                     *         "tenureInMonths": 6,
+                     *         "regularInstallmentInPaise": 366667,
+                     *         "lastInstallmentInPaise": 366665,
+                     *         "extraInTotalInPaise": 0,
+                     *         "totalPayableInPaise": 2200000,
+                     *         "priceInPaise": 2200000,
+                     *         "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                     *         "productName": "Example phone, 128 GB",
+                     *         "downPaymentInPaise": 0,
+                     *         "financedAmountInPaise": 2200000
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description The body cannot be parsed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The monthly budget has not been confirmed yet. The plan for this sale is already agreed, so the steps before consent are closed; a new Idempotency-Key cannot record a second consent. Another consent took the evidence chain's head at the same moment; retry with the same Idempotency-Key. A fresh quote no longer matches the monthly or total shown; nothing was recorded. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. The offer is not one quoted for the session's item at the sale price. No one-time code was requested for this session. The code does not match; attemptsRemaining says how many more tries it allows. The code is past its 5-minute lifetime or its 3 tries are used; request a new one. The Idempotency-Key was already used with a different body. The payment side knows no phone number for this sale, so no code can be sent. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description This phone made too many consent attempts for the session in this window. */
+            429: {
+                headers: {
+                    /** @description Whole seconds to wait before trying again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway could not quote plans right now. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The payment gateway did not answer in time. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+        };
+    };
+    get_customer_receipt_api_v1_customer_sessions__customerSessionId__receipt_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The customerSessionId returned when the QR was exchanged. */
+                customerSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The receipt with the frozen plan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "READY_TO_PAY",
+                     *       "reference": "EMI-1511-0042",
+                     *       "phoneLastTwoDigits": "42",
+                     *       "consentedAt": "2026-11-15T09:30:00Z",
+                     *       "coolingOffNoticeStatus": "PLACEHOLDER",
+                     *       "plan": {
+                     *         "offerId": "mock-offer-no-cost-6m",
+                     *         "lenderLabel": "Brand",
+                     *         "emiType": "NO_COST",
+                     *         "tenureInMonths": 6,
+                     *         "regularInstallmentInPaise": 366667,
+                     *         "lastInstallmentInPaise": 366665,
+                     *         "extraInTotalInPaise": 0,
+                     *         "totalPayableInPaise": 2200000,
+                     *         "priceInPaise": 2200000,
+                     *         "productId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
+                     *         "productName": "Example phone, 128 GB",
+                     *         "downPaymentInPaise": 0,
+                     *         "financedAmountInPaise": 2200000
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["CustomerReceiptResponse"];
+                };
+            };
+            /** @description The session token is missing, opens no session, or the session or its sale has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The token is valid but belongs to another session id, whether that id exists or not. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description The plan has not been agreed to yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description A field, query parameter or header is missing or invalid; fieldErrors names each one. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
+                };
+            };
+            /** @description An unexpected failure; the body never holds a stack trace. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CustomerProblemDetailsResponse"];
                 };
             };
         };

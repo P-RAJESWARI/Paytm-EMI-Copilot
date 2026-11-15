@@ -1,7 +1,8 @@
 """Composition root (ADR 0008): builds every component once at startup and injects them.
 
 This is the only module outside adapters/ that imports the adapter factories (gateway,
-settlement, weekly message delivery). Components live on
+settlement, weekly message delivery, customer contact, consent code) and the synthetic profile
+Mock. Components live on
 app.state, never in module globals. Services are stateless, so they are assembled per request
 from the component providers below; a test overrides one provider (for example the gateway)
 with app.dependency_overrides and every service that needs it picks the override up.
@@ -17,17 +18,24 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request
 from sqlalchemy import Engine
 
+from emi_copilot.adapters.consent_otp.factory import ConsentOtpComponents, ConsentOtpFactory
+from emi_copilot.adapters.customer_contact.factory import CustomerContactFactory
+from emi_copilot.adapters.customer_contact.port import CustomerContactPort
+from emi_copilot.adapters.financial_profile.mock_adapter import MockSyntheticFinancialProfileAdapter
+from emi_copilot.adapters.financial_profile.port import FinancialProfilePort
 from emi_copilot.adapters.payment_gateway.factory import PaymentGatewayFactory
 from emi_copilot.adapters.payment_gateway.port import PaymentGatewayPort
 from emi_copilot.adapters.settlement.factory import SettlementFactory
 from emi_copilot.adapters.settlement.port import SettlementPort
 from emi_copilot.adapters.weekly_message_delivery.factory import WeeklyMessageDeliveryFactory
 from emi_copilot.adapters.weekly_message_delivery.port import WeeklyMessageDeliveryPort
+from emi_copilot.api.customer_phone_hash_key import resolve_customer_phone_hash_key
 from emi_copilot.api.customer_qr_signing_key import resolve_customer_qr_signing_key
 from emi_copilot.config.settings import ApplicationSettings
 from emi_copilot.core.clock import Clock, SystemClock
 from emi_copilot.core.fixed_window_rate_limiter import FixedWindowRateLimiter
 from emi_copilot.core.id_generator import IdGenerator
+from emi_copilot.core.keyed_hasher import KeyedHasher
 from emi_copilot.core.pin_hasher import ScryptPinHasher
 from emi_copilot.core.session_code_generator import (
     RandomSessionCodeGenerator,
@@ -51,8 +59,9 @@ class ApplicationComponents:
     """Everything built once per process: settings, time, ids, gateway, events and database.
 
     The PIN hasher (with its decoy hash), the rate limiters, the customer QR signing key,
-    the session code generator, the live sale status broadcaster and the report adapters live
-    here too, because they must outlive one request. The key is kept out of repr.
+    the session code generator, the live sale status broadcaster, the report adapters and the
+    customer flow's Mock adapters and keyed hasher live here too, because they must outlive one
+    request. The key is kept out of repr.
     """
 
     settings: ApplicationSettings
@@ -71,6 +80,14 @@ class ApplicationComponents:
     sale_status_broadcaster: SaleStatusBroadcaster
     settlement: SettlementPort
     weekly_message_delivery: WeeklyMessageDeliveryPort
+    financial_profile: FinancialProfilePort
+    are_financial_profiles_synthetic: bool
+    customer_contact: CustomerContactPort
+    consent_otp: ConsentOtpComponents
+    customer_keyed_hasher: KeyedHasher
+    customer_session_start_rate_limiter: FixedWindowRateLimiter
+    consent_otp_request_rate_limiter: FixedWindowRateLimiter
+    customer_consent_rate_limiter: FixedWindowRateLimiter
 
 
 def build_event_bus(
@@ -90,7 +107,8 @@ def build_application_components(
 ) -> ApplicationComponents:
     """Builds the components; paytm mode without credentials raises here, failing startup.
 
-    So does paytm mode without CUSTOMER_QR_SIGNING_SECRET, and a secret that is too short.
+    So does paytm mode without CUSTOMER_QR_SIGNING_SECRET or CUSTOMER_PHONE_HASH_SECRET, and a
+    secret that is too short. Every Mock adapter announces itself in the log as it is built.
     """
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
@@ -130,6 +148,26 @@ def build_application_components(
         sale_status_broadcaster=sale_status_broadcaster,
         settlement=SettlementFactory().create(),
         weekly_message_delivery=WeeklyMessageDeliveryFactory().create(),
+        financial_profile=MockSyntheticFinancialProfileAdapter(),
+        are_financial_profiles_synthetic=True,
+        customer_contact=CustomerContactFactory().create(),
+        consent_otp=ConsentOtpFactory(settings).create(),
+        customer_keyed_hasher=KeyedHasher(resolve_customer_phone_hash_key(settings)),
+        customer_session_start_rate_limiter=build_rate_limiter(
+            clock,
+            settings.customer_session_start_rate_limit_max_requests,
+            settings.customer_session_start_rate_limit_window_in_seconds,
+        ),
+        consent_otp_request_rate_limiter=build_rate_limiter(
+            clock,
+            settings.consent_otp_request_rate_limit_max_requests,
+            settings.consent_otp_request_rate_limit_window_in_seconds,
+        ),
+        customer_consent_rate_limiter=build_rate_limiter(
+            clock,
+            settings.customer_consent_rate_limit_max_requests,
+            settings.customer_consent_rate_limit_window_in_seconds,
+        ),
     )
 
 

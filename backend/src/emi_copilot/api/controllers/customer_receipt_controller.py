@@ -2,18 +2,16 @@
 
 from fastapi import APIRouter
 
-from emi_copilot.api.controllers.customer_flow_service_providers import (
-    CustomerConsentServiceDependency,
-    CustomerSessionCredentialsDependency,
-)
 from emi_copilot.api.controllers.customer_problem_examples import (
     CONSENT_NOT_GIVEN_PROBLEM,
+    CUSTOMER_OPERATION_NOTE,
     SESSION_PROBLEMS,
     SESSION_TOKEN_NOTE,
-    STUB_OPERATION_NOTE,
+    describe_customer_problem_responses,
 )
 from emi_copilot.api.controllers.customer_response_examples import RECEIPT_RESPONSE_EXAMPLE
-from emi_copilot.api.openapi_documentation import describe_problem_responses
+from emi_copilot.api.customer_dependencies import CustomerReceiptServiceDependency
+from emi_copilot.api.customer_request_context import CustomerSessionCredentialsDependency
 from emi_copilot.dtos.customer_receipt_dtos import CustomerReceiptResponse
 
 customer_receipt_router = APIRouter(tags=["customer consent"])
@@ -26,20 +24,21 @@ GET_CUSTOMER_RECEIPT_ROUTE_NAME = "get_customer_receipt"
     name=GET_CUSTOMER_RECEIPT_ROUTE_NAME,
     summary="Get the receipt after consent",
     description=(
-        STUB_OPERATION_NOTE + SESSION_TOKEN_NOTE + "READY_TO_PAY means the shop now takes "
-        "payment on Paytm; PAID, PAYMENT_PENDING and PAYMENT_NOT_COMPLETED arrive in Phase 3C, "
-        "each with a next step. The cooling-off wording is a placeholder until the lender "
-        "confirms its period. There is no payment URL."
+        CUSTOMER_OPERATION_NOTE + SESSION_TOKEN_NOTE + "READY_TO_PAY means the shop now takes "
+        "payment on Paytm; PAYMENT_PENDING means the shop started a payment whose outcome is "
+        "not known yet; PAID is confirmed server-side; PAYMENT_NOT_COMPLETED explains the next "
+        "step. The cooling-off wording is a placeholder until the lender confirms its period. "
+        "There is no payment URL."
     ),
     response_description="The receipt with the frozen plan.",
     responses={
         200: {"content": {"application/json": {"example": RECEIPT_RESPONSE_EXAMPLE}}},
-        **describe_problem_responses(*SESSION_PROBLEMS, CONSENT_NOT_GIVEN_PROBLEM),
+        **describe_customer_problem_responses(*SESSION_PROBLEMS, CONSENT_NOT_GIVEN_PROBLEM),
     },
 )
 def get_customer_receipt(
     credentials: CustomerSessionCredentialsDependency,
-    consent_service: CustomerConsentServiceDependency,
+    receipt_service: CustomerReceiptServiceDependency,
 ) -> CustomerReceiptResponse:
     """Gives the session's receipt."""
-    return CustomerReceiptResponse.from_receipt(consent_service.get_receipt(credentials))
+    return CustomerReceiptResponse.from_receipt(receipt_service.get_receipt(credentials))
