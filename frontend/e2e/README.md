@@ -53,6 +53,9 @@ else's server. Override them with
   hands it to the tests as `E2E_MERCHANT_PIN`. It is not a real shop's PIN.
 - **Pairing rate limit:** raised to 100 a minute for the backend under test, because every test
   pairs from 127.0.0.1.
+- **Customer rate limits:** the QR exchange, OTP request and consent limits are raised to 100
+  per window (the windows keep their defaults), because every customer test calls from
+  127.0.0.1.
 
 ## What the tests cover
 

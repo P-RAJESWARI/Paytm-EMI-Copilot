@@ -27,6 +27,9 @@ const SERVER_START_TIMEOUT_IN_MILLISECONDS = 120_000;
 /** Several devices pair from 127.0.0.1 in one run; the default 10 a minute is for real shops. */
 const END_TO_END_PAIRING_RATE_LIMIT = '100';
 
+/** Every customer test exchanges QRs, requests OTPs and consents from 127.0.0.1 in one run. */
+const END_TO_END_CUSTOMER_RATE_LIMIT = '100';
+
 const desktopChromium = devices['Desktop Chrome'];
 
 export default defineConfig({
@@ -97,8 +100,11 @@ export default defineConfig({
         // The QR link of every sale opens the customer-web server below.
         CUSTOMER_WEB_BASE_URL: CUSTOMER_WEB_ORIGIN,
         MOCK_CONSENT_OTP_CODE,
-        // Customer rate limits (QR exchange, OTP request, OTP check, consent): generous e2e
-        // values go here once the backend names their settings; every test calls from 127.0.0.1.
+        // Customer rate limits (QR exchange, OTP request, consent with its OTP check): every
+        // test calls from 127.0.0.1, so the e2e run raises the counts; the windows keep defaults.
+        CUSTOMER_SESSION_START_RATE_LIMIT_MAX_REQUESTS: END_TO_END_CUSTOMER_RATE_LIMIT,
+        CONSENT_OTP_REQUEST_RATE_LIMIT_MAX_REQUESTS: END_TO_END_CUSTOMER_RATE_LIMIT,
+        CUSTOMER_CONSENT_RATE_LIMIT_MAX_REQUESTS: END_TO_END_CUSTOMER_RATE_LIMIT,
         LOG_LEVEL: 'WARNING',
       },
     },
