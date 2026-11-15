@@ -152,7 +152,7 @@ describe('HttpCustomerFlowApi: requests in the contract shape', () => {
     expect(explanationRequest?.body).toEqual({ offerId: 'mock-offer-no-cost-6m' });
   });
 
-  it('records consent with the Idempotency-Key, the figures shown and the agreement', async () => {
+  it('records consent with the Idempotency-Key, the language, the figures shown and the agreement', async () => {
     const { fakeBackend, customerFlowApi } = await createApiWithOpenSession();
 
     const otpChallenge = await customerFlowApi.requestConsentOtp();
@@ -164,6 +164,7 @@ describe('HttpCustomerFlowApi: requests in the contract shape', () => {
         otp: '123456',
       },
       'consent-key-1',
+      'ta',
     );
     const receipt = await customerFlowApi.getReceipt();
 
@@ -173,6 +174,7 @@ describe('HttpCustomerFlowApi: requests in the contract shape', () => {
     const consentRequest = fakeBackend.recordedRequests.at(-2);
     expect(consentRequest?.path).toBe(`${SESSION_PATH}/consent`);
     expect(consentRequest?.headers.get('Idempotency-Key')).toBe('consent-key-1');
+    expect(consentRequest?.headers.get('Accept-Language')).toBe('ta');
     expect(consentRequest?.body).toEqual({
       offerId: 'mock-offer-no-cost-6m',
       shownMonthlyInstallmentInPaise: 366667,
@@ -202,6 +204,7 @@ describe('HttpCustomerFlowApi: problems', () => {
           otp: '000000',
         },
         'consent-key-2',
+        'en',
       )
       .catch((error: unknown) => error);
 

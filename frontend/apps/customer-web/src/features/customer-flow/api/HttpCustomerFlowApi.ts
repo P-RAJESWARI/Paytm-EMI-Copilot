@@ -139,13 +139,19 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
     );
   }
 
-  // Records consent to the exact plan C9 showed; the same key replays a retry safely.
-  giveConsent(submission: ConsentSubmission, idempotencyKey: string): Promise<ConsentConfirmation> {
+  // Records consent to the exact plan C9 showed, in the customer's language (Accept-Language);
+  // the same key replays a retry safely.
+  giveConsent(
+    submission: ConsentSubmission,
+    idempotencyKey: string,
+    language: SupportedLanguage,
+  ): Promise<ConsentConfirmation> {
     return this.callInSession((params) =>
       readApiData(
         this.apiClient.POST('/api/v1/customer-sessions/{customerSessionId}/consent', {
           params: { ...params, header: { 'Idempotency-Key': idempotencyKey } },
           body: { ...submission, hasAgreedToPlan: true },
+          headers: { 'Accept-Language': language },
         }),
       ),
     );

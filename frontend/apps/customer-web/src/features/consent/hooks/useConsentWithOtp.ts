@@ -1,3 +1,4 @@
+import { useLanguagePreference } from '@emi-copilot/shared-i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -12,11 +13,12 @@ import { useOtpChallenge } from './useOtpChallenge';
 
 const OTP_DIGIT_COUNT = 6;
 
-// Runs C9: the OTP side plus consent to the exact plan shown, with one Idempotency-Key per intent.
-// A wrong OTP asks again, an expired one offers a new OTP, a changed plan re-shows C4 with fresh
-// figures, and an earlier consent opens the receipt.
+// Runs C9: the OTP side plus consent to the exact plan shown, in the language on screen, with one
+// Idempotency-Key per intent. A wrong OTP asks again, an expired one offers a new OTP, a changed
+// plan re-shows C4 with fresh figures, and an earlier consent opens the receipt.
 export function useConsentWithOtp(plan: CustomerPlan) {
   const customerFlowApi = useCustomerFlowApi();
+  const { selectedLanguage } = useLanguagePreference();
   const queryClient = useQueryClient();
   const { dispatch } = useCustomerFlow();
   const idempotencyKeys = useIdempotencyKeyPerIntent();
@@ -31,6 +33,7 @@ export function useConsentWithOtp(plan: CustomerPlan) {
           otp: otpDigits,
         },
         idempotencyKey,
+        selectedLanguage,
       ),
     onSettled: (_confirmation, error, { idempotencyKey }) => {
       idempotencyKeys.settleIdempotencyKey(idempotencyKey, error);

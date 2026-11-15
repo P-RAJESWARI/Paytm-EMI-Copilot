@@ -4,7 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { expectNoAccessibilityViolations } from '@test-support/accessibility';
 
-import { CustomerApiError, FixtureCustomerFlowApi } from '../../customer-flow';
+import {
+  CustomerApiError,
+  FixtureCustomerFlowApi,
+  type CustomerFlowApi,
+} from '../../customer-flow';
 import { FIXTURE_OTP } from '../../customer-flow/api/fixtureCustomerFlowData';
 import { DESIGN_PLAN_ANSWERS } from '../../../testing/customerFlowTestData';
 import { prepareFixtureWithAnswers, renderCustomerFlow } from '../../../testing/renderCustomerFlow';
@@ -63,7 +67,8 @@ describe('C9 consent and OTP', () => {
 
   it('sends the OTP, shows the phone ending and the resend wait, then records consent', async () => {
     const { fixture, container } = await renderConsent();
-    const giveConsent = vi.spyOn(fixture, 'giveConsent');
+    // Spied through the port, whose giveConsent also takes the language.
+    const giveConsent = vi.spyOn(fixture as CustomerFlowApi, 'giveConsent');
 
     await userEvent.click(await screen.findByRole('button', { name: 'Send OTP' }));
 
@@ -77,7 +82,7 @@ describe('C9 consent and OTP', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
     expect(await screen.findByRole('heading', { name: 'Your plan is ready' })).toBeTruthy();
-    const [submission, idempotencyKey] = giveConsent.mock.calls[0] ?? [];
+    const [submission, idempotencyKey, language] = giveConsent.mock.calls[0] ?? [];
     expect(submission).toEqual({
       offerId: 'mock-offer-no-cost-6m',
       shownMonthlyInstallmentInPaise: 366667,
@@ -85,6 +90,7 @@ describe('C9 consent and OTP', () => {
       otp: FIXTURE_OTP,
     });
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+    expect(language).toBe('en');
   });
 
   it('says calmly how many tries are left after a wrong OTP, then expires it after the third', async () => {
@@ -182,6 +188,21 @@ describe('C9 consent and OTP', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
     expect(await screen.findByRole('status', { name: 'Getting your receipt' })).toBeTruthy();
+  });
+
+  it('records consent in Tamil when the customer reads C9 in Tamil', async () => {
+    window.localStorage.setItem('emiCopilot.language', 'ta');
+    const fixture = await prepareFixtureWithAnswers();
+    const giveConsent = vi.spyOn(fixture as CustomerFlowApi, 'giveConsent');
+    await renderConsent(fixture);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'OTP அனுப்பு' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'இலக்கம் 1 / 6' }));
+    await userEvent.paste(FIXTURE_OTP);
+    await userEvent.click(screen.getByRole('button', { name: 'உறுதிசெய்' }));
+
+    expect(await screen.findByRole('heading', { name: 'உங்கள் திட்டம் தயார்' })).toBeTruthy();
+    expect(giveConsent.mock.calls[0]?.[2]).toBe('ta');
   });
 
   it('reads in Tamil and goes back to the explanation', async () => {

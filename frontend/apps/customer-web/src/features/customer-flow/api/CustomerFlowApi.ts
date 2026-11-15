@@ -49,9 +49,11 @@ export interface CustomerFlowApi {
   findAlternatives: (offerId: string) => Promise<PlanAlternatives>;
   explainPlan: (offerId: string, language: SupportedLanguage) => Promise<PlanExplanation>;
   requestConsentOtp: () => Promise<OtpChallenge>;
+  /** Consent is recorded in the customer's language, which the server keeps for the receipt. */
   giveConsent: (
     submission: ConsentSubmission,
     idempotencyKey: string,
+    language: SupportedLanguage,
   ) => Promise<ConsentConfirmation>;
   getReceipt: () => Promise<CustomerReceipt>;
 }
