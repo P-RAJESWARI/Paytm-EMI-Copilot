@@ -9,9 +9,12 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@emi-copilot/api-client": "workspace:*",
     "@emi-copilot/shared-i18n": "workspace:*",
     "@emi-copilot/ui-kit": "workspace:*",
+    "@tanstack/react-query": "5.105.0",
     "i18next": "26.5.12",
+    "openapi-fetch": "0.17.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-i18next": "17.1.9"

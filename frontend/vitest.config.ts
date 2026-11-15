@@ -6,6 +6,10 @@ import { defineConfig } from 'vitest/config';
 
 const FRONTEND_OVERALL_COVERAGE_MINIMUM_PERCENT = 80;
 
+/** testing.md section 5: the customer flow reducer (the step machine) is covered completely. */
+const CUSTOMER_FLOW_REDUCER_FILES =
+  'apps/customer-web/src/features/customer-flow/model/customerFlowReducer.ts';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -37,6 +41,12 @@ export default defineConfig({
         branches: FRONTEND_OVERALL_COVERAGE_MINIMUM_PERCENT,
         functions: FRONTEND_OVERALL_COVERAGE_MINIMUM_PERCENT,
         statements: FRONTEND_OVERALL_COVERAGE_MINIMUM_PERCENT,
+        [CUSTOMER_FLOW_REDUCER_FILES]: {
+          lines: 100,
+          branches: 100,
+          functions: 100,
+          statements: 100,
+        },
       },
     },
   },
