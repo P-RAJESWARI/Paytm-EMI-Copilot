@@ -1,8 +1,8 @@
 """Composition root (ADR 0008): builds every component once at startup and injects them.
 
 This is the only module outside adapters/ that imports the adapter factories (gateway,
-settlement, weekly message delivery, customer contact, consent code) and the synthetic profile
-Mock. Components live on
+settlement, weekly message delivery, customer contact, consent code, AI providers) and the
+synthetic profile Mock. Components live on
 app.state, never in module globals. Services are stateless, so they are assembled per request
 from the component providers below; a test overrides one provider (for example the gateway)
 with app.dependency_overrides and every service that needs it picks the override up.
@@ -18,6 +18,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request
 from sqlalchemy import Engine
 
+from emi_copilot.adapters.ai.factory import AiComponents, AiProviderFactory
 from emi_copilot.adapters.consent_otp.factory import ConsentOtpComponents, ConsentOtpFactory
 from emi_copilot.adapters.customer_contact.factory import CustomerContactFactory
 from emi_copilot.adapters.customer_contact.port import CustomerContactPort
@@ -88,6 +89,7 @@ class ApplicationComponents:
     customer_session_start_rate_limiter: FixedWindowRateLimiter
     consent_otp_request_rate_limiter: FixedWindowRateLimiter
     customer_consent_rate_limiter: FixedWindowRateLimiter
+    ai: AiComponents
 
 
 def build_event_bus(
@@ -109,13 +111,15 @@ def build_application_components(
 
     So does paytm mode without CUSTOMER_QR_SIGNING_SECRET or CUSTOMER_PHONE_HASH_SECRET, a
     secret that is too short, and paytm mode at all while the customer's phone number and
-    consent codes have only Mock sources. Every Mock adapter announces itself as it is built.
+    consent codes have only Mock sources, and an AI provider in sarvam mode (no key, or not yet
+    built). Every Mock adapter announces itself as it is built.
     """
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
     customer_qr_signing_key = resolve_customer_qr_signing_key(settings)
     customer_contact = CustomerContactFactory(settings).create()
     consent_otp = ConsentOtpFactory(settings).create()
+    ai_components = AiProviderFactory().create(settings.ai_settings)
     sale_status_broadcaster = SaleStatusBroadcaster(
         settings.sale_event_stream_maximum_queued_messages
     )
@@ -171,6 +175,7 @@ def build_application_components(
             settings.customer_consent_rate_limit_max_requests,
             settings.customer_consent_rate_limit_window_in_seconds,
         ),
+        ai=ai_components,
     )
 
 

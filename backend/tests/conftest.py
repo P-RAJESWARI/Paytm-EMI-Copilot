@@ -5,6 +5,7 @@ from collections.abc import Iterator
 
 import pytest
 
+from emi_copilot.config.ai_settings import AiSettings
 from emi_copilot.core.logging import (
     HTTP_CLIENT_LOGGER_NAMES,
     UVICORN_ACCESS_LOGGER_NAME,
@@ -37,3 +38,13 @@ def restore_global_logging_configuration() -> Iterator[None]:
         logging.getLogger(logger_name).propagate = propagate
     for logger_name, level in original_http_client_levels.items():
         logging.getLogger(logger_name).setLevel(level)
+
+
+@pytest.fixture(autouse=True)
+def hide_ai_variables_from_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hides every AI variable, a real SARVAM_API_KEY from .env included, so tests use Mocks.
+
+    The Makefile exports .env, so without this a developer's sarvam mode could reach the network.
+    """
+    for field_name in AiSettings.model_fields:
+        monkeypatch.delenv(field_name.upper(), raising=False)

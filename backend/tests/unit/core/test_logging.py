@@ -134,6 +134,11 @@ def test_redaction_filter_redacts_secrets_inside_exception_text(
     ("raw_text", "expected_redacted_text"),
     [
         ("Authorization: Basic c3ludGhldGljOnBhc3M=", "Authorization: [REDACTED]"),
+        ("api-subscription-key: synthetic-sarvam-key", "api-subscription-key: [REDACTED]"),
+        (
+            "{'api-subscription-key': 'synthetic-sarvam-key'}",
+            "{'api-subscription-key': [REDACTED]}",
+        ),
         ('{"sessionToken": "synthetic token value"}', '{"sessionToken": [REDACTED]}'),
         ("signature=synthetic-signature&orderId=ORDER-1", "signature=[REDACTED]&orderId=ORDER-1"),
         ("call +919876543210 now", "call ********10 now"),
@@ -227,3 +232,14 @@ def test_redaction_filter_keeps_extra_fields_that_only_contain_the_letters_pin(
         "mapping chosen", extra={"problem_mapping": "standard"}
     )
     assert read_single_log_line(log_output_stream)["problem_mapping"] == "standard"
+
+
+def test_redaction_filter_redacts_the_sarvam_subscription_key_header_field(
+    log_output_stream: io.StringIO,
+) -> None:
+    """The api-subscription-key header carries the Sarvam key, so its value never leaves."""
+    logging.getLogger("emi_copilot.tests.logging").info(
+        "speech call prepared", extra={"api_subscription_key": "synthetic-sarvam-key"}
+    )
+    assert "synthetic-sarvam-key" not in log_output_stream.getvalue()
+    assert read_single_log_line(log_output_stream)["api_subscription_key"] == "[REDACTED]"

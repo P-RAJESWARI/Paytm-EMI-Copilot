@@ -21,9 +21,10 @@ HTTP_CLIENT_LOGGER_NAMES = ("httpx", "httpcore")
 
 # Key words whose values are never logged (security-and-compliance.md section 3). "pin" must
 # stand alone as a word part (pin, merchant_pin, pin_hash), so "mapping" or "shipping" are kept.
+# "subscription key" covers the api-subscription-key header that carries the Sarvam key.
 SENSITIVE_KEY_WORDS = (
     r"token|secret|signature|password|passwd|otp|checksum|api[_-]?key|authorization"
-    r"|cookie|credential|merchant[_-]?key|(?<![a-z])pin(?![a-z])"
+    r"|cookie|credential|merchant[_-]?key|subscription[_-]?key|(?<![a-z])pin(?![a-z])"
 )
 SENSITIVE_FIELD_NAME_PATTERN = re.compile(rf"(?i){SENSITIVE_KEY_WORDS}")
 BEARER_TOKEN_PATTERN = re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]+")
