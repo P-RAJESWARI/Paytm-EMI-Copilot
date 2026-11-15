@@ -130,7 +130,7 @@ The **main Claude Code session is the orchestrator**. Subagents cannot spawn oth
 |---|---|---|---|
 | 1 | Foundation + Payment gateway integration | `layer/1-payment-gateway` | Done; MR ready for owner review (see `docs/handoff/LAYER-1-HANDOFF.md`) |
 | 2 | Merchant UI + merchant backend slice | `layer/2-merchant-ui` | Done; MR ready for owner review (see `docs/handoff/LAYER-2-HANDOFF.md`) |
-| 3 | Customer UI + customer backend slice | `layer/3-customer-ui` | Not started |
+| 3 | Customer UI + customer backend slice | `layer/3-customer-ui` | Done; MR ready for owner review (see `docs/handoff/LAYER-3-HANDOFF.md`) |
 | 4 | Sarvam AI integration | `layer/4-sarvam-ai` | Not started |
 
 ## 11. Commands (created in Layer 1)
