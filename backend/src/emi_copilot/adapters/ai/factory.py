@@ -1,4 +1,4 @@
-"""AiProviderFactory: the one place that turns AI configuration into speech and text adapters.
+"""AiProviderFactory: the one place that turns AI configuration into speech, text and flows.
 
 Only the composition root (api/dependencies.py) imports this module (ADR 0008); services see
 the ports in AiComponents and never a concrete adapter.
@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pydantic import SecretStr
 
 from emi_copilot.adapters.ai.explanation_text_port import ExplanationTextPort
+from emi_copilot.adapters.ai.flows.flow_runner_builder import build_flow_runner
+from emi_copilot.adapters.ai.flows.flow_runner_port import AiFlowRunnerPort
 from emi_copilot.adapters.ai.mock_explanation_text_adapter import MockExplanationTextAdapter
 from emi_copilot.adapters.ai.mock_speech_adapter import MockSpeechAdapter
 from emi_copilot.adapters.ai.sarvam.sarvam_adapter_builder import (
@@ -34,6 +36,7 @@ class AiComponents:
 
     speech: SpeechPort | None
     explanation_text: ExplanationTextPort | None
+    flow_runner: AiFlowRunnerPort
     settings: AiSettings
 
 
@@ -55,13 +58,14 @@ def announce_provider_off(mode_variable: str) -> None:
 # refuses Sarvam mode without its key instead of falling back (ADR 0004 style). Each Mock
 # announces itself as it is built; "off" is announced here.
 class AiProviderFactory:
-    """Builds AiComponents for SPEECH_PROVIDER_MODE and EXPLANATION_TEXT_PROVIDER_MODE."""
+    """Builds AiComponents for the two provider modes and AI_FLOW_RUNNER."""
 
     def create(self, settings: AiSettings, clock: Clock) -> AiComponents:
         """Builds both configured ports; raises AiConfigurationError for an unusable mode."""
         return AiComponents(
             speech=self._create_speech(settings, clock),
             explanation_text=self._create_explanation_text(settings, clock),
+            flow_runner=build_flow_runner(settings.ai_flow_runner),
             settings=settings,
         )
 

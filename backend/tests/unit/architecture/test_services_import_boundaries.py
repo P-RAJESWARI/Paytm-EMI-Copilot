@@ -32,6 +32,7 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     "emi_copilot.adapters.ai.prompt_facts",
     "emi_copilot.adapters.ai.explanation_text_port",
     "emi_copilot.adapters.ai.speech_port",
+    "emi_copilot.adapters.ai.flows.flow_runner_port",
     "emi_copilot.core.clock",
     "emi_copilot.core.id_generator",
     # Pure standard-library primitives: PIN hashing, opaque bearer tokens, customer QR tokens

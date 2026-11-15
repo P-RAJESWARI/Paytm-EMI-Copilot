@@ -6,7 +6,9 @@ from emi_copilot.domain.ai_errors import (
     AiConfigurationError,
     AiProviderError,
     AiTextUnavailableError,
+    InvalidAiFlowError,
     InvalidAiValueError,
+    InvalidTeachBackInputError,
     SpeechTextTooLongError,
     SpeechTimeoutError,
     SpeechUnavailableError,
@@ -24,6 +26,8 @@ from emi_copilot.domain.errors import DomainError
         (SpeechUnavailableError, "SPEECH_UNAVAILABLE"),
         (SpeechTimeoutError, "SPEECH_TIMEOUT"),
         (SpeechTextTooLongError, "SPEECH_TEXT_TOO_LONG"),
+        (InvalidAiFlowError, "INVALID_AI_FLOW"),
+        (InvalidTeachBackInputError, "INVALID_TEACH_BACK_INPUT"),
     ],
 )
 def test_ai_error_is_a_domain_error_with_its_stable_code(

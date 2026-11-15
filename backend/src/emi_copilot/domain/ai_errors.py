@@ -52,3 +52,15 @@ class SpeechTextTooLongError(SpeechUnavailableError):
     """Raised before sending when text is longer than text-to-speech accepts; no credit is spent."""
 
     code: ClassVar[str] = "SPEECH_TEXT_TOO_LONG"
+
+
+class InvalidAiFlowError(DomainError):
+    """Raised when a flow definition has no steps, repeated step names or too many steps."""
+
+    code: ClassVar[str] = "INVALID_AI_FLOW"
+
+
+class InvalidTeachBackInputError(DomainError):
+    """Raised when a teach-back tolerance is not a Decimal share from 0 up to 1."""
+
+    code: ClassVar[str] = "INVALID_TEACH_BACK_INPUT"

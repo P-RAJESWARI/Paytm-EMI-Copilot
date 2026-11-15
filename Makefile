@@ -12,6 +12,9 @@ BACKEND_DIRECTORY := backend
 BACKEND_HOST ?= 127.0.0.1
 BACKEND_PORT ?= 8000
 UV_RUN := uv run --locked
+# Checks, types and tests run with the optional "ai" extra, so the LangGraph runner is covered too;
+# core-without-langgraph proves the core still runs with LangGraph blocked (CLAUDE.md D5).
+UV_RUN_WITH_AI := uv run --locked --extra ai
 DATABASE_WAIT_TIMEOUT_IN_SECONDS := 90
 OVERALL_COVERAGE_MINIMUM_PERCENT := 85
 
@@ -48,13 +51,14 @@ COVERAGE_GATES := \
 	src/emi_copilot/adapters:90
 
 .PHONY: help setup dev db-up db-down db-reset lint typecheck test test-with-coverage coverage-gates \
+	core-without-langgraph \
 	check migrate seed demo openapi openapi-check frontend-setup frontend-check e2e-setup e2e
 
 help: ## List the available commands
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
 
 setup: ## Install the locked Python dependencies and the git pre-commit hooks
-	cd $(BACKEND_DIRECTORY) && uv sync --locked
+	cd $(BACKEND_DIRECTORY) && uv sync --locked --extra ai
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) pre-commit install
 
 dev: db-up ## Start PostgreSQL and the API with auto-reload on BACKEND_HOST:BACKEND_PORT
@@ -79,14 +83,18 @@ lint: ## Run ruff lint and format checks
 	cd $(BACKEND_DIRECTORY) && $(UV_RUN) ruff format --check .
 
 typecheck: ## Run mypy in strict mode
-	cd $(BACKEND_DIRECTORY) && $(UV_RUN) mypy
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN_WITH_AI) mypy
 
 test: db-up ## Run every test level against the Compose PostgreSQL
-	cd $(BACKEND_DIRECTORY) && $(UV_RUN) pytest
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN_WITH_AI) pytest
 
 test-with-coverage: db-up ## Run every test with branch coverage and the overall gate
-	cd $(BACKEND_DIRECTORY) && $(UV_RUN) pytest --cov --cov-report=term-missing \
+	cd $(BACKEND_DIRECTORY) && $(UV_RUN_WITH_AI) pytest --cov --cov-report=term-missing \
 		--cov-fail-under=$(OVERALL_COVERAGE_MINIMUM_PERCENT)
+
+core-without-langgraph: ## Build the app and run the explanation flow with langgraph and langchain* imports blocked
+	cd $(BACKEND_DIRECTORY) && AI_FLOW_RUNNER=sequential $(UV_RUN_WITH_AI) python -I \
+		scripts/check_core_without_langgraph.py
 
 coverage-gates: ## Enforce per-directory coverage minimums on the last coverage run
 	@cd $(BACKEND_DIRECTORY) && for coverage_gate in $(COVERAGE_GATES); do \
@@ -99,7 +107,7 @@ coverage-gates: ## Enforce per-directory coverage minimums on the last coverage 
 		$(UV_RUN) coverage report --include="$$include_pattern" --fail-under="$$gate_minimum_percent"; \
 	done
 
-check: lint typecheck db-up test-with-coverage coverage-gates frontend-check ## Backend and frontend lint, types, tests and coverage gates; must pass before every commit
+check: lint typecheck core-without-langgraph db-up test-with-coverage coverage-gates frontend-check ## Backend and frontend lint, types, tests and coverage gates; must pass before every commit
 
 frontend-setup: ## Install the locked frontend dependencies (Node 20 from frontend/.nvmrc, pnpm 12)
 	$(PNPM) install --frozen-lockfile

@@ -1,11 +1,14 @@
 """AiProviderFactory builds labelled Mocks by default, honours off, refuses Sarvam without key."""
 
 import logging
+import sys
 
 import pytest
 from pydantic import SecretStr
 
 from emi_copilot.adapters.ai.factory import AiProviderFactory
+from emi_copilot.adapters.ai.flows.langgraph_flow_runner import LangGraphAiFlowRunner
+from emi_copilot.adapters.ai.flows.sequential_flow_runner import SequentialAiFlowRunner
 from emi_copilot.adapters.ai.mock_explanation_text_adapter import MockExplanationTextAdapter
 from emi_copilot.adapters.ai.mock_speech_adapter import (
     MOCK_SPEECH_ACTIVE_WARNING,
@@ -13,7 +16,7 @@ from emi_copilot.adapters.ai.mock_speech_adapter import (
 )
 from emi_copilot.adapters.ai.sarvam.sarvam_chat_text_adapter import SarvamChatTextAdapter
 from emi_copilot.adapters.ai.sarvam.sarvam_speech_adapter import SarvamSpeechAdapter
-from emi_copilot.config.ai_settings import AiProviderMode, AiSettings
+from emi_copilot.config.ai_settings import AiFlowRunnerChoice, AiProviderMode, AiSettings
 from emi_copilot.core.clock import SystemClock
 from emi_copilot.domain.ai_errors import AiConfigurationError
 
@@ -102,3 +105,30 @@ def test_ai_factory_speech_in_sarvam_mode_with_key_builds_the_sarvam_adapter(
     assert isinstance(components.speech, SarvamSpeechAdapter)
     assert "SarvamSpeechAdapter active" in caplog.text
     assert SYNTHETIC_SARVAM_KEY not in caplog.text
+
+
+def test_ai_factory_default_runner_is_sequential_and_announced(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """AI_FLOW_RUNNER=sequential is the default; the runner is named in the startup log."""
+    with caplog.at_level(logging.INFO):
+        components = AiProviderFactory().create(AiSettings(), CLOCK)
+    assert isinstance(components.flow_runner, SequentialAiFlowRunner)
+    assert "AI flow runner active: sequential" in caplog.text
+
+
+def test_ai_factory_langgraph_runner_is_built_from_the_ai_extra() -> None:
+    """AI_FLOW_RUNNER=langgraph builds the LangGraph runner when the extra is installed."""
+    settings = AiSettings(ai_flow_runner=AiFlowRunnerChoice.LANGGRAPH)
+    components = AiProviderFactory().create(settings, CLOCK)
+    assert isinstance(components.flow_runner, LangGraphAiFlowRunner)
+
+
+def test_ai_factory_langgraph_runner_without_the_extra_refuses_to_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without langgraph installed, startup fails with a clear message instead of falling back."""
+    monkeypatch.setitem(sys.modules, "langgraph.graph", None)
+    settings = AiSettings(ai_flow_runner=AiFlowRunnerChoice.LANGGRAPH)
+    with pytest.raises(AiConfigurationError, match="needs the optional 'ai' extra"):
+        AiProviderFactory().create(settings, CLOCK)
