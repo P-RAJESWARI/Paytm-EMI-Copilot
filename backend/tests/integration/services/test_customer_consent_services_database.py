@@ -249,7 +249,7 @@ def test_explanation_numbers_match_the_quoted_plan(services: DatabaseCustomerSer
     for language in CustomerLanguage:
         explanation = services.explanation.explain_for_session(
             credentials, "mock-offer-card-6m", language
-        )
+        ).explanation
         assert [highlight.amount for highlight in explanation.highlighted_amounts] == [
             Money.from_rupees(3850),
             Money.from_rupees(1100),

@@ -1,6 +1,7 @@
 """Application factory: wires settings, logging, middleware and routers. No business logic."""
 
 import logging
+import os
 
 from fastapi import APIRouter, FastAPI
 
@@ -35,7 +36,19 @@ MOCK_CUSTOMER_SIMULATOR_ACTIVE_WARNING = (
     "MockCustomerSimulator active: demo endpoints play the customer agreeing and paying"
 )
 
+# LangGraph pulls in langsmith, which sends traces (prompts and completions) to a third party
+# when these are set. AI traces must never leave the process (security-and-compliance.md
+# section 8), so they are forced off whatever the environment says.
+THIRD_PARTY_TRACING_SWITCHES = ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2")
+
 application_factory_logger = logging.getLogger(__name__)
+
+
+def disable_third_party_ai_tracing() -> None:
+    """Forces LangSmith and LangChain tracing off for this process, before any flow can run."""
+    for tracing_switch in THIRD_PARTY_TRACING_SWITCHES:
+        os.environ[tracing_switch] = "false"
+
 
 # Resource controllers join this tuple as they are built; /health stays unversioned.
 API_VERSION_1_ROUTERS: tuple[APIRouter, ...] = (
@@ -72,6 +85,7 @@ def create_application(
     The id generator, injectable for tests, makes correlation ids and every domain id. The
     labelled MockCustomerSimulator is mounted only when its setting is on, with a warning.
     """
+    disable_third_party_ai_tracing()
     active_settings = settings or ApplicationSettings()
     active_id_generator = id_generator or UlidIdGenerator()
     configure_logging(active_settings.log_level)

@@ -398,7 +398,7 @@ export interface paths {
         };
         /**
          * Read the shop's weekly message
-         * @description The week's message (the current IST week when periodStartDate is left out), with whether it was sent. The text is written by the backend from the week's report numbers (template, plan Q14) in English and draft Tamil; a sentence whose count is suppressed (1 to 4) is left out. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
+         * @description The week's message (the current IST week when periodStartDate is left out), with whether it was sent. The text is written by the backend from the week's report numbers in English and draft Tamil. Each language is AI text whose every number passed the number audit (source AI_AUDITED) or the standard template text (TEMPLATE), used whenever AI is off, unavailable or fails the audit; a template sentence whose count is suppressed (1 to 4) is left out. The shown text is kept for a while, so a repeat read and send use exactly that text. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
          */
         get: operations["get_weekly_message_api_v1_reports_weekly_message_get"];
         put?: never;
@@ -420,7 +420,7 @@ export interface paths {
         put?: never;
         /**
          * Mark the shop's weekly message sent
-         * @description Marks the week's message sent once and hands it to the labelled MockWeeklyMessageDeliveryAdapter, which sends nothing (plan Q14, rule 10). Idempotent: a repeat answers 200 with the first sentAt and delivers nothing more. The text is written by the backend from the week's report numbers (template, plan Q14) in English and draft Tamil; a sentence whose count is suppressed (1 to 4) is left out. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
+         * @description Marks the week's message sent once and hands it to the labelled MockWeeklyMessageDeliveryAdapter, which sends nothing (plan Q14, rule 10). Idempotent: a repeat answers 200 with the first sentAt and delivers nothing more. The text is written by the backend from the week's report numbers in English and draft Tamil. Each language is AI text whose every number passed the number audit (source AI_AUDITED) or the standard template text (TEMPLATE), used whenever AI is off, unavailable or fails the audit; a template sentence whose count is suppressed (1 to 4) is left out. The shown text is kept for a while, so a repeat read and send use exactly that text. Merchant endpoint: send the device's bearer token from POST /api/v1/merchants/pairing. Only the signed-in shop's own data is returned. Money is integer paise; errors are application/problem+json.
          */
         post: operations["send_weekly_message_api_v1_reports_weekly_message_send_post"];
         delete?: never;
@@ -560,7 +560,7 @@ export interface paths {
         put?: never;
         /**
          * Explain one plan in plain words
-         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. The standard text (source TEMPLATE) about the plan as quoted now for the session's item: each month, for how many months, and the extra in total. Accept-Language en or ta picks the language (English by default; the Tamil text is a draft awaiting native review). Every rupee amount in the text is one of highlightedAmounts, computed by the engine, never by AI. Reading it changes nothing, so it can be asked again.
+         * @description Customer endpoint, opened from the shop's QR on the customer's own phone; the shop never sees what is sent here. Money is integer paise, shares are integer basis points, errors are application/problem+json. Needs the X-Customer-Session-Token header. Plain words about the plan as quoted now for the session's item: each month, for how many months, and the extra in total. source AI_AUDITED is AI text whose every number passed the number audit; TEMPLATE is the standard text, shown whenever AI is off, unavailable or fails the audit, never with an AI error. Accept-Language en or ta picks the language (English by default; the Tamil text is a draft awaiting native review). highlightedAmounts are computed by the engine, never by AI. Asking again for the same plan gives the same text and explanationId; send explanationId to speech/synthesis to hear exactly this text.
          */
         post: operations["explain_customer_plan_api_v1_customer_sessions__customerSessionId__explanation_post"];
         delete?: never;
@@ -633,6 +633,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AiTextSource
+         * @description Who wrote the text the customer or shop sees.
+         * @enum {string}
+         */
+        AiTextSource: "AI_AUDITED" | "TEMPLATE";
         /**
          * AlternativeKind
          * @description How an alternative changes the purchase; values travel on the wire.
@@ -1493,10 +1499,10 @@ export interface components {
         EmiType: "NO_COST" | "STANDARD";
         /**
          * ExplanationSource
-         * @description Who wrote the explanation; Layer 4 adds the audited AI source beside the template.
+         * @description Who wrote the explanation: AI text that passed the number audit, or the standard text.
          * @enum {string}
          */
-        ExplanationSource: "TEMPLATE";
+        ExplanationSource: "AI_AUDITED" | "TEMPLATE";
         /**
          * FieldErrorResponse
          * @description One invalid request field, named as on the wire, with an English message.
@@ -2062,9 +2068,16 @@ export interface components {
          * PlanExplanationResponse
          * @description The explanation text and the figures it mentions; source TEMPLATE is the standard text.
          *
-         *     Every rupee amount in the text is one of highlightedAmounts, shown in whole rupees.
+         *     source AI_AUDITED is AI text whose every number passed the number audit. Every rupee amount
+         *     in the text is one of highlightedAmounts, shown in whole rupees. explanationId names this
+         *     shown text for speech synthesis.
          */
         PlanExplanationResponse: {
+            /**
+             * Explanationid
+             * @example 01JD5Z0Q8M6X3V2N7B4C9K1T0F
+             */
+            explanationId: string;
             /**
              * Text
              * @example No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, so nothing is added to the price.
@@ -2405,7 +2418,7 @@ export interface components {
         };
         /**
          * WeeklyMessageResponse
-         * @description A week's message; source TEMPLATE means deterministic text (Layer 4 may add AI text).
+         * @description A week's message; source is AI_AUDITED when any language is audited AI text.
          */
         WeeklyMessageResponse: {
             /**
@@ -2418,11 +2431,7 @@ export interface components {
              * Format: date
              */
             periodEndDate: string;
-            /**
-             * Source
-             * @constant
-             */
-            source: "TEMPLATE";
+            source: components["schemas"]["AiTextSource"];
             messages: components["schemas"]["WeeklyMessageLanguagesResponse"];
             /** Issent */
             isSent: boolean;
@@ -2432,12 +2441,16 @@ export interface components {
         /**
          * WeeklyMessageTextResponse
          * @description One language's message: a title and its paragraphs (a left-out sentence is just absent).
+         *
+         *     source AI_AUDITED is AI text whose every number passed the audit; TEMPLATE is the standard
+         *     text, also used whenever AI is off, unavailable or fails the audit.
          */
         WeeklyMessageTextResponse: {
             /** Title */
             title: string;
             /** Paragraphs */
             paragraphs: string[];
+            source: components["schemas"]["AiTextSource"];
         };
     };
     responses: never;
@@ -4254,13 +4267,15 @@ export interface operations {
                      *             "44 of 120 customers bought on EMI. The biggest drop was after seeing the plans.",
                      *             "12 customers wanted under ₹3,000 a month with nothing extra, and no plan fit. ₹1,84,000 is due from brands, first payment around 13 Jan.",
                      *             "One thing to do: ask the brand for a 9 or 12-month no-cost plan on Example phone, 128 GB. That would be ₹2,444 or ₹1,833 a month."
-                     *           ]
+                     *           ],
+                     *           "source": "TEMPLATE"
                      *         },
                      *         "ta": {
                      *           "title": "உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்",
                      *           "paragraphs": [
                      *             "120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்."
-                     *           ]
+                     *           ],
+                     *           "source": "TEMPLATE"
                      *         }
                      *       },
                      *       "isSent": false
@@ -4347,13 +4362,15 @@ export interface operations {
                      *             "44 of 120 customers bought on EMI. The biggest drop was after seeing the plans.",
                      *             "12 customers wanted under ₹3,000 a month with nothing extra, and no plan fit. ₹1,84,000 is due from brands, first payment around 13 Jan.",
                      *             "One thing to do: ask the brand for a 9 or 12-month no-cost plan on Example phone, 128 GB. That would be ₹2,444 or ₹1,833 a month."
-                     *           ]
+                     *           ],
+                     *           "source": "TEMPLATE"
                      *         },
                      *         "ta": {
                      *           "title": "உங்கள் EMI விற்பனை, 9 முதல் 15 நவம்பர்",
                      *           "paragraphs": [
                      *             "120 வாடிக்கையாளர்களில் 44 பேர் EMI-யில் வாங்கினர்."
-                     *           ]
+                     *           ],
+                     *           "source": "TEMPLATE"
                      *         }
                      *       },
                      *       "isSent": true,
@@ -5132,6 +5149,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "explanationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
                      *       "text": "No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, so nothing is added to the price.",
                      *       "language": "en",
                      *       "source": "TEMPLATE",

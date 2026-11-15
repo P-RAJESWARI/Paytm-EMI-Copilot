@@ -50,6 +50,7 @@ from emi_copilot.events.sale_status_broadcaster import SaleStatusBroadcaster
 from emi_copilot.repositories.database import create_database_engine, create_session_factory
 from emi_copilot.repositories.unit_of_work import SqlAlchemyUnitOfWork
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
+from emi_copilot.services.ai.ai_service_state import AiServiceState
 from emi_copilot.services.offer_discovery_service import OfferDiscoveryService
 from emi_copilot.services.payment_handoff_service import PaymentHandoffService
 from emi_copilot.services.payment_status_service import PaymentStatusService
@@ -90,6 +91,7 @@ class ApplicationComponents:
     consent_otp_request_rate_limiter: FixedWindowRateLimiter
     customer_consent_rate_limiter: FixedWindowRateLimiter
     ai: AiComponents
+    ai_service_state: AiServiceState
 
 
 def build_event_bus(
@@ -176,6 +178,7 @@ def build_application_components(
             settings.customer_consent_rate_limit_window_in_seconds,
         ),
         ai=ai_components,
+        ai_service_state=AiServiceState.build(clock),
     )
 
 

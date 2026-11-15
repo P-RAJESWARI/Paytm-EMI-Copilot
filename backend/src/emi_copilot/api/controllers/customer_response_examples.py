@@ -208,6 +208,7 @@ PLAN_ALTERNATIVES_RESPONSE_EXAMPLE: dict[str, Any] = {
     ],
 }
 PLAN_EXPLANATION_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "explanationId": "01JD5Z0Q8M6X3V2N7B4C9K1T0F",
     "text": (
         "No-cost EMI: you pay ₹3,667 each month for 6 months. The extra you pay in total is ₹0, "
         "so nothing is added to the price."

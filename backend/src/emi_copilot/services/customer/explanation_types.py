@@ -14,8 +14,9 @@ RupeeFormatter = Callable[[int], str]
 
 
 class ExplanationSource(StrEnum):
-    """Who wrote the explanation; Layer 4 adds the audited AI source beside the template."""
+    """Who wrote the explanation: AI text that passed the number audit, or the standard text."""
 
+    AI_AUDITED = "AI_AUDITED"
     TEMPLATE = "TEMPLATE"
 
 
@@ -44,9 +45,23 @@ class ExplanationText:
     highlighted_amounts: tuple[HighlightedAmount, ...]
 
 
+def highlight_plan_figures(plan: ChosenPlan) -> tuple[HighlightedAmount, ...]:
+    """Gives the monthly and the extra in total exactly as the engine computed them."""
+    return (
+        HighlightedAmount(HighlightedAmountKind.MONTHLY_INSTALLMENT, plan.monthly_installment),
+        HighlightedAmount(HighlightedAmountKind.EXTRA_IN_TOTAL, plan.extra_in_total),
+    )
+
+
 class PlanExplainer(Protocol):
     """Anything that explains one plan in plain words; Layer 4 wraps the template with AI."""
 
-    def explain(self, plan: ChosenPlan, language: CustomerLanguage) -> ExplanationText:
-        """Gives the explanation of the plan's figures in the language."""
+    def explain(
+        self,
+        plan: ChosenPlan,
+        language: CustomerLanguage,
+        *,
+        customer_session_id: str | None = None,
+    ) -> ExplanationText:
+        """Gives the explanation of the plan's figures; the session id only labels usage logs."""
         ...

@@ -1,57 +1,54 @@
 """CustomerExplanationService: explains one of the session's plans with fresh figures (C7)."""
 
-from emi_copilot.core.clock import Clock
+from emi_copilot.core.id_generator import IdGenerator
 from emi_copilot.domain.customer_sessions import CustomerLanguage
-from emi_copilot.domain.errors import OfferNotFoundError
-from emi_copilot.domain.sales import ChosenPlan
-from emi_copilot.repositories.unit_of_work_protocol import UnitOfWorkFactory
-from emi_copilot.services.customer.customer_session_access import (
-    CustomerSessionAccess,
-    build_sale_offer_query,
-    find_sale_product,
-)
+from emi_copilot.services.ai.shown_explanation_cache import ShownExplanation, ShownExplanationCache
 from emi_copilot.services.customer.customer_session_types import CustomerSessionCredentials
-from emi_copilot.services.customer.explanation_types import ExplanationText, PlanExplainer
-from emi_copilot.services.plan_advice_types import PricedOfferSource
-from emi_copilot.services.sale_expiry import SaleExpiryStep
+from emi_copilot.services.customer.explanation_types import PlanExplainer
+from emi_copilot.services.customer.session_plan_finder import SessionPlanFinder
 
 
 class CustomerExplanationService:
     """Re-quotes the chosen offer on the session's item and hands its figures to the explainer.
 
-    The explainer is the TemplateExplanationService today; Layer 4 passes an audited AI explainer
-    behind the same PlanExplainer interface. The explainer only words the figures; it never
-    computes or changes them (CLAUDE.md section 2, rules 1 and 2).
+    The explainer is the AuditedExplanationService (AI text checked by the number audit, the
+    template otherwise) behind the PlanExplainer interface. It only words the figures; it never
+    computes or changes them (CLAUDE.md section 2, rules 1 and 2). A shown text is remembered,
+    so asking again gives the same text and the same explanationId without another AI call.
     """
 
     def __init__(
         self,
-        unit_of_work_factory: UnitOfWorkFactory,
-        clock: Clock,
-        sale_expiry: SaleExpiryStep,
-        offer_source: PricedOfferSource,
+        plan_finder: SessionPlanFinder,
         plan_explainer: PlanExplainer,
+        shown_explanation_cache: ShownExplanationCache,
+        id_generator: IdGenerator,
     ) -> None:
-        """Keeps the session check, the offer source and the explainer."""
-        self._unit_of_work_factory = unit_of_work_factory
-        self._clock = clock
-        self._session_access = CustomerSessionAccess(sale_expiry)
-        self._offer_source = offer_source
+        """Keeps the plan lookup, the explainer, the shown-text cache and the id source."""
+        self._plan_finder = plan_finder
         self._plan_explainer = plan_explainer
+        self._shown_explanation_cache = shown_explanation_cache
+        self._id_generator = id_generator
 
     def explain_for_session(
         self, credentials: CustomerSessionCredentials, offer_id: str, language: CustomerLanguage
-    ) -> ExplanationText:
+    ) -> ShownExplanation:
         """Explains the offer as quoted now for the session's item at the sale price.
 
         Raises OfferNotFoundError when the offer is not quoted for that item and price.
         """
-        with self._unit_of_work_factory() as unit_of_work:
-            opened = self._session_access.open_sale(unit_of_work, credentials, self._clock.now())
-            item = build_sale_offer_query(opened.sale, find_sale_product(unit_of_work, opened.sale))
-        for priced_offer in self._offer_source.discover_offers(item):
-            if priced_offer.offer.offer_id == offer_id:
-                return self._plan_explainer.explain(
-                    ChosenPlan.from_priced_offer(priced_offer), language
-                )
-        raise OfferNotFoundError("The offer is not quoted for this item and price.")
+        plan = self._plan_finder.find_plan(credentials, offer_id)
+        session_id = credentials.customer_session_id
+        already_shown = self._shown_explanation_cache.find_shown(session_id, plan, language)
+        if already_shown is not None:
+            return already_shown
+        shown = ShownExplanation(
+            explanation_id=self._id_generator.new_id(),
+            customer_session_id=session_id,
+            plan=plan,
+            explanation=self._plan_explainer.explain(
+                plan, language, customer_session_id=session_id
+            ),
+        )
+        self._shown_explanation_cache.remember(shown)
+        return shown

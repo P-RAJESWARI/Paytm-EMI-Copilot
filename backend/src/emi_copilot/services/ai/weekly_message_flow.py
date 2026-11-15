@@ -45,6 +45,7 @@ class WeeklyLanguageDraft:
     audit_failure_reasons: tuple[NumberAuditFailureReason, ...] = ()
     input_token_count: int = 0
     output_token_count: int = 0
+    model_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +58,7 @@ class WeeklyLanguageResult:
     audit_failure_reasons: tuple[NumberAuditFailureReason, ...]
     input_token_count: int
     output_token_count: int
+    model_name: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +148,7 @@ class WeeklyMessageFlow:
             ai_text=completion.text,
             input_token_count=completion.input_token_count,
             output_token_count=completion.output_token_count,
+            model_name=completion.model_name,
         )
 
     def _audit(self, state: WeeklyMessageFlowState) -> WeeklyMessageFlowState:
@@ -204,4 +207,5 @@ class WeeklyMessageFlow:
             audit_failure_reasons=draft.audit_failure_reasons,
             input_token_count=draft.input_token_count,
             output_token_count=draft.output_token_count,
+            model_name=draft.model_name,
         )

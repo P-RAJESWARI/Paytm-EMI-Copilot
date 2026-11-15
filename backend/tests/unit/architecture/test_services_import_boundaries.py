@@ -44,6 +44,8 @@ ALLOWED_APPLICATION_MODULES_IN_SERVICES = (
     # Keyed hashes of the customer's phone and codes, and consent reference serials (ADR 0022).
     "emi_copilot.core.keyed_hasher",
     "emi_copilot.core.consent_reference_serial_generator",
+    # The bounded, clock-driven cache of AI text already shown (Layer 4); no I/O.
+    "emi_copilot.core.bounded_timed_cache",
     "emi_copilot.domain",
     "emi_copilot.events",
     "emi_copilot.repositories.unit_of_work_protocol",

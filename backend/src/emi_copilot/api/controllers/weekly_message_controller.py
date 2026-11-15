@@ -26,8 +26,11 @@ from emi_copilot.dtos.weekly_message_dtos import (
 weekly_message_router = APIRouter(tags=["reports"])
 
 TEMPLATE_NOTE = (
-    "The text is written by the backend from the week's report numbers (template, plan Q14) "
-    "in English and draft Tamil; a sentence whose count is suppressed (1 to 4) is left out. "
+    "The text is written by the backend from the week's report numbers in English and draft "
+    "Tamil. Each language is AI text whose every number passed the number audit (source "
+    "AI_AUDITED) or the standard template text (TEMPLATE), used whenever AI is off, unavailable "
+    "or fails the audit; a template sentence whose count is suppressed (1 to 4) is left out. "
+    "The shown text is kept for a while, so a repeat read and send use exactly that text. "
 )
 SENT_WEEKLY_MESSAGE_EXAMPLE = {
     **WEEKLY_MESSAGE_EXAMPLE,

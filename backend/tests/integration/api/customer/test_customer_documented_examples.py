@@ -26,7 +26,13 @@ from tests.integration.api.customer.customer_api_helpers import (
 
 pytestmark = pytest.mark.integration
 
-RANDOM_FIELD_NAMES = ("customerSessionId", "sessionToken", "sessionCode", "consentId")
+RANDOM_FIELD_NAMES = (
+    "customerSessionId",
+    "sessionToken",
+    "sessionCode",
+    "consentId",
+    "explanationId",
+)
 """Ids, tokens and the random session code; every other documented value must match exactly."""
 EXAMPLE_PRODUCT_IDS = {
     PHONE_128_GB_ID: EXAMPLE_PHONE_128_GB_PRODUCT_ID,

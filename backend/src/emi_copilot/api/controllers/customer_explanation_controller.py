@@ -31,12 +31,14 @@ customer_explanation_router = APIRouter(tags=["customer advice"])
     "/customer-sessions/{customerSessionId}/explanation",
     summary="Explain one plan in plain words",
     description=(
-        CUSTOMER_OPERATION_NOTE + SESSION_TOKEN_NOTE + "The standard text (source TEMPLATE) "
-        "about the plan as quoted now for the session's item: each month, for how many months, "
-        "and the extra in total. Accept-Language en or ta picks the language (English by "
-        "default; the Tamil text is a draft awaiting native review). Every rupee amount in the "
-        "text is one of highlightedAmounts, computed by the engine, never by AI. Reading it "
-        "changes nothing, so it can be asked again."
+        CUSTOMER_OPERATION_NOTE + SESSION_TOKEN_NOTE + "Plain words about the plan as quoted "
+        "now for the session's item: each month, for how many months, and the extra in total. "
+        "source AI_AUDITED is AI text whose every number passed the number audit; TEMPLATE is "
+        "the standard text, shown whenever AI is off, unavailable or fails the audit, never "
+        "with an AI error. Accept-Language en or ta picks the language (English by default; "
+        "the Tamil text is a draft awaiting native review). highlightedAmounts are computed by "
+        "the engine, never by AI. Asking again for the same plan gives the same text and "
+        "explanationId; send explanationId to speech/synthesis to hear exactly this text."
     ),
     response_description="The explanation and the two figures it mentions.",
     responses={
@@ -56,6 +58,6 @@ def explain_customer_plan(
     explanation_service: CustomerExplanationServiceDependency,
 ) -> PlanExplanationResponse:
     """Explains the chosen plan in the customer's language."""
-    return PlanExplanationResponse.from_explanation(
+    return PlanExplanationResponse.from_shown_explanation(
         explanation_service.explain_for_session(credentials, explanation_request.offer_id, language)
     )

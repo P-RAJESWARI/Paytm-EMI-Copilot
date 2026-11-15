@@ -14,6 +14,10 @@ from fastapi import Depends
 
 from emi_copilot.adapters.customer_contact.port import CustomerContactPort
 from emi_copilot.adapters.financial_profile.port import FinancialProfilePort
+from emi_copilot.api.ai_dependencies import (
+    PlanExplainerDependency,
+    ShownExplanationCacheDependency,
+)
 from emi_copilot.api.dependencies import (
     ClockDependency,
     ComponentsDependency,
@@ -27,7 +31,6 @@ from emi_copilot.core.consent_reference_serial_generator import (
     ConsentReferenceSerialGenerator,
     RandomConsentReferenceSerialGenerator,
 )
-from emi_copilot.core.indian_rupee_formatter import format_paise_as_whole_rupees
 from emi_copilot.core.qr_token_signer import QrTokenSigner
 from emi_copilot.services.customer.consent_otp_service import ConsentOtpService
 from emi_copilot.services.customer.customer_choice_service import CustomerChoiceService
@@ -36,9 +39,7 @@ from emi_copilot.services.customer.customer_explanation_service import CustomerE
 from emi_copilot.services.customer.customer_plan_service import CustomerPlanService
 from emi_copilot.services.customer.customer_receipt_service import CustomerReceiptService
 from emi_copilot.services.customer.customer_session_service import CustomerSessionService
-from emi_copilot.services.customer.template_explanation_service import (
-    TemplateExplanationService,
-)
+from emi_copilot.services.customer.session_plan_finder import SessionPlanFinder
 from emi_copilot.services.plan_advice_service import PlanAdviceService
 
 
@@ -199,19 +200,28 @@ def provide_customer_receipt_service(
     return CustomerReceiptService(unit_of_work_factory, clock, sale_expiry)
 
 
-def provide_customer_explanation_service(
+def provide_session_plan_finder(
     unit_of_work_factory: UnitOfWorkFactoryDependency,
     clock: ClockDependency,
     sale_expiry: SaleExpiryDependency,
     offer_discovery_service: OfferDiscoveryServiceDependency,
+) -> SessionPlanFinder:
+    """Assembles the lookup of one of the session's plans as quoted now."""
+    return SessionPlanFinder(unit_of_work_factory, clock, sale_expiry, offer_discovery_service)
+
+
+SessionPlanFinderDependency = Annotated[SessionPlanFinder, Depends(provide_session_plan_finder)]
+
+
+def provide_customer_explanation_service(
+    plan_finder: SessionPlanFinderDependency,
+    plan_explainer: PlanExplainerDependency,
+    shown_explanation_cache: ShownExplanationCacheDependency,
+    id_generator: IdGeneratorDependency,
 ) -> CustomerExplanationService:
-    """Assembles the C7 explanation on the template explainer (Layer 4 wraps it with AI)."""
+    """Assembles the C7 explanation on the audited AI explainer and the shown-text cache."""
     return CustomerExplanationService(
-        unit_of_work_factory,
-        clock,
-        sale_expiry,
-        offer_discovery_service,
-        TemplateExplanationService(format_paise_as_whole_rupees),
+        plan_finder, plan_explainer, shown_explanation_cache, id_generator
     )
 
 

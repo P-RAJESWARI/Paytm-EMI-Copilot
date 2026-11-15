@@ -45,6 +45,7 @@ class ExplanationFlowResult:
     audit_failure_reasons: tuple[NumberAuditFailureReason, ...]
     input_token_count: int
     output_token_count: int
+    model_name: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +57,7 @@ class ExplanationFlowState:
     ai_text: str = ""
     input_token_count: int = 0
     output_token_count: int = 0
+    model_name: str | None = None
     audit_failure_reasons: tuple[NumberAuditFailureReason, ...] = ()
     result: ExplanationFlowResult | None = None
 
@@ -108,6 +110,7 @@ class ExplanationFlow:
             ai_text=completion.text,
             input_token_count=completion.input_token_count,
             output_token_count=completion.output_token_count,
+            model_name=completion.model_name,
         )
 
     def _audit(self, state: ExplanationFlowState) -> ExplanationFlowState:
@@ -139,6 +142,7 @@ class ExplanationFlow:
                 audit_failure_reasons=(),
                 input_token_count=state.input_token_count,
                 output_token_count=state.output_token_count,
+                model_name=state.model_name,
             ),
         )
 
@@ -155,5 +159,6 @@ class ExplanationFlow:
                 audit_failure_reasons=state.audit_failure_reasons,
                 input_token_count=state.input_token_count,
                 output_token_count=state.output_token_count,
+                model_name=state.model_name,
             ),
         )

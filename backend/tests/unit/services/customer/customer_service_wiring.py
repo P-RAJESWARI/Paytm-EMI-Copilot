@@ -15,6 +15,7 @@ from emi_copilot.core.keyed_hasher import KeyedHasher
 from emi_copilot.core.qr_token_signer import QrTokenClaims, QrTokenSigner, hash_qr_token_nonce
 from emi_copilot.domain.customer_sessions import CustomerLanguage
 from emi_copilot.domain.money import Money
+from emi_copilot.services.ai.shown_explanation_cache import ShownExplanationCache
 from emi_copilot.services.customer.consent_otp_service import ConsentOtpService
 from emi_copilot.services.customer.consent_types import GiveConsentCommand
 from emi_copilot.services.customer.customer_choice_service import CustomerChoiceService
@@ -27,6 +28,7 @@ from emi_copilot.services.customer.customer_session_types import (
     CustomerSessionCredentials,
     StartedCustomerSession,
 )
+from emi_copilot.services.customer.session_plan_finder import SessionPlanFinder
 from emi_copilot.services.customer.template_explanation_service import (
     TemplateExplanationService,
 )
@@ -208,11 +210,10 @@ def wire_customer_services(kit: ServiceTestKit) -> CustomerServices:
         ),
         receipt=CustomerReceiptService(kit.unit_of_work_factory, kit.clock, expiry),
         explanation=CustomerExplanationService(
-            kit.unit_of_work_factory,
-            kit.clock,
-            expiry,
-            offer_discovery,
+            SessionPlanFinder(kit.unit_of_work_factory, kit.clock, expiry, offer_discovery),
             TemplateExplanationService(format_paise_as_whole_rupees),
+            ShownExplanationCache(kit.clock),
+            kit.id_generator,
         ),
         qr_token_signer=QrTokenSigner(QR_SIGNING_KEY, kit.clock),
         financial_profile_port=profile_port,

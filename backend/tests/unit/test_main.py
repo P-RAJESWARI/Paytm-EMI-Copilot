@@ -1,5 +1,7 @@
 """Tests for the application factory."""
 
+import os
+
 import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
@@ -30,3 +32,14 @@ def test_create_application_passes_lifespan_events_through_the_middleware() -> N
     """Non-HTTP ASGI events (startup and shutdown) reach the application untouched."""
     with TestClient(main.create_application(ApplicationSettings())) as test_client:
         assert test_client.get("/health").status_code == 200
+
+
+def test_create_application_forces_third_party_ai_tracing_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Even with LangSmith tracing switched on in the environment, no trace may leave."""
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    main.create_application(ApplicationSettings())
+    assert os.environ["LANGSMITH_TRACING"] == "false"
+    assert os.environ["LANGCHAIN_TRACING_V2"] == "false"

@@ -123,7 +123,7 @@ def test_explain_for_session_uses_the_fresh_quote_of_the_sessions_item(
     """The Mock's card plan on ₹22,000 is explained with its quoted figures."""
     explanation = services.explanation.explain_for_session(
         credentials, "mock-offer-card-6m", CustomerLanguage.ENGLISH
-    )
+    ).explanation
     assert rupee_amounts_in(explanation) == ["₹3,850", "₹1,100"]
 
 

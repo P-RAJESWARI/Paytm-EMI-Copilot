@@ -9,9 +9,8 @@ from emi_copilot.domain.sales import ChosenPlan
 from emi_copilot.services.customer.explanation_types import (
     ExplanationSource,
     ExplanationText,
-    HighlightedAmount,
-    HighlightedAmountKind,
     RupeeFormatter,
+    highlight_plan_figures,
 )
 
 
@@ -59,7 +58,13 @@ class TemplateExplanationService:
         """Keeps the one backend formatter of rupee amounts in sent text (ADR 0018)."""
         self._rupee_formatter = rupee_formatter
 
-    def explain(self, plan: ChosenPlan, language: CustomerLanguage) -> ExplanationText:
+    def explain(
+        self,
+        plan: ChosenPlan,
+        language: CustomerLanguage,
+        *,
+        customer_session_id: str | None = None,  # noqa: ARG002 - the same text for every session
+    ) -> ExplanationText:
         """Gives the template text for the plan in English or (draft) Tamil."""
         wording = WORDING_BY_LANGUAGE[language]
         extra_template = (
@@ -81,10 +86,5 @@ class TemplateExplanationService:
             text=text,
             language=language,
             source=ExplanationSource.TEMPLATE,
-            highlighted_amounts=(
-                HighlightedAmount(
-                    HighlightedAmountKind.MONTHLY_INSTALLMENT, plan.monthly_installment
-                ),
-                HighlightedAmount(HighlightedAmountKind.EXTRA_IN_TOTAL, plan.extra_in_total),
-            ),
+            highlighted_amounts=highlight_plan_figures(plan),
         )
