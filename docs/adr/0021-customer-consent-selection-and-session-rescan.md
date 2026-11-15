@@ -1,6 +1,6 @@
 # 0021: Customer consent names the exact selection; a re-scan keeps evidence
 
-Status: Accepted (orchestrator, 2026-11-15; owner to confirm). Follows the Phase 3A review of the customer contract (ADR 0012, ADR 0020).
+Status: Partly superseded by ADR 0022 (decisions 1 to 3: consent covers same-product plans only, and the QR exchange is single-use). Decisions 4 to 6 stand. Follows the Phase 3A review of the customer contract (ADR 0012, ADR 0020).
 
 ## Context
 The first Phase 3A contract had several gaps:
