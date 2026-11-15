@@ -54,6 +54,14 @@ describe('shared translations', () => {
     });
   });
 
+  it('names exactly the three comfort bands from the API, in the agreed words', () => {
+    expect(SHARED_ENGLISH_TRANSLATIONS.comfortBand).toEqual({
+      COMFORTABLE: 'Comfortable',
+      STRETCHING: 'Stretching',
+      RISKY: 'Risky',
+    });
+  });
+
   it('never uses credit-decision words', () => {
     const allEnglishText = JSON.stringify(SHARED_ENGLISH_TRANSLATIONS).toLowerCase();
 

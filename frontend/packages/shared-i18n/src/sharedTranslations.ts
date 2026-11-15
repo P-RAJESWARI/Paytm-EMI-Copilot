@@ -28,6 +28,13 @@ export const SHARED_ENGLISH_TRANSLATIONS = {
     PAYMENT_NOT_COMPLETED: 'Payment not completed',
     EXPIRED: 'Expired',
   },
+  // The only three comfort bands (CLAUDE.md rule 5); keys equal the API's ComfortBand values.
+  // Customer screens only: the merchant never sees a band (rule 6).
+  comfortBand: {
+    COMFORTABLE: 'Comfortable',
+    STRETCHING: 'Stretching',
+    RISKY: 'Risky',
+  },
 } as const;
 
 // Tamil strings used by both apps. The compiler checks they have exactly the English keys.
@@ -54,5 +61,10 @@ export const SHARED_TAMIL_TRANSLATIONS: TranslationsMatching<typeof SHARED_ENGLI
     PAID: 'பணம் செலுத்தப்பட்டது', // draft: needs native review
     PAYMENT_NOT_COMPLETED: 'பணம் செலுத்துதல் முடியவில்லை', // draft: needs native review
     EXPIRED: 'காலாவதியானது', // draft: needs native review
+  },
+  comfortBand: {
+    COMFORTABLE: 'வசதியானது', // draft: needs native review
+    STRETCHING: 'கொஞ்சம் சிரமம்', // draft: needs native review
+    RISKY: 'அதிக சுமை', // draft: needs native review
   },
 };

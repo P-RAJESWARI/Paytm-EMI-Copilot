@@ -1,5 +1,7 @@
 // Public API of the ui-kit: presentational components only. Text always arrives through props,
 // so each app translates it. Import '@emi-copilot/ui-kit/styles.css' once in the app entry.
+export { BandChip, type BandChipProps } from './components/BandChip';
+export type { BandChipTone } from './components/bandChipTone';
 export { Button, type ButtonProps } from './components/Button';
 export {
   getButtonClassName,
