@@ -95,6 +95,46 @@ def test_issue_qr_token_outside_choosing_raises(status: SaleStatus) -> None:
         build_sale(status=status).issue_qr_token(build_qr_token_state(nonce_hash="1" * 64))
 
 
+def test_mark_qr_token_exchanged_records_the_moment_and_keeps_the_token_and_status() -> None:
+    """Exchanging the QR stamps the exchange moment on the same token; the sale stays CHOOSING."""
+    exchanged_sale = build_sale().mark_qr_token_exchanged(LATER)
+    assert exchanged_sale.qr_token == build_qr_token_state(exchanged_at=LATER)
+    assert exchanged_sale.status is SaleStatus.CHOOSING
+    assert exchanged_sale.status_changed_at == SALE_STARTED_AT
+
+
+def test_mark_qr_token_exchanged_twice_raises_a_state_conflict() -> None:
+    """A QR token is exchanged once; a reused QR opens nothing."""
+    exchanged_sale = build_sale().mark_qr_token_exchanged(LATER)
+    with pytest.raises(IllegalSaleTransitionError):
+        exchanged_sale.mark_qr_token_exchanged(LATER)
+
+
+def test_mark_qr_token_exchanged_after_reissue_works_again() -> None:
+    """The merchant's new QR replaces the exchanged token, and the new one can be exchanged."""
+    reissued_sale = (
+        build_sale()
+        .mark_qr_token_exchanged(LATER)
+        .issue_qr_token(build_qr_token_state(nonce_hash="1" * 64))
+    )
+    assert reissued_sale.mark_qr_token_exchanged(LATER).qr_token.exchanged_at == LATER
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        SaleStatus.READY_TO_PAY,
+        SaleStatus.PAID,
+        SaleStatus.PAYMENT_NOT_COMPLETED,
+        SaleStatus.EXPIRED,
+    ],
+)
+def test_mark_qr_token_exchanged_outside_choosing_raises(status: SaleStatus) -> None:
+    """Only a sale the customer is still choosing on can be opened from its QR."""
+    with pytest.raises(IllegalSaleTransitionError):
+        build_sale(status=status).mark_qr_token_exchanged(LATER)
+
+
 def test_expire_moves_choosing_to_expired_without_a_plan() -> None:
     """An unchosen sale expires and still holds no plan."""
     expired_sale = build_sale().expire(LATER)

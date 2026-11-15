@@ -5,7 +5,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Self
 
-from emi_copilot.domain.errors import InvalidSaleDataError
+from emi_copilot.domain.errors import IllegalSaleTransitionError, InvalidSaleDataError
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.payments.field_validation import (
     require_non_empty_text,
@@ -164,6 +164,18 @@ class Sale:
         """Replaces the QR token while CHOOSING, voiding the previous one; the status stays."""
         _SALE_STATE_MACHINE.status_after_command(self.status, SaleCommand.ISSUE_QR_CODE)
         return replace(self, qr_token=qr_token)
+
+    def mark_qr_token_exchanged(self, now: datetime) -> Self:
+        """Records that the customer's phone traded in the current QR token (ADR 0022).
+
+        A token is exchanged once, and only while CHOOSING, so a reused QR opens nothing; the
+        merchant's new QR replaces the token and can be exchanged in turn.
+        """
+        if self.status is not SaleStatus.CHOOSING or self.qr_token.exchanged_at is not None:
+            raise IllegalSaleTransitionError(
+                "Only a CHOOSING sale's QR token that was not yet exchanged can be exchanged."
+            )
+        return replace(self, qr_token=replace(self.qr_token, exchanged_at=now))
 
     def expire(self, now: datetime) -> Self:
         """Moves a sale nobody agreed to in time from CHOOSING to EXPIRED."""

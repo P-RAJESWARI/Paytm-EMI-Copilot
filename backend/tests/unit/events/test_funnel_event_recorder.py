@@ -2,12 +2,18 @@
 
 import pytest
 
-from emi_copilot.domain.events import SaleStarted
+from emi_copilot.domain.events import CustomerBudgetConfirmed, CustomerPlansViewed, SaleStarted
 from emi_copilot.domain.funnel import FunnelEvent, FunnelStage
+from emi_copilot.domain.money import Money
 from emi_copilot.domain.sales import SaleStatus
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.events.funnel_event_recorder import FunnelEventRecorder
-from tests.event_builders import build_every_domain_event, build_sale_status_changed
+from tests.event_builders import (
+    SAMPLE_MERCHANT_ID,
+    SAMPLE_SALE_ID,
+    build_every_domain_event,
+    build_sale_status_changed,
+)
 from tests.fakes.fake_unit_of_work import FakeUnitOfWorkFactory, InMemoryDatabase
 from tests.fakes.sequential_id_generator import SequentialIdGenerator
 from tests.fixed_clock import FixedClock
@@ -100,3 +106,59 @@ def test_funnel_row_is_discarded_when_the_unit_of_work_rolls_back(
     with pytest.raises(SimulatedUseCaseFailureError):
         publish_then_fail()
     assert recorded_stages(unit_of_work_factory) == []
+
+
+def build_budget_confirmed(monthly_budget_in_paise: int = 300_000) -> CustomerBudgetConfirmed:
+    """The design customer confirming a ₹3,000 budget on the sample sale."""
+    return CustomerBudgetConfirmed(
+        occurred_at=CREATED_AT,
+        sale_id=SAMPLE_SALE_ID,
+        merchant_id=SAMPLE_MERCHANT_ID,
+        monthly_budget_in_paise=monthly_budget_in_paise,
+    )
+
+
+def test_budget_confirmed_records_budget_told_with_the_budget(
+    event_bus: DomainEventBus, unit_of_work_factory: FakeUnitOfWorkFactory
+) -> None:
+    """The first confirmed budget is kept on BUDGET_TOLD for the report's budget buckets."""
+    with unit_of_work_factory() as unit_of_work:
+        event_bus.publish(build_budget_confirmed(), unit_of_work)
+    assert unit_of_work_factory.database.funnel_events == [
+        FunnelEvent(
+            id="01JCFUNNELID00000000000001",
+            sale_id=SAMPLE_SALE_ID,
+            merchant_id=SAMPLE_MERCHANT_ID,
+            stage=FunnelStage.BUDGET_TOLD,
+            occurred_at=CREATED_AT,
+            monthly_budget=Money.from_rupees(3000),
+        )
+    ]
+
+
+def test_budget_confirmed_again_keeps_the_first_budget_and_does_not_fail(
+    event_bus: DomainEventBus, unit_of_work_factory: FakeUnitOfWorkFactory
+) -> None:
+    """A changed budget (₹30,000 misheard, then ₹3,000) is told once per sale, never failing."""
+    for monthly_budget_in_paise in (3_000_000, 300_000):
+        with unit_of_work_factory() as unit_of_work:
+            event_bus.publish(build_budget_confirmed(monthly_budget_in_paise), unit_of_work)
+    (budget_told,) = unit_of_work_factory.database.funnel_events
+    assert budget_told.monthly_budget == Money.from_rupees(30000)
+
+
+def test_plans_viewed_records_plans_viewed_once_per_sale(
+    event_bus: DomainEventBus, unit_of_work_factory: FakeUnitOfWorkFactory
+) -> None:
+    """Viewing the plans twice counts the sale once in "Viewed plans"."""
+    for _ in range(2):
+        with unit_of_work_factory() as unit_of_work:
+            event_bus.publish(
+                CustomerPlansViewed(
+                    occurred_at=CREATED_AT,
+                    sale_id=SAMPLE_SALE_ID,
+                    merchant_id=SAMPLE_MERCHANT_ID,
+                ),
+                unit_of_work,
+            )
+    assert recorded_stages(unit_of_work_factory) == [FunnelStage.PLANS_VIEWED]

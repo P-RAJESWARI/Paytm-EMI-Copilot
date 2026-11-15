@@ -23,19 +23,24 @@ class PricedOfferSource(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class CheaperModelCandidate:
-    """A cheaper catalogue item to quote as a C6 alternative; the catalogue belongs to Layer 2."""
+    """A cheaper catalogue item to quote as a C6 alternative; the catalogue belongs to Layer 2.
+
+    gateway_product_id is the id the gateway quotes on, when it differs from our catalogue
+    product id (Layer 2's catalogue keeps both); None means the two are the same.
+    """
 
     product_id: str
     product_name: str
     price: Money
     brand_id: str
     category_id: str
+    gateway_product_id: str | None = None
 
     def to_offer_discovery_query(self) -> OfferDiscoveryQuery:
         """Gives the query that asks for this model's plans at its price."""
         return OfferDiscoveryQuery(
             price=self.price,
-            product_id=self.product_id,
+            product_id=self.gateway_product_id or self.product_id,
             brand_id=self.brand_id,
             category_id=self.category_id,
         )

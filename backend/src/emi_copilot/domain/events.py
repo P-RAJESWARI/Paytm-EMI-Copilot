@@ -239,3 +239,24 @@ class ConsentRecorded(DomainEvent):
     customer_session_id: str
     offer_id: str
     chain_position: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CustomerBudgetConfirmed(DomainEvent):
+    """A customer confirmed a monthly budget on a sale's session (C2); ADR 0022 decision 9.
+
+    The funnel keeps a sale's first budget for its aggregate budget buckets. The event is not
+    audited, and the budget never reaches a merchant except inside those buckets (rule 6).
+    """
+
+    sale_id: str
+    merchant_id: str
+    monthly_budget_in_paise: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CustomerPlansViewed(DomainEvent):
+    """A customer was shown the plan comparison for a sale (C4); the funnel counts it once."""
+
+    sale_id: str
+    merchant_id: str
