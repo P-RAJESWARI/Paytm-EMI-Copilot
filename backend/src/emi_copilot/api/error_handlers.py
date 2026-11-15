@@ -35,6 +35,9 @@ nearest listed ancestor, and a unit test requires every class to be listed):
 | InvalidReportingPeriodError             | 422    | not a Monday, or a week still to come     |
 | InvalidReportDataError                  | 422    | a report figure would be inconsistent     |
 | InvalidSaleDataError                    | 422    | a sale record would be inconsistent       |
+| OtpIncorrectError, OtpExpiredError      | 422    | wrong or spent one-time code (ADR 0022)   |
+| OtpResendNotYetAvailableError           | 429    | resend wait not over; Retry-After is set  |
+| ConsentRecordChainConflictError         | 409    | another consent took the chain head       |
 | every other DomainError                 | 422    | a business rule refused the request       |
 | any unexpected exception                | 500    | unexpected_error_middleware.py            |
 
@@ -159,6 +162,16 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.OtpExpiredError: ProblemMapping(422, "One-time code expired"),
             errors.InvalidPlanSelectionError: ProblemMapping(422, "Plan selection not offered"),
             errors.ShownPlanChangedError: ProblemMapping(409, "Plan figures changed"),
+            errors.OtpResendNotYetAvailableError: ProblemMapping(
+                429, "New one-time code not available yet"
+            ),
+            errors.InvalidCustomerSessionDataError: ProblemMapping(
+                422, "Invalid customer session data"
+            ),
+            errors.InvalidConsentDataError: ProblemMapping(422, "Invalid consent data"),
+            errors.ConsentRecordChainConflictError: ProblemMapping(
+                409, "Consent could not be recorded yet"
+            ),
         }
     )
 )

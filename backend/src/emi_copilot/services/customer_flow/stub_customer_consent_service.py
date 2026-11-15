@@ -43,6 +43,9 @@ from emi_copilot.services.customer_flow.stub_design_sample import (
 )
 from emi_copilot.services.customer_flow.stub_plan_selection_quoter import StubPlanSelectionQuoter
 
+# STUB: the stub never counts attempts; the real OTP challenge (Phase 3C) allows three.
+_STUB_ATTEMPTS_REMAINING = 1
+
 
 class StubCustomerConsentService:
     """STUB until Phase 3C: consent with a fixed one-time code, kept in memory as evidence.
@@ -145,7 +148,10 @@ class StubCustomerConsentService:
         if self._clock.now() >= session.one_time_code_issued_at + STUB_ONE_TIME_CODE_LIFETIME:
             raise OtpExpiredError("This code has expired; request a new code.")
         if not hmac.compare_digest(one_time_code.encode("utf-8"), STUB_ONE_TIME_CODE.encode()):
-            raise OtpIncorrectError("This code does not match; check it or request a new code.")
+            raise OtpIncorrectError(
+                "This code does not match; check it or request a new code.",
+                attempts_remaining=_STUB_ATTEMPTS_REMAINING,
+            )
         return monthly_budget
 
     def _record_consent(self, consented_plan: ConsentedPlan) -> RecordedConsent:

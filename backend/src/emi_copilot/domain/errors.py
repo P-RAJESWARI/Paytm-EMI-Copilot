@@ -406,9 +406,20 @@ class OtpNotRequestedError(DomainError):
 
 
 class OtpIncorrectError(DomainError):
-    """Raised when the one-time code entered does not match; the customer may try again."""
+    """Raised when the one-time code entered does not match and attempts are left (ADR 0022).
+
+    It carries how many attempts the code has left, at least one; the wrong attempt that uses the
+    last one raises OtpExpiredError instead.
+    """
 
     code: ClassVar[str] = "OTP_INCORRECT"
+
+    def __init__(self, detail: str, *, attempts_remaining: int) -> None:
+        """Stores the attempts the code still allows, at least one, with an English explanation."""
+        if isinstance(attempts_remaining, bool) or attempts_remaining < 1:
+            raise ValueError("A code that can still be tried has at least one attempt left.")
+        super().__init__(detail)
+        self.attempts_remaining = attempts_remaining
 
 
 class OtpExpiredError(DomainError):
@@ -430,3 +441,34 @@ class ShownPlanChangedError(DomainError):
     """
 
     code: ClassVar[str] = "SHOWN_PLAN_CHANGED"
+
+
+class OtpResendNotYetAvailableError(RetryLaterError):
+    """Raised when a new one-time code is asked for before the resend wait is over (ADR 0022)."""
+
+    code: ClassVar[str] = "OTP_RESEND_NOT_YET_AVAILABLE"
+
+
+class InvalidCustomerSessionDataError(DomainError):
+    """Raised when a customer session would be built with missing or inconsistent fields."""
+
+    code: ClassVar[str] = "INVALID_CUSTOMER_SESSION_DATA"
+
+
+class InvalidConsentDataError(DomainError):
+    """Raised when a one-time code challenge, phone number or consent record would be invalid.
+
+    The detail never contains the phone number, the code or any hash of them.
+    """
+
+    code: ClassVar[str] = "INVALID_CONSENT_DATA"
+
+
+class ConsentRecordChainConflictError(DomainError):
+    """Raised when a consent record would fork the hash chain: another append took its place.
+
+    Appends lock the chain head, so this happens only when two first-ever appends race; nothing
+    is recorded and the customer can confirm again.
+    """
+
+    code: ClassVar[str] = "CONSENT_RECORD_CHAIN_CONFLICT"

@@ -1,9 +1,12 @@
 """Shared field checks for payment value objects and entities; each raises the caller's error."""
 
+import re
 from datetime import datetime
 
 from emi_copilot.domain.errors import DomainError
 from emi_copilot.domain.money import Money
+
+_SHA256_HEX_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
 def require_non_empty_text(value: object, description: str, error_type: type[DomainError]) -> None:
@@ -52,3 +55,9 @@ def require_timezone_aware_moment(
     """Raises error_type unless the value is a timezone-aware datetime, so no moment is unclear."""
     if not isinstance(value, datetime) or value.utcoffset() is None:
         raise error_type(f"The {description} must be a timezone-aware datetime.")
+
+
+def require_sha256_hex(value: object, description: str, error_type: type[DomainError]) -> None:
+    """Raises error_type unless the value is a lowercase hex SHA-256 digest (64 characters)."""
+    if not isinstance(value, str) or _SHA256_HEX_PATTERN.fullmatch(value) is None:
+        raise error_type(f"The {description} must be a lowercase hex SHA-256 digest.")
