@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   getProblemMessageKey,
   useCustomerFlow,
+  usePlanComparison,
   type BudgetAndComfortAnswers,
   type CustomerPlan,
 } from '../../customer-flow';
@@ -11,7 +12,6 @@ import { CalmErrorMessage } from '../../../shared/components/CalmErrorMessage';
 import { LoadingSkeleton } from '../../../shared/components/LoadingSkeleton';
 import { PlanComparisonScreen } from '../components/PlanComparisonScreen';
 import { PlanList } from '../components/PlanList';
-import { usePlanComparison } from '../hooks/usePlanComparison';
 
 export interface PlanComparisonContainerProps {
   answers: BudgetAndComfortAnswers;

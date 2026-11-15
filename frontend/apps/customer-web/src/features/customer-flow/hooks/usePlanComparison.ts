@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import {
-  customerQueryKeys,
-  useCustomerFlowApi,
-  type BudgetAndComfortAnswers,
-} from '../../customer-flow';
+import { customerQueryKeys } from '../api/customerQueryKeys';
+import type { BudgetAndComfortAnswers } from '../model/customerFlowState';
+import { useCustomerFlowApi } from './useCustomerFlowApi';
 
 // Fetches every plan for the confirmed budget, ranked by the server (C4). The key names the budget
 // and the comfort choice, so changing either fetches afresh.

@@ -82,7 +82,9 @@ describe('C4 options comparison: loaded', () => {
 
     expect(continueButton).toHaveProperty('disabled', false);
     await userEvent.click(continueButton);
-    expect(screen.queryByRole('heading', { name: 'Your EMI options' })).toBeNull();
+    expect(
+      await screen.findByRole('heading', { name: 'Ways to lower the monthly amount' }),
+    ).toBeTruthy();
   });
 
   it('opens the comfort detail and comes back with the selection kept', async () => {
@@ -125,7 +127,9 @@ describe('C4 options comparison: other states', () => {
       screen.getByRole('button', { name: 'See ways to lower the monthly amount' }),
     );
 
-    expect(screen.queryByRole('heading', { name: 'Your EMI options' })).toBeNull();
+    expect(
+      await screen.findByRole('heading', { name: 'Ways to lower the monthly amount' }),
+    ).toBeTruthy();
   });
 
   it('shows no band and no comfort detail after a skipped check', async () => {

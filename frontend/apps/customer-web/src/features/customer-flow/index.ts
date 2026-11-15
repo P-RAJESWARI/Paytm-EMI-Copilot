@@ -21,3 +21,4 @@ export { useCustomerFlowApi } from './hooks/useCustomerFlowApi';
 export type * from './model/customerFlowState';
 export { getProblemMessageKey } from './model/problemMessageKey';
 export { SessionUnavailableScreen } from './components/SessionUnavailableScreen';
+export { usePlanComparison } from './hooks/usePlanComparison';
