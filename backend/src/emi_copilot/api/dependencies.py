@@ -119,7 +119,7 @@ def build_application_components(
     customer_qr_signing_key = resolve_customer_qr_signing_key(settings)
     customer_contact = CustomerContactFactory(settings).create()
     consent_otp = ConsentOtpFactory(settings).create()
-    ai_components = AiProviderFactory().create(settings.ai_settings)
+    ai_components = AiProviderFactory().create(settings.ai_settings, clock)
     sale_status_broadcaster = SaleStatusBroadcaster(
         settings.sale_event_stream_maximum_queued_messages
     )

@@ -46,3 +46,9 @@ class SpeechTimeoutError(SpeechUnavailableError):
     """Raised when the speech provider did not answer within its configured timeout."""
 
     code: ClassVar[str] = "SPEECH_TIMEOUT"
+
+
+class SpeechTextTooLongError(SpeechUnavailableError):
+    """Raised before sending when text is longer than text-to-speech accepts; no credit is spent."""
+
+    code: ClassVar[str] = "SPEECH_TEXT_TOO_LONG"

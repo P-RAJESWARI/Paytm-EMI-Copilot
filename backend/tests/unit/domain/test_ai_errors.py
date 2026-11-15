@@ -7,6 +7,7 @@ from emi_copilot.domain.ai_errors import (
     AiProviderError,
     AiTextUnavailableError,
     InvalidAiValueError,
+    SpeechTextTooLongError,
     SpeechTimeoutError,
     SpeechUnavailableError,
 )
@@ -22,6 +23,7 @@ from emi_copilot.domain.errors import DomainError
         (AiTextUnavailableError, "AI_TEXT_UNAVAILABLE"),
         (SpeechUnavailableError, "SPEECH_UNAVAILABLE"),
         (SpeechTimeoutError, "SPEECH_TIMEOUT"),
+        (SpeechTextTooLongError, "SPEECH_TEXT_TOO_LONG"),
     ],
 )
 def test_ai_error_is_a_domain_error_with_its_stable_code(
@@ -35,7 +37,8 @@ def test_ai_error_is_a_domain_error_with_its_stable_code(
 
 
 @pytest.mark.parametrize(
-    "error_class", [AiTextUnavailableError, SpeechUnavailableError, SpeechTimeoutError]
+    "error_class",
+    [AiTextUnavailableError, SpeechUnavailableError, SpeechTimeoutError, SpeechTextTooLongError],
 )
 def test_ai_provider_failures_share_one_base_so_callers_can_fall_back(
     error_class: type[AiProviderError],
