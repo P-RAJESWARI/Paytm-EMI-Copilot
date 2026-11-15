@@ -27,6 +27,7 @@ OPENAPI_CHECK_DIRECTORY := $(FRONTEND_DIRECTORY)/node_modules/.openapi-check
 E2E_DATABASE_NAME := emi_copilot_e2e
 E2E_BACKEND_PORT := 8010
 E2E_MERCHANT_WEB_PORT := 5180
+E2E_CUSTOMER_WEB_PORT := 5181
 # A throwaway pairing PIN for the throwaway e2e database only; never a real shop's PIN.
 E2E_MERCHANT_PIN := 123456
 E2E_POSTGRES_USER := $(or $(POSTGRES_USER),emi_copilot)
@@ -150,7 +151,7 @@ openapi-check: ## Fail if backend/openapi.json or the generated api-client diffe
 e2e-setup: ## Download Playwright's Chromium once (the only network use of the end-to-end tests)
 	$(PNPM) --filter @emi-copilot/e2e exec playwright install chromium
 
-e2e: db-up ## Recreate, migrate and seed the e2e database, then run the Playwright merchant path (ports 8010, 5180)
+e2e: db-up ## Recreate, migrate and seed the e2e database, then run the Playwright merchant and customer paths (ports 8010, 5180, 5181)
 	@test -d $(FRONTEND_DIRECTORY)/node_modules || { \
 		echo "ERROR: the frontend dependencies are not installed. Run make frontend-setup first." >&2; \
 		exit 1; }
@@ -161,4 +162,5 @@ e2e: db-up ## Recreate, migrate and seed the e2e database, then run the Playwrig
 		$(UV_RUN) python -m scripts.seed_demo_data
 	E2E_DATABASE_URL='$(E2E_DATABASE_URL)' E2E_MERCHANT_PIN=$(E2E_MERCHANT_PIN) \
 		E2E_BACKEND_PORT=$(E2E_BACKEND_PORT) E2E_MERCHANT_WEB_PORT=$(E2E_MERCHANT_WEB_PORT) \
+		E2E_CUSTOMER_WEB_PORT=$(E2E_CUSTOMER_WEB_PORT) \
 		$(PNPM) --filter @emi-copilot/e2e run test:e2e

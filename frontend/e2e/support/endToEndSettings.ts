@@ -6,6 +6,10 @@ export const DEMO_SHOP_ID = 'RAVI-0193';
 
 const DEFAULT_BACKEND_PORT = 8010;
 const DEFAULT_MERCHANT_WEB_PORT = 5180;
+const DEFAULT_CUSTOMER_WEB_PORT = 5181;
+
+/** The code the backend's labelled Mock OTP sender issues in the e2e run (never a real OTP). */
+export const MOCK_CONSENT_OTP_CODE = '123456';
 
 // Reads a whole port number from the environment, or gives the default when the variable is unset.
 function readPortFromEnvironment(variableName: string, defaultPort: number): number {
@@ -35,10 +39,16 @@ export const MERCHANT_WEB_PORT = readPortFromEnvironment(
   'E2E_MERCHANT_WEB_PORT',
   DEFAULT_MERCHANT_WEB_PORT,
 );
+export const CUSTOMER_WEB_PORT = readPortFromEnvironment(
+  'E2E_CUSTOMER_WEB_PORT',
+  DEFAULT_CUSTOMER_WEB_PORT,
+);
 // Loopback addresses, not "localhost": that name may resolve to ::1 first, and HTTP proxy settings
 // commonly exempt 127.0.0.1 but not "localhost".
 export const BACKEND_ORIGIN = `http://127.0.0.1:${BACKEND_PORT}`;
 export const MERCHANT_WEB_ORIGIN = `http://127.0.0.1:${MERCHANT_WEB_PORT}`;
+/** Also the backend's CUSTOMER_WEB_BASE_URL, so the QR link of every sale opens this server. */
+export const CUSTOMER_WEB_ORIGIN = `http://127.0.0.1:${CUSTOMER_WEB_PORT}`;
 
 // Gives the e2e database URL that `make e2e` created, migrated and seeded.
 export function readEndToEndDatabaseUrl(): string {
