@@ -1,9 +1,6 @@
 import { CustomerFlowScreens } from '../app/CustomerFlowScreens';
-import {
-  FixtureCustomerFlowApi,
-  type CustomerFlowApi,
-  type CustomerFlowState,
-} from '../features/customer-flow';
+import { type CustomerFlowApi, type CustomerFlowState } from '../features/customer-flow';
+import { FixtureCustomerFlowApi } from '../features/customer-flow/fixture';
 import { renderCustomerApp } from './renderCustomerApp';
 
 export interface RenderCustomerFlowOptions {

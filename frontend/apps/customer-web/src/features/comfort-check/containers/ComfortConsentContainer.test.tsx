@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { expectNoAccessibilityViolations } from '@test-support/accessibility';
 
-import { CustomerApiError, FixtureCustomerFlowApi } from '../../customer-flow';
+import { CustomerApiError } from '../../customer-flow';
+import { FixtureCustomerFlowApi } from '../../customer-flow/fixture';
 import { renderCustomerFlow } from '../../../testing/renderCustomerFlow';
 
 const COMFORT_CONSENT_STEP = { step: 'comfortConsent', confirmedBudgetInPaise: 300000 } as const;

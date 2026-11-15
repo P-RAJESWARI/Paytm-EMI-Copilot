@@ -3,11 +3,8 @@ import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import { CustomerApp } from '../app/CustomerApp';
-import {
-  FixtureCustomerFlowApi,
-  type CustomerFlowApi,
-  type CustomerFlowState,
-} from '../features/customer-flow';
+import { type CustomerFlowApi, type CustomerFlowState } from '../features/customer-flow';
+import { FixtureCustomerFlowApi } from '../features/customer-flow/fixture';
 import { initializeCustomerI18n } from '../i18n/initializeCustomerI18n';
 
 /** The QR token tests open the app with. */

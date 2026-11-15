@@ -17,12 +17,12 @@ describe('createCustomerFlowApi', () => {
     expect(readCustomerFlowApiMode('http')).toBe('http');
   });
 
-  it('builds the implementation for the mode', () => {
-    expect(createCustomerFlowApi({ mode: 'fixture', ...FACTORY_OPTIONS })).toBeInstanceOf(
-      FixtureCustomerFlowApi,
-    );
-    expect(createCustomerFlowApi({ mode: 'http', ...FACTORY_OPTIONS })).toBeInstanceOf(
-      HttpCustomerFlowApi,
-    );
+  it('builds the implementation for the mode, loading the fixture only when asked', async () => {
+    await expect(
+      createCustomerFlowApi({ mode: 'fixture', ...FACTORY_OPTIONS }),
+    ).resolves.toBeInstanceOf(FixtureCustomerFlowApi);
+    await expect(
+      createCustomerFlowApi({ mode: 'http', ...FACTORY_OPTIONS }),
+    ).resolves.toBeInstanceOf(HttpCustomerFlowApi);
   });
 });

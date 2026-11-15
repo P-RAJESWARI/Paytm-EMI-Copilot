@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { expectNoAccessibilityViolations } from '@test-support/accessibility';
 
-import { CustomerApiError, FixtureCustomerFlowApi, type ReceiptStatus } from '../../customer-flow';
+import { CustomerApiError, type ReceiptStatus } from '../../customer-flow';
+import { FixtureCustomerFlowApi } from '../../customer-flow/fixture';
 import { FIXTURE_OTP } from '../../customer-flow/api/fixtureCustomerFlowData';
 import { DESIGN_PLAN_ANSWERS } from '../../../testing/customerFlowTestData';
 import { renderCustomerFlow } from '../../../testing/renderCustomerFlow';

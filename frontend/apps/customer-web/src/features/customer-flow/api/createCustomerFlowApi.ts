@@ -1,5 +1,4 @@
 import type { CustomerFlowApi } from './CustomerFlowApi';
-import { FixtureCustomerFlowApi } from './FixtureCustomerFlowApi';
 import { HttpCustomerFlowApi } from './HttpCustomerFlowApi';
 
 /** `http` talks to the backend (the default everywhere); `fixture` answers the design sample. */
@@ -18,12 +17,16 @@ export function readCustomerFlowApiMode(configuredMode: string | undefined): Cus
 }
 
 // Pattern: Factory. Picks the CustomerFlowApi implementation in one place; screens never know which.
-export function createCustomerFlowApi({
+// The fixture and its sample data are loaded with a dynamic import, so they sit in their own chunk
+// that a phone using the real backend never downloads (frontend.md section 10).
+export async function createCustomerFlowApi({
   mode,
   baseUrl,
   fetchFunction,
-}: CreateCustomerFlowApiOptions): CustomerFlowApi {
-  return mode === 'fixture'
-    ? new FixtureCustomerFlowApi()
-    : new HttpCustomerFlowApi({ baseUrl, fetchFunction });
+}: CreateCustomerFlowApiOptions): Promise<CustomerFlowApi> {
+  if (mode === 'fixture') {
+    const { FixtureCustomerFlowApi } = await import('./FixtureCustomerFlowApi');
+    return new FixtureCustomerFlowApi();
+  }
+  return new HttpCustomerFlowApi({ baseUrl, fetchFunction });
 }

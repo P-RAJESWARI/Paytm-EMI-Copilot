@@ -1,5 +1,6 @@
-// Public API of the customer-flow feature: the CustomerFlowApi port and its implementations, the
-// flow state machine, the session gate and the hooks every screen uses.
+// Public API of the customer-flow feature: the CustomerFlowApi port and its factory, the flow
+// state machine, the session gate and the hooks every screen uses. The fixture has its own entry,
+// fixture.ts, so that it stays out of the production bundle.
 export { createCustomerFlowApi, readCustomerFlowApiMode } from './api/createCustomerFlowApi';
 export type { CustomerFlowApiMode } from './api/createCustomerFlowApi';
 export {
@@ -14,7 +15,6 @@ export type * from './api/customerContractTypes';
 export { CustomerFlowApiContext } from './api/customerFlowApiContext';
 export type * from './api/CustomerFlowApi';
 export { customerQueryKeys } from './api/customerQueryKeys';
-export { FixtureCustomerFlowApi } from './api/FixtureCustomerFlowApi';
 export { CustomerSessionGate } from './containers/CustomerSessionGate';
 export { useCustomerFlow } from './hooks/useCustomerFlow';
 export { useCustomerFlowApi } from './hooks/useCustomerFlowApi';
