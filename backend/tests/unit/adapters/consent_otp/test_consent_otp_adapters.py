@@ -6,7 +6,10 @@ import pytest
 from pydantic import SecretStr
 
 from emi_copilot.adapters.consent_otp import random_code_generator
-from emi_copilot.adapters.consent_otp.factory import ConsentOtpFactory
+from emi_copilot.adapters.consent_otp.factory import (
+    ConsentOtpConfigurationError,
+    ConsentOtpFactory,
+)
 from emi_copilot.adapters.consent_otp.mock_adapter import (
     MOCK_CONSENT_OTP_SENDER_ACTIVE_WARNING,
     MOCK_CONSENT_OTP_SENT_MESSAGE,
@@ -14,7 +17,7 @@ from emi_copilot.adapters.consent_otp.mock_adapter import (
 )
 from emi_copilot.adapters.consent_otp.mock_code_generator import MockFixedConsentOtpCodeGenerator
 from emi_copilot.adapters.consent_otp.random_code_generator import RandomConsentOtpCodeGenerator
-from emi_copilot.config.settings import ApplicationSettings
+from emi_copilot.config.settings import ApplicationSettings, PaymentGatewayMode
 from emi_copilot.domain.consent import CustomerPhoneNumber
 
 SYNTHETIC_PHONE_NUMBER = CustomerPhoneNumber("9000000042")
@@ -35,6 +38,21 @@ def test_factory_pairs_the_mock_sender_with_the_configured_fixed_code(
         MOCK_CONSENT_OTP_SENDER_ACTIVE_WARNING
     ]
     assert "654321" not in caplog.text
+
+
+def test_factory_in_paytm_mode_refuses_to_start_instead_of_using_the_fixed_code(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Real customers must never consent with a known code: no Mock fallback (ADR 0004)."""
+    settings = ApplicationSettings(payment_gateway_mode=PaymentGatewayMode.PAYTM)
+    with (
+        caplog.at_level(logging.WARNING),
+        pytest.raises(ConsentOtpConfigurationError, match="PAYMENT_GATEWAY_MODE=paytm") as raised,
+    ):
+        ConsentOtpFactory(settings).create()
+    assert "Verify with Paytm" in str(raised.value)
+    assert "123456" not in str(raised.value)
+    assert MOCK_CONSENT_OTP_SENDER_ACTIVE_WARNING not in caplog.text
 
 
 def test_mock_sender_logs_the_event_but_never_the_code_or_any_digit_of_the_number(

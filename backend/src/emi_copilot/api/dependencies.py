@@ -107,12 +107,15 @@ def build_application_components(
 ) -> ApplicationComponents:
     """Builds the components; paytm mode without credentials raises here, failing startup.
 
-    So does paytm mode without CUSTOMER_QR_SIGNING_SECRET or CUSTOMER_PHONE_HASH_SECRET, and a
-    secret that is too short. Every Mock adapter announces itself in the log as it is built.
+    So does paytm mode without CUSTOMER_QR_SIGNING_SECRET or CUSTOMER_PHONE_HASH_SECRET, a
+    secret that is too short, and paytm mode at all while the customer's phone number and
+    consent codes have only Mock sources. Every Mock adapter announces itself as it is built.
     """
     clock = SystemClock()
     payment_gateway = PaymentGatewayFactory().create(settings, clock, id_generator)
     customer_qr_signing_key = resolve_customer_qr_signing_key(settings)
+    customer_contact = CustomerContactFactory(settings).create()
+    consent_otp = ConsentOtpFactory(settings).create()
     sale_status_broadcaster = SaleStatusBroadcaster(
         settings.sale_event_stream_maximum_queued_messages
     )
@@ -150,8 +153,8 @@ def build_application_components(
         weekly_message_delivery=WeeklyMessageDeliveryFactory().create(),
         financial_profile=MockSyntheticFinancialProfileAdapter(),
         are_financial_profiles_synthetic=True,
-        customer_contact=CustomerContactFactory().create(),
-        consent_otp=ConsentOtpFactory(settings).create(),
+        customer_contact=customer_contact,
+        consent_otp=consent_otp,
         customer_keyed_hasher=KeyedHasher(resolve_customer_phone_hash_key(settings)),
         customer_session_start_rate_limiter=build_rate_limiter(
             clock,

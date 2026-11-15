@@ -5,8 +5,10 @@ from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from emi_copilot.adapters.consent_otp.mock_adapter import MockConsentOtpSenderAdapter
+from emi_copilot.adapters.customer_contact.factory import CustomerContactConfigurationError
 from emi_copilot.adapters.customer_contact.mock_adapter import MockPaytmCustomerContactAdapter
 from emi_copilot.adapters.financial_profile.mock_adapter import (
     MockSyntheticFinancialProfileAdapter,
@@ -44,6 +46,10 @@ from emi_copilot.core.consent_reference_serial_generator import (
 )
 from emi_copilot.main import create_application
 
+SYNTHETIC_MERCHANT_ID = "SYNTHETICMID00000001"
+SYNTHETIC_MERCHANT_KEY = "0123456789abcdef"  # pragma: allowlist secret
+SYNTHETIC_CUSTOMER_KEY_TEXT = "synthetic-customer-secret-0123456789ab"  # pragma: allowlist secret
+
 
 def test_startup_in_paytm_mode_without_credentials_fails() -> None:
     """Paytm mode never falls back to the Mock: startup itself raises."""
@@ -52,6 +58,24 @@ def test_startup_in_paytm_mode_without_credentials_fails() -> None:
     )
     with (
         pytest.raises(PaymentGatewayConfigurationError, match="PAYTM_MERCHANT_ID"),
+        TestClient(application),
+    ):
+        pass
+
+
+def test_startup_in_paytm_mode_with_every_secret_still_fails_on_the_mock_customer_sources() -> None:
+    """Paytm mode has no real phone source or code sender yet, so it refuses to start at all."""
+    application = create_application(
+        ApplicationSettings(
+            payment_gateway_mode=PaymentGatewayMode.PAYTM,
+            paytm_merchant_id=SecretStr(SYNTHETIC_MERCHANT_ID),
+            paytm_merchant_key=SecretStr(SYNTHETIC_MERCHANT_KEY),
+            customer_qr_signing_secret=SecretStr(SYNTHETIC_CUSTOMER_KEY_TEXT),
+            customer_phone_hash_secret=SecretStr(SYNTHETIC_CUSTOMER_KEY_TEXT),
+        )
+    )
+    with (
+        pytest.raises(CustomerContactConfigurationError, match="Verify with Paytm"),
         TestClient(application),
     ):
         pass
