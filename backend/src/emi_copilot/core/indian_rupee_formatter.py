@@ -1,8 +1,8 @@
-"""Formats integer paise as whole rupees for text the backend itself sends (the weekly message).
+"""Formats integer paise as whole rupees for text the backend itself writes (sent text artifacts).
 
-backend.md section 5 keeps display formatting in the frontend. The weekly message is the one
-exception: it is a sent text artifact, like Layer 4's AI text, so its numbers are rendered here,
-in this one formatter, and nowhere else in the backend.
+backend.md section 5 keeps display formatting in the frontend. The weekly message (ADR 0018) and
+the C7 template explanation, which Layer 4's AI text will wrap, are the exceptions: their numbers
+are rendered here, in this one formatter (injected into them), and nowhere else in the backend.
 """
 
 from decimal import ROUND_HALF_UP, Decimal

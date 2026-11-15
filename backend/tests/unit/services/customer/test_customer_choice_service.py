@@ -13,11 +13,11 @@ from emi_copilot.domain.funnel import FunnelStage
 from emi_copilot.domain.money import Money
 from emi_copilot.domain.sales import SaleStatus
 from emi_copilot.services.customer.customer_session_types import CustomerSessionCredentials
+from tests.fakes.fake_customer_flow_ports import STANDARD_PROFILE
 from tests.sale_builders import SALE_ID, build_no_cost_chosen_plan
 from tests.unit.services.conftest import ServiceTestKit
 from tests.unit.services.customer.customer_service_wiring import (
     SALE_DEADLINE_GAP,
-    STANDARD_PROFILE,
     CustomerServices,
     credentials_of,
     sign_qr_token,

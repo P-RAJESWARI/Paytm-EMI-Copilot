@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from emi_copilot.core.clock import Clock
 from emi_copilot.domain.catalogue import CatalogueProduct
 from emi_copilot.domain.errors import (
-    IllegalSaleTransitionError,
     OfferNotFoundError,
     ProductNotFoundError,
     SaleNotFoundError,
@@ -15,7 +14,8 @@ from emi_copilot.domain.sales import ChosenPlan, Sale
 from emi_copilot.events.event_bus import DomainEventBus
 from emi_copilot.repositories.unit_of_work_protocol import UnitOfWork, UnitOfWorkFactory
 from emi_copilot.services.offer_discovery_service import OfferDiscoveryService
-from emi_copilot.services.sale_expiry import SaleExpiryStep, build_sale_status_changed
+from emi_copilot.services.sale_agreement_step import SaleAgreementStep
+from emi_copilot.services.sale_expiry import SaleExpiryStep
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,8 +38,8 @@ class MarkSaleReadyToPayService:
 
     Callers: Layer 3 consent and the step 2.3 Mock customer simulator; no merchant endpoint
     calls it, because agreeing is the customer's step (rule 9). The quote is fetched outside any
-    transaction; the move then runs on the locked sale, expiring it first if overdue, and a
-    refusal is raised after that expiry commits.
+    transaction; the move then runs in SaleAgreementStep on the locked sale, expiring it first if
+    overdue, and a refusal is raised after that expiry commits.
     """
 
     def __init__(
@@ -54,8 +54,7 @@ class MarkSaleReadyToPayService:
         self._unit_of_work_factory = unit_of_work_factory
         self._offer_discovery_service = offer_discovery_service
         self._clock = clock
-        self._event_bus = event_bus
-        self._sale_expiry = sale_expiry
+        self._sale_agreement = SaleAgreementStep(event_bus, sale_expiry)
 
     def mark_ready_to_pay(self, command: MarkSaleReadyToPayCommand) -> Sale:
         """Gives the READY_TO_PAY sale; raises not found, OfferNotFoundError or a state conflict."""
@@ -63,23 +62,13 @@ class MarkSaleReadyToPayService:
             sale = _require_sale(unit_of_work.sales.find_by_id_for_update(command.sale_id))
             product = self._require_product(unit_of_work, sale)
         chosen_plan = self._quote_chosen_plan(sale, product, command.offer_id)
-        refusal: IllegalSaleTransitionError | None = None
         with self._unit_of_work_factory() as unit_of_work:
-            locked_sale = _require_sale(unit_of_work.sales.find_by_id_for_update(command.sale_id))
-            now = self._clock.now()
-            current_sale = self._sale_expiry.expire_if_overdue(unit_of_work, locked_sale, now)
-            try:
-                agreed_sale = current_sale.agree_to_plan(chosen_plan, now)
-            except IllegalSaleTransitionError as transition_refusal:
-                refusal = transition_refusal
-            else:
-                unit_of_work.sales.update(agreed_sale)
-                self._event_bus.publish(
-                    build_sale_status_changed(current_sale, agreed_sale), unit_of_work
-                )
-        if refusal is not None:
-            raise refusal
-        return agreed_sale
+            outcome = self._sale_agreement.agree(
+                unit_of_work, command.sale_id, chosen_plan, self._clock.now()
+            )
+        if outcome.refusal is not None:
+            raise outcome.refusal
+        return outcome.sale
 
     def _require_product(self, unit_of_work: UnitOfWork, sale: Sale) -> CatalogueProduct:
         """Gives the sale's product from its shop's catalogue."""

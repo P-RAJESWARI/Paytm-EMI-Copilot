@@ -172,6 +172,9 @@ PROBLEM_MAPPINGS_BY_ERROR_TYPE: Mapping[type[errors.DomainError], ProblemMapping
             errors.ConsentRecordChainConflictError: ProblemMapping(
                 409, "Consent could not be recorded yet"
             ),
+            errors.CustomerContactUnavailableError: ProblemMapping(
+                422, "Phone number not available"
+            ),
         }
     )
 )

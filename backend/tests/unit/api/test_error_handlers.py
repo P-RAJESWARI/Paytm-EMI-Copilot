@@ -78,6 +78,7 @@ def test_every_domain_error_class_has_an_explicit_problem_mapping() -> None:
         (errors.InvalidPlanSelectionError, 422),
         (errors.ShownPlanChangedError, 409),
         (errors.OtpResendNotYetAvailableError, 429),
+        (errors.CustomerContactUnavailableError, 422),
         (errors.InvalidCustomerSessionDataError, 422),
         (errors.InvalidConsentDataError, 422),
         (errors.ConsentRecordChainConflictError, 409),

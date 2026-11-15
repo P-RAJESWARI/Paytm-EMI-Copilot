@@ -472,3 +472,12 @@ class ConsentRecordChainConflictError(DomainError):
     """
 
     code: ClassVar[str] = "CONSENT_RECORD_CHAIN_CONFLICT"
+
+
+class CustomerContactUnavailableError(DomainError):
+    """Raised when the payment side knows no phone number for the sale, so no code can be sent.
+
+    The customer asks the shop for help; the detail never contains a phone number (ADR 0022).
+    """
+
+    code: ClassVar[str] = "CUSTOMER_CONTACT_UNAVAILABLE"

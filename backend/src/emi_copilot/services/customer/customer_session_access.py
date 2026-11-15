@@ -111,7 +111,14 @@ class CustomerSessionAccess:
 
         The caller raises any refusal only after the unit of work commits, so an expiry is kept.
         """
-        session = self.authenticate(unit_of_work, credentials, now)
+        return self.open_sale_of(
+            unit_of_work, self.authenticate(unit_of_work, credentials, now), now
+        )
+
+    def open_sale_of(
+        self, unit_of_work: UnitOfWork, session: CustomerSession, now: datetime
+    ) -> OpenedCustomerSale:
+        """Locks an authenticated session's sale and expires it if it is overdue."""
         sale = unit_of_work.sales.find_by_id_for_update(session.sale_id)
         if sale is None:
             raise CustomerSessionTokenInvalidError(INVALID_SESSION_LINK_DETAIL)
