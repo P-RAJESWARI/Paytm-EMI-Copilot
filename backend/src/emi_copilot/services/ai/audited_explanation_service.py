@@ -63,11 +63,36 @@ class AuditedExplanationService:
             audited_explanation_logger.warning(
                 "explanation flow failed; template text shown", extra={"error_code": error.code}
             )
+            self._record_flow_failure(started_at, customer_session_id)
+            return template_explanation
+        # Deliberately broad, not swallowed: it is logged and recorded, then the template is
+        # shown. DESIGN_SPEC section 7.6 forbids an error banner when AI fails, and C7 shows
+        # role=alert on a 500. Only the class name is logged; a message could carry text.
+        except Exception as error:  # noqa: BLE001 - logged, recorded and replaced by the template
+            audited_explanation_logger.warning(
+                "explanation flow failed unexpectedly; template text shown",
+                extra={"error_type": type(error).__name__},
+            )
+            self._record_flow_failure(started_at, customer_session_id)
             return template_explanation
         self._record_usage(result, measure_elapsed_milliseconds(started_at), customer_session_id)
         if result.source is not AiTextSource.AI_AUDITED:
             return template_explanation
         return replace(template_explanation, text=result.text, source=ExplanationSource.AI_AUDITED)
+
+    def _record_flow_failure(self, started_at: float, customer_session_id: str | None) -> None:
+        """Logs a failed flow with outcome FLOW_FAILED; its usage is unknown, so counts are 0."""
+        self._usage_logger.record_chat_call(
+            AiCallUsage(
+                flow=EXPLANATION_FLOW_NAME,
+                model=UNKNOWN_MODEL_NAME,
+                latency_ms=measure_elapsed_milliseconds(started_at),
+                model_input_usage_count=0,
+                model_output_usage_count=0,
+                outcome=FLOW_FAILED_OUTCOME,
+                customer_session_id=customer_session_id,
+            )
+        )
 
     def _record_usage(
         self, result: ExplanationFlowResult, latency_ms: int, customer_session_id: str | None

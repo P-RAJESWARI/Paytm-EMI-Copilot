@@ -89,7 +89,11 @@ def test_audited_explanation_service_passing_text_is_ai_audited_with_engine_high
 
 
 class FailingFlowRunner(AiFlowRunnerPort):
-    """A runner that fails as a broken flow definition would."""
+    """A runner that fails with the given error, as a broken flow or a library bug would."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        """Keeps the error to raise; a typed flow error by default."""
+        self.error = error or InvalidAiFlowError("Broken on purpose.")
 
     @property
     @override
@@ -101,15 +105,33 @@ class FailingFlowRunner(AiFlowRunnerPort):
     def run[StateType: FlowState](
         self, flow: AiFlowDefinition[StateType], initial_state: StateType
     ) -> StateType:
-        """Raises the typed flow error."""
-        raise InvalidAiFlowError("Broken on purpose.")
+        """Raises the configured error."""
+        raise self.error
 
 
-def test_audited_explanation_service_flow_error_never_escapes() -> None:
-    """Even an unexpected typed flow error gives the template text."""
+def read_usage_outcomes(caplog: pytest.LogCaptureFixture) -> list[str]:
+    """Lists the outcome of every usage line logged."""
+    return [
+        vars(record)["ai_outcome"]
+        for record in caplog.records
+        if record.message == AI_CALL_LOG_MESSAGE
+    ]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [InvalidAiFlowError("Broken on purpose."), RuntimeError("secret text must not be logged")],
+)
+def test_audited_explanation_service_flow_error_never_escapes(
+    error: Exception, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Any flow error, typed or not, gives the template text and one FLOW_FAILED line."""
     port = ScriptedExplanationTextPort({CustomerLanguage.ENGLISH: PASSING_TEXT})
-    explanation = explain_with(build_explanation_flow(port, FailingFlowRunner()))
+    with caplog.at_level(logging.INFO):
+        explanation = explain_with(build_explanation_flow(port, FailingFlowRunner(error)))
     assert explanation == template_text()
+    assert read_usage_outcomes(caplog) == ["FLOW_FAILED"]
+    assert "secret text" not in caplog.text
 
 
 def test_audited_explanation_service_usage_log_line_carries_counts_and_cost_but_no_text(

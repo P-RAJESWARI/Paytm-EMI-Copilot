@@ -1,18 +1,26 @@
 """Shown-text caches: a repeat explanation costs no AI call; weekly text is stable per facts."""
 
+import logging
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import override
+
+import pytest
 
 from emi_copilot.core.bounded_timed_cache import BoundedTimedCache
 from emi_copilot.core.indian_rupee_formatter import format_paise_as_whole_rupees
 from emi_copilot.domain.customer_sessions import CustomerLanguage
 from emi_copilot.domain.money import Money
+from emi_copilot.domain.reports.weekly_message_template import WeeklyMessageTemplate
 from emi_copilot.domain.reports.weekly_message_wording import MessageLanguage
 from emi_copilot.domain.sales import ChosenPlan
 from emi_copilot.services.ai.ai_flow_types import AiTextSource
 from emi_copilot.services.ai.ai_usage_logger import AiUsageLogger
 from emi_copilot.services.ai.audited_explanation_service import AuditedExplanationService
+from emi_copilot.services.ai.audited_weekly_message_writer import (
+    AuditedWeeklyMessageWriter,
+    build_weekly_message_cache,
+)
 from emi_copilot.services.ai.shown_explanation_cache import ShownExplanationCache
 from emi_copilot.services.customer.customer_explanation_service import CustomerExplanationService
 from emi_copilot.services.customer.customer_session_types import CustomerSessionCredentials
@@ -22,6 +30,7 @@ from tests.ai_flow_builders import (
     TEST_AI_PRICE_LIST,
     WEEKLY_ENGLISH_AI_TEXT,
     build_explanation_flow,
+    build_weekly_message_flow,
     build_weekly_message_writer,
     render_weekly_template,
 )
@@ -30,6 +39,10 @@ from tests.fakes.sequential_id_generator import SequentialIdGenerator
 from tests.fixed_clock import FixedClock
 from tests.report_builders import build_design_weekly_message_facts
 from tests.sale_builders import build_no_cost_chosen_plan
+from tests.unit.services.ai.test_audited_explanation_service import (
+    FailingFlowRunner,
+    read_usage_outcomes,
+)
 
 MOMENT = datetime(2026, 11, 15, 9, 30, tzinfo=UTC)
 PASSING_TEXT = (
@@ -137,3 +150,26 @@ def test_audited_weekly_message_writer_with_text_off_gives_both_templates() -> N
         AiTextSource.TEMPLATE,
     )
     assert written.messages.english == render_weekly_template(MessageLanguage.ENGLISH, facts)
+
+
+def test_audited_weekly_message_writer_unexpected_flow_error_gives_both_templates(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A RuntimeError in the flow gives the template in both languages and a FLOW_FAILED line."""
+    port = ScriptedExplanationTextPort({CustomerLanguage.ENGLISH: WEEKLY_ENGLISH_AI_TEXT})
+    writer = AuditedWeeklyMessageWriter(
+        build_weekly_message_flow(port, FailingFlowRunner(RuntimeError("secret text"))),
+        WeeklyMessageTemplate(format_paise_as_whole_rupees),
+        build_weekly_message_cache(FixedClock(MOMENT)),
+        AiUsageLogger(TEST_AI_PRICE_LIST),
+    )
+    facts = build_design_weekly_message_facts()
+    with caplog.at_level(logging.INFO):
+        written = writer.write(MERCHANT_ID, facts)
+    assert (written.english_source, written.tamil_source) == (
+        AiTextSource.TEMPLATE,
+        AiTextSource.TEMPLATE,
+    )
+    assert written.messages.tamil == render_weekly_template(MessageLanguage.TAMIL, facts)
+    assert read_usage_outcomes(caplog) == ["FLOW_FAILED"]
+    assert "secret text" not in caplog.text

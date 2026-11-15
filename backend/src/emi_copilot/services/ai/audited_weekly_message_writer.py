@@ -29,6 +29,7 @@ from emi_copilot.services.weekly_message_writer import WrittenWeeklyMessages
 WEEKLY_MESSAGE_CACHE_MAXIMUM_ENTRIES = 500
 WEEKLY_MESSAGE_CACHE_LIFETIME = timedelta(hours=12)
 UNKNOWN_MODEL_NAME = "unknown"
+FLOW_FAILED_OUTCOME = "FLOW_FAILED"
 
 WeeklyMessageCacheKey = tuple[str, date, str]
 WeeklyMessageCache = BoundedTimedCache[WeeklyMessageCacheKey, WrittenWeeklyMessages]
@@ -89,9 +90,16 @@ class AuditedWeeklyMessageWriter:
             audited_weekly_message_logger.warning(
                 "weekly message flow failed; template text used", extra={"error_code": error.code}
             )
-            return WrittenWeeklyMessages(
-                self._template.render(facts), AiTextSource.TEMPLATE, AiTextSource.TEMPLATE
+            return self._fall_back_to_template(facts, started_at)
+        # Deliberately broad, not swallowed: it is logged and recorded, then the template is
+        # used. DESIGN_SPEC section 7.6 forbids an error banner when AI fails. Only the class
+        # name is logged; a message could carry text.
+        except Exception as error:  # noqa: BLE001 - logged, recorded and replaced by the template
+            audited_weekly_message_logger.warning(
+                "weekly message flow failed unexpectedly; template text used",
+                extra={"error_type": type(error).__name__},
             )
+            return self._fall_back_to_template(facts, started_at)
         latency_ms = measure_elapsed_milliseconds(started_at)
         for language_result in (result.english, result.tamil):
             self._record_usage(language_result, latency_ms)
@@ -99,6 +107,24 @@ class AuditedWeeklyMessageWriter:
             WeeklyMessages(result.english.message, result.tamil.message),
             result.english.source,
             result.tamil.source,
+        )
+
+    def _fall_back_to_template(
+        self, facts: WeeklyMessageFacts, started_at: float
+    ) -> WrittenWeeklyMessages:
+        """Records a FLOW_FAILED line (usage unknown, so counts are 0) and gives both templates."""
+        self._usage_logger.record_chat_call(
+            AiCallUsage(
+                flow=WEEKLY_MESSAGE_FLOW_NAME,
+                model=UNKNOWN_MODEL_NAME,
+                latency_ms=measure_elapsed_milliseconds(started_at),
+                model_input_usage_count=0,
+                model_output_usage_count=0,
+                outcome=FLOW_FAILED_OUTCOME,
+            )
+        )
+        return WrittenWeeklyMessages(
+            self._template.render(facts), AiTextSource.TEMPLATE, AiTextSource.TEMPLATE
         )
 
     def _record_usage(self, language_result: WeeklyLanguageResult, latency_ms: int) -> None:
