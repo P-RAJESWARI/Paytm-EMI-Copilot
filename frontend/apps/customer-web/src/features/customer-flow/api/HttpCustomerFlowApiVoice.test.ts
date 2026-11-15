@@ -72,6 +72,7 @@ describe('HttpCustomerFlowApi: Layer 4 voice and teach-back', () => {
     const transcription = await customerFlowApi.transcribeSpeech(
       new Blob(['audio'], { type: 'audio/ogg' }),
       'BUDGET',
+      'ta',
     );
 
     expect(transcription.recognisedAmountInPaise).toBe(300000);
@@ -80,13 +81,14 @@ describe('HttpCustomerFlowApi: Layer 4 voice and teach-back', () => {
     expect(request?.headers.get('Content-Type')).toBe('audio/ogg');
     expect(request?.headers.get('X-Customer-Session-Token')).toBe('fixture-session-token');
     expect(request?.headers.get('X-Correlation-Id')).toBeTruthy();
+    expect(request?.headers.get('Accept-Language')).toBe('ta');
     expect(request?.body).toBe('audio');
   });
 
   it('defaults a recording without a type to audio/webm', async () => {
     const { fakeBackend, customerFlowApi } = await createApiWithOpenSession();
 
-    await customerFlowApi.transcribeSpeech(new Blob(['audio']), 'TEACH_BACK');
+    await customerFlowApi.transcribeSpeech(new Blob(['audio']), 'TEACH_BACK', 'en');
 
     expect(fakeBackend.recordedRequests.at(-1)?.headers.get('Content-Type')).toBe('audio/webm');
   });

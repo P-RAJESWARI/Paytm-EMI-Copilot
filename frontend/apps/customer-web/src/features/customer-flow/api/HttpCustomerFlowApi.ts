@@ -178,12 +178,18 @@ export class HttpCustomerFlowApi implements CustomerFlowApi {
     );
   }
 
-  // Sends one raw recording as the request body with its own content type (C2 and C8 microphone).
-  async transcribeSpeech(audio: Blob, purpose: SpeechPurpose): Promise<SpeechTranscription> {
+  // Sends one raw recording as the request body with its own content type and the language to
+  // listen for (C2 and C8 microphone).
+  async transcribeSpeech(
+    audio: Blob,
+    purpose: SpeechPurpose,
+    language: SupportedLanguage,
+  ): Promise<SpeechTranscription> {
     const response = await this.sendInSession('/speech/transcriptions', {
       body: await audio.arrayBuffer(),
       contentType: audio.type === '' ? 'audio/webm' : audio.type,
       query: `?purpose=${purpose}`,
+      language,
     });
     return (await response.json()) as SpeechTranscription;
   }

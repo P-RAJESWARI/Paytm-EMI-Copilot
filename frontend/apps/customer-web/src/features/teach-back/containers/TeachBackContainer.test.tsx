@@ -110,7 +110,7 @@ describe('C8 teach-back', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Listening. Tap to stop.' }));
 
     expect(await screen.findByDisplayValue('I pay 3,667 every month for 6 months')).toBeTruthy();
-    expect(transcribeSpeech).toHaveBeenCalledWith(expect.any(Blob), 'TEACH_BACK');
+    expect(transcribeSpeech).toHaveBeenCalledWith(expect.any(Blob), 'TEACH_BACK', 'en');
   });
 
   it('says calmly that the check did not work, and still lets the customer continue', async () => {

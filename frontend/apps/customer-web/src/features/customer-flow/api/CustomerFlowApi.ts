@@ -64,8 +64,13 @@ export interface CustomerFlowApi {
     language: SupportedLanguage,
   ) => Promise<ConsentConfirmation>;
   getReceipt: () => Promise<CustomerReceipt>;
-  /** Turns one short recording into text (and an amount for BUDGET); it never sets the budget. */
-  transcribeSpeech: (audio: Blob, purpose: SpeechPurpose) => Promise<SpeechTranscription>;
+  /** Turns one short recording, spoken in the language given, into text (and an amount for
+   * BUDGET); it never sets the budget. */
+  transcribeSpeech: (
+    audio: Blob,
+    purpose: SpeechPurpose,
+    language: SupportedLanguage,
+  ) => Promise<SpeechTranscription>;
   /** Reads an explanation aloud; the answer is the audio itself. */
   synthesiseExplanation: (explanationId: string) => Promise<Blob>;
   /** Checks the customer's own-words answer against the plan; advice only, never a gate. */

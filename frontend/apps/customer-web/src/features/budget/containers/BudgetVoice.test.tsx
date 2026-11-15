@@ -34,7 +34,7 @@ describe('C2 budget by voice', () => {
 
     expect(await screen.findByText('You said ₹3,000. Correct?')).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Monthly amount' })).toHaveProperty('value', '3000');
-    expect(transcribeSpeech).toHaveBeenCalledWith(expect.any(Blob), 'BUDGET');
+    expect(transcribeSpeech).toHaveBeenCalledWith(expect.any(Blob), 'BUDGET', 'en');
     expect(confirmBudget).not.toHaveBeenCalled();
     expect(microphone.stoppedTrackCount()).toBe(1);
     await expectNoAccessibilityViolations(container);
