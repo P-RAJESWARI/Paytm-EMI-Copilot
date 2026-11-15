@@ -64,12 +64,15 @@ export function ScreenLayout({ children, footer, onBack, stepLabel }: ScreenLayo
           onSelectLanguage={selectLanguage}
         />
       </header>
-      <main className="flex flex-1 flex-col gap-5 px-4 py-6 text-body">{children}</main>
-      {footer === undefined ? null : (
-        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-border bg-white p-4">
-          {footer}
-        </div>
-      )}
+      {/* The pinned action area is part of main, so its notes sit inside a landmark (axe region). */}
+      <main className="flex flex-1 flex-col text-body">
+        <div className="flex flex-1 flex-col gap-5 px-4 py-6">{children}</div>
+        {footer === undefined ? null : (
+          <div className="sticky bottom-0 flex flex-col gap-3 border-t border-border bg-white p-4">
+            {footer}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

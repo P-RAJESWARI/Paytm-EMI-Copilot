@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -22,6 +22,16 @@ describe('C1 welcome', () => {
     expect(screen.getByText('₹22,000')).toBeTruthy();
     expect(screen.getByText(/The shop cannot see these\./)).toBeTruthy();
     await expectNoAccessibilityViolations(container);
+  });
+
+  it('keeps the pinned Start action inside the main landmark', async () => {
+    renderCustomerFlow();
+
+    const startButton = await screen.findByRole('button', { name: 'Start' });
+
+    expect(within(screen.getByRole('main')).getByRole('button', { name: 'Start' })).toBe(
+      startButton,
+    );
   });
 
   it('switches every string to Tamil from the large choice and remembers it on the device', async () => {
