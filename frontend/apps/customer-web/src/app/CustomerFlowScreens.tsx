@@ -1,13 +1,15 @@
 import { AlternativesContainer } from '../features/alternatives';
 import { BudgetContainer } from '../features/budget';
+import { ConsentContainer } from '../features/consent';
 import { ComfortConsentContainer, ComfortDetailContainer } from '../features/comfort-check';
 import { SessionUnavailableScreen, useCustomerFlow } from '../features/customer-flow';
 import { ExplanationContainer } from '../features/explanation';
 import { PlanComparisonContainer } from '../features/plan-comparison';
+import { ReceiptContainer } from '../features/receipt';
 import { WelcomeContainer } from '../features/welcome';
 
 // Shows the screen of the current flow step (the flow is a state machine, not a router: there is
-// no URL to jump ahead with). C9 and C10 join in the next commit.
+// no URL to jump ahead with).
 export function CustomerFlowScreens() {
   const { state } = useCustomerFlow();
   switch (state.step) {
@@ -36,9 +38,11 @@ export function CustomerFlowScreens() {
       );
     case 'explanation':
       return <ExplanationContainer plan={state.answers.selectedPlan} />;
+    case 'consent':
+      return <ConsentContainer plan={state.answers.selectedPlan} />;
+    case 'receipt':
+      return <ReceiptContainer />;
     case 'sessionUnavailable':
       return <SessionUnavailableScreen />;
-    default:
-      return null;
   }
 }

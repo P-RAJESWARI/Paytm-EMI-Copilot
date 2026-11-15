@@ -4,6 +4,7 @@ import {
   ALTERNATIVES_ENGLISH_TRANSLATIONS,
   ALTERNATIVES_TAMIL_TRANSLATIONS,
 } from './alternativesTranslations';
+import { CONSENT_ENGLISH_TRANSLATIONS, CONSENT_TAMIL_TRANSLATIONS } from './consentTranslations';
 import { BUDGET_ENGLISH_TRANSLATIONS, BUDGET_TAMIL_TRANSLATIONS } from './budgetTranslations';
 import { COMFORT_ENGLISH_TRANSLATIONS, COMFORT_TAMIL_TRANSLATIONS } from './comfortTranslations';
 import {
@@ -12,6 +13,7 @@ import {
 } from './explanationTranslations';
 import { FLOW_ENGLISH_TRANSLATIONS, FLOW_TAMIL_TRANSLATIONS } from './flowTranslations';
 import { PLAN_ENGLISH_TRANSLATIONS, PLAN_TAMIL_TRANSLATIONS } from './planTranslations';
+import { RECEIPT_ENGLISH_TRANSLATIONS, RECEIPT_TAMIL_TRANSLATIONS } from './receiptTranslations';
 import { WELCOME_ENGLISH_TRANSLATIONS, WELCOME_TAMIL_TRANSLATIONS } from './welcomeTranslations';
 
 /** i18next namespace of the customer app's own strings; shared strings live in shared-i18n. */
@@ -26,6 +28,8 @@ export const CUSTOMER_ENGLISH_TRANSLATIONS = {
   ...PLAN_ENGLISH_TRANSLATIONS,
   ...ALTERNATIVES_ENGLISH_TRANSLATIONS,
   ...EXPLANATION_ENGLISH_TRANSLATIONS,
+  ...CONSENT_ENGLISH_TRANSLATIONS,
+  ...RECEIPT_ENGLISH_TRANSLATIONS,
 } as const;
 
 // Tamil customer strings, composed the same way; the compiler checks they have exactly the English keys.
@@ -39,4 +43,6 @@ export const CUSTOMER_TAMIL_TRANSLATIONS: TranslationsMatching<
   ...PLAN_TAMIL_TRANSLATIONS,
   ...ALTERNATIVES_TAMIL_TRANSLATIONS,
   ...EXPLANATION_TAMIL_TRANSLATIONS,
+  ...CONSENT_TAMIL_TRANSLATIONS,
+  ...RECEIPT_TAMIL_TRANSLATIONS,
 };
